@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "scheme": "marchbuddy",
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -19,10 +19,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route, even when the app is in the background.",
-        "UIBackgroundModes": [
-          "location",
-          "audio"
-        ]
+        "UIBackgroundModes": ["location", "audio"]
       }
     },
     "android": {
@@ -51,6 +48,15 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 280,
+          "backgroundColor": "#000000",
+          "resizeMode": "contain"
+        }
+      ],
       "expo-secure-store",
       "expo-font",
       [
@@ -70,7 +76,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "6cd708b5-470c-4464-84e6-52dbc3f8ac19"
+        "projectId": "068b87b8-7c39-40b5-af36-e4ced0a3c81e"
       }
     }
   }
