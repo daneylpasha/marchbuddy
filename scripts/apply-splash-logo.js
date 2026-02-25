@@ -14,7 +14,7 @@ const SRC = path.join(ROOT, 'assets/splash-logo.png');
 const ANDROID_MAIN = path.join(ROOT, 'android/app/src/main/res');
 
 // Android 12 splash icon box is ALWAYS 288dp — imageWidth must be <= 288
-const IMAGE_WIDTH_DP = 230; // fits within Android 12 circular clip (radius 144dp)
+const IMAGE_WIDTH_DP = 288; // fill the full 288dp icon canvas — no padding
 const CANVAS_DP = 288;
 
 const DENSITIES = [
