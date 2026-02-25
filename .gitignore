@@ -1,5 +1,9 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# Google Service Account Key (sensitive credentials - never commit)
+google-service-account.json
+marchbuddy-a1ae5b97bf28.json
+
 # dependencies
 node_modules/
 
