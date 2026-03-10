@@ -28,7 +28,7 @@ import { FitnessCheckForm } from './components/FitnessCheckForm';
 import { AiDecisionView } from './components/AiDecisionView';
 
 import { colors, fonts } from '../../theme';
-import { RunStackParamList } from '../../navigation/RunNavigator';
+import type { RunStackParamList } from '../../navigation/RunNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RunStackParamList>;
 
@@ -86,10 +86,8 @@ export const WelcomeBackScreen: React.FC = () => {
       case 'chat_about_it':
       case 'been_active':
         markComebackHandled();
-        navigation.navigate('CoachChat', {
-          comebackMode: true,
-          comebackContext: { daysSince, previousLevel, choice },
-        });
+        // CoachChat lives in the Coach tab now — jump to it via the parent tab navigator
+        navigation.getParent()?.navigate('Coach');
         break;
 
       case 'fresh_start':
@@ -123,10 +121,8 @@ export const WelcomeBackScreen: React.FC = () => {
 
   const handleDiscuss = () => {
     markComebackHandled();
-    navigation.navigate('CoachChat', {
-      comebackMode: true,
-      comebackContext: { daysSince, previousLevel, aiSuggestion: decision },
-    });
+    // CoachChat lives in the Coach tab now — jump to it via the parent tab navigator
+    navigation.getParent()?.navigate('Coach');
   };
 
   const renderContent = () => {

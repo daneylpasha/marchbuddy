@@ -9,12 +9,10 @@ import ShareSessionScreen from '../screens/session/ShareSessionScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import EditNameScreen from '../screens/settings/EditNameScreen';
 import CelebrationScreen from '../screens/celebration/CelebrationScreen';
-import CoachChatScreen from '../screens/chat/CoachChatScreen';
 import { WelcomeBackScreen } from '../screens/comeback/WelcomeBackScreen';
 import FeedbackScreen from '../screens/settings/FeedbackScreen';
 import { useRunProgressStore } from '../store/runProgressStore';
 import type { CompletedSession } from '../types/session';
-import type { ComebackDecision } from '../types/comeback';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RunStackParamList = {
@@ -48,17 +46,6 @@ export type RunStackParamList = {
     shareAfter: boolean;
   };
   ShareSession: { session: CompletedSession };
-  CoachChat:
-    | undefined
-    | {
-        comebackMode?: boolean;
-        comebackContext?: {
-          daysSince: number;
-          previousLevel: number;
-          choice?: string;
-          aiSuggestion?: ComebackDecision | null;
-        };
-      };
   Settings: undefined;
   EditName: undefined;
   Feedback: undefined;
@@ -107,11 +94,6 @@ export default function RunNavigator() {
         options={{ gestureEnabled: false, animation: 'fade' }}
       />
       <Stack.Screen name="ShareSession" component={ShareSessionScreen} />
-      <Stack.Screen
-        name="CoachChat"
-        component={CoachChatScreen}
-        options={{ headerShown: false }}
-      />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditName" component={EditNameScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />

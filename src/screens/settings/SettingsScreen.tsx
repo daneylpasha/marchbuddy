@@ -34,10 +34,8 @@ export default function SettingsScreen() {
 
   const {
     distanceUnit,
-    notificationsEnabled,
     hapticFeedbackEnabled,
     setDistanceUnit,
-    setNotificationsEnabled,
     setHapticFeedbackEnabled,
     resetSettings,
   } = useSettingsStore();
@@ -129,9 +127,12 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label="Notifications"
-            value={notificationsEnabled ? 'On' : 'Off'}
-            onPress={() => setNotificationsEnabled(!notificationsEnabled)}
-            showChevron
+            value="Coming Soon"
+            rightElement={
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>COMING SOON</Text>
+              </View>
+            }
           />
           <SettingsRow
             label="Haptic Feedback"
@@ -229,6 +230,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 24,
+  },
+  comingSoonBadge: {
+    backgroundColor: colors.primaryDim,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+  },
+  comingSoonText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: colors.primary,
   },
   dangerText: {
     color: colors.danger,

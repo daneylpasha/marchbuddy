@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { useFeedbackStore } from '../../store/feedbackStore';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 import { RatingNudgeCard } from './components/RatingNudgeCard';
+import { MILESTONE_CONFIGS } from '../../constants/milestones';
 
 // ─── Ring constants ───────────────────────────────────────────────────────────
 
@@ -69,6 +70,121 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+// ─── Milestone detection ──────────────────────────────────────────────────────
+
+interface UpcomingMilestone {
+  type: 'sessions' | 'distance' | 'streak';
+  remaining: number;
+  targetValue: number;
+  icon: string;
+  label: string;
+}
+
+function getClosestUpcomingMilestone(
+  totalSessions: number,
+  totalKm: number,
+  currentStreak: number,
+): UpcomingMilestone | null {
+  const sessionMilestones = [10, 25, 50, 100];
+  const distanceMilestones = [5, 25, 50, 100];
+  const streakMilestones = [7, 14, 30, 60];
+
+  const upcoming: UpcomingMilestone[] = [];
+
+  // Session milestones
+  for (const target of sessionMilestones) {
+    if (totalSessions < target) {
+      upcoming.push({
+        type: 'sessions',
+        remaining: target - totalSessions,
+        targetValue: target,
+        icon: 'checkmark-circle',
+        label: `${target} Sessions`,
+      });
+      break;
+    }
+  }
+
+  // Distance milestones
+  for (const target of distanceMilestones) {
+    if (totalKm < target) {
+      upcoming.push({
+        type: 'distance',
+        remaining: target - totalKm,
+        targetValue: target,
+        icon: 'navigate',
+        label: `${target}km Total`,
+      });
+      break;
+    }
+  }
+
+  // Streak milestones
+  for (const target of streakMilestones) {
+    if (currentStreak < target) {
+      upcoming.push({
+        type: 'streak',
+        remaining: target - currentStreak,
+        targetValue: target,
+        icon: 'flame',
+        label: `${target}-Day Streak`,
+      });
+      break;
+    }
+  }
+
+  if (upcoming.length === 0) return null;
+
+  // Return the milestone with smallest remaining value (closest)
+  return upcoming.reduce((closest, current) => {
+    return current.remaining < closest.remaining ? current : closest;
+  });
+}
+
+// ─── Session history badge detection ───────────────────────────────────────────
+
+interface SessionBadge {
+  type: 'longest' | 'level_up' | 'comeback';
+  label: string;
+  emoji: string;
+}
+
+function getSessionBadge(
+  session: any,
+  sessionHistory: any[],
+  longestRunMinutes: number,
+  previousLevel: number,
+): SessionBadge | null {
+  // Check if longest duration session
+  if (session.durationMinutes === longestRunMinutes && longestRunMinutes > 0) {
+    return { type: 'longest', label: 'Longest', emoji: '🏆' };
+  }
+
+  // Check if level-up session (heuristic: next session is higher level)
+  const sessionIndex = sessionHistory.findIndex(s => s.id === session.id);
+  if (sessionIndex > 0) {
+    const previousSession = sessionHistory[sessionIndex - 1];
+    if (session.planLevel > previousSession.planLevel) {
+      return { type: 'level_up', label: 'Level Up', emoji: '📈' };
+    }
+  }
+
+  // Check if comeback session (3+ days since last session)
+  const sessionDate = new Date(session.date);
+  if (sessionIndex > 0) {
+    const previousSession = sessionHistory[sessionIndex - 1];
+    const previousDate = new Date(previousSession.date);
+    const daysDiff = Math.floor(
+      (sessionDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysDiff >= 3) {
+      return { type: 'comeback', label: 'Comeback', emoji: '🔙' };
+    }
+  }
+
+  return null;
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
@@ -76,6 +192,9 @@ export default function ProgressScreen() {
   const { progress, sessionHistory } = useRunProgressStore();
   const { setupData } = useCoachSetupStore();
   const shouldShowRatingNudge = useFeedbackStore((s) => s.shouldShowRatingNudge);
+
+  // Animated streak counter
+  const [displayedStreak, setDisplayedStreak] = useState(0);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -99,6 +218,28 @@ export default function ProgressScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Animate streak counter
+  useEffect(() => {
+    const streak = progress?.currentStreakDays ?? 0;
+    if (streak === 0) {
+      setDisplayedStreak(0);
+      return;
+    }
+
+    let current = 0;
+    const interval = setInterval(() => {
+      current += Math.ceil(streak / 10);
+      if (current >= streak) {
+        setDisplayedStreak(streak);
+        clearInterval(interval);
+      } else {
+        setDisplayedStreak(current);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [progress?.currentStreakDays]);
+
   // Data
   const userName = setupData.userName || '';
   const totalSessions = progress?.totalSessionsCompleted ?? 0;
@@ -106,6 +247,7 @@ export default function ProgressScreen() {
   const streak = progress?.currentStreakDays ?? 0;
   const bestStreak = progress?.bestStreakDays ?? 0;
   const totalKm = progress?.totalDistanceKm ?? 0;
+  const longestRunMinutes = progress?.longestRunMinutes ?? 0;
   const sessionsAtLevel = progress?.sessionsAtCurrentLevel ?? 0;
   const sessionsThisWeek = progress?.sessionsThisWeek ?? 0;
   const minutesThisWeek = progress?.minutesThisWeek ?? 0;
@@ -126,6 +268,9 @@ export default function ProgressScreen() {
   // Recent sessions (most recent first)
   const recentSessions = [...(sessionHistory ?? [])].reverse().slice(0, 15);
 
+  // Upcoming milestone
+  const upcomingMilestone = getClosestUpcomingMilestone(totalSessions, totalKm, streak);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -145,94 +290,130 @@ export default function ProgressScreen() {
             <RatingNudgeCard totalSessions={totalSessions} />
           )}
 
-          {/* ── Level Ring ──────────────────────────────────────────────── */}
-          <TouchableOpacity
-            style={styles.ringSection}
-            onPress={() => navigation.navigate('JourneyMap')}
-            activeOpacity={0.85}
-          >
-            <View style={{ width: SVG_SIZE, height: SVG_SIZE }}>
-              <Svg width={SVG_SIZE} height={SVG_SIZE}>
-                <G transform={`rotate(-90, ${CX}, ${CY})`}>
-                  {/* Track */}
-                  <Circle
-                    cx={CX}
-                    cy={CY}
-                    r={RADIUS}
-                    stroke="rgba(255,255,255,0.07)"
-                    strokeWidth={STROKE}
-                    fill="none"
-                  />
-                  {/* Inner glow ring */}
-                  <Circle
-                    cx={CX}
-                    cy={CY}
-                    r={RADIUS}
-                    stroke={colors.primaryGlow}
-                    strokeWidth={STROKE + GLOW_EXTRA}
-                    fill="none"
-                    strokeDasharray={CIRC}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                  />
-                  {/* Progress arc */}
-                  <Circle
-                    cx={CX}
-                    cy={CY}
-                    r={RADIUS}
-                    stroke={colors.primary}
-                    strokeWidth={STROKE}
-                    fill="none"
-                    strokeDasharray={CIRC}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                  />
-                </G>
-              </Svg>
-
-              {/* Center text */}
-              <View style={[StyleSheet.absoluteFill, styles.ringCenter]}>
-                <Text style={styles.ringLevel}>L{currentLevel}</Text>
-                <Text style={styles.ringLevelLabel}>LEVEL</Text>
-                {!isMaxLevel && (
-                  <Text style={styles.ringSessions}>
-                    {sessionsAtLevel}/{SESSIONS_TO_LEVEL_UP} sessions
-                  </Text>
+          {totalSessions === 0 ? (
+            /* ── First-visit welcome card (replaces empty zeros) ──────── */
+            <View style={styles.welcomeCard}>
+              <Text style={styles.welcomeEmoji}>👟</Text>
+              <Text style={styles.welcomeTitle}>Your Journey Starts Here</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Complete your first session and this page will come alive with streaks, levels, milestones, and stats.
+              </Text>
+              <View style={styles.welcomeHintRow}>
+                <View style={styles.welcomeHint}>
+                  <Ionicons name="flame-outline" size={18} color={colors.streak} />
+                  <Text style={styles.welcomeHintText}>Build streaks</Text>
+                </View>
+                <View style={styles.welcomeHint}>
+                  <Ionicons name="trending-up-outline" size={18} color={colors.primary} />
+                  <Text style={styles.welcomeHintText}>Level up</Text>
+                </View>
+                <View style={styles.welcomeHint}>
+                  <Ionicons name="trophy-outline" size={18} color="#FBBF24" />
+                  <Text style={styles.welcomeHintText}>Earn milestones</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <>
+              {/* ── HERO: Streak Display ────────────────────────────────────── */}
+              <View style={styles.heroStreakSection}>
+                <View style={styles.heroStreakTop}>
+                  <Text style={styles.heroFlame}>🔥</Text>
+                  <Text style={styles.heroStreakValue}>{displayedStreak}</Text>
+                  <Text style={styles.heroStreakLabel}>DAY STREAK</Text>
+                </View>
+                {bestStreak > 0 && (
+                  <Text style={styles.heroBestStreak}>Your best: {bestStreak} days</Text>
                 )}
               </View>
-            </View>
 
-            <Text style={styles.ringCaption}>
-              {isMaxLevel
-                ? '🏆 Programme Complete!'
-                : `${SESSIONS_TO_LEVEL_UP - sessionsAtLevel} more to reach Level ${currentLevel + 1}`}
-            </Text>
-            <View style={styles.viewJourneyRow}>
-              <Text style={styles.viewJourneyText}>View full journey</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-            </View>
-          </TouchableOpacity>
+              {/* ── Level Ring (smaller, still tappable) ──────────────────── */}
+              <TouchableOpacity
+                style={styles.levelRingSection}
+                onPress={() => navigation.navigate('JourneyMap')}
+                activeOpacity={0.85}
+              >
+                <View style={{ width: SVG_SIZE * 0.75, height: SVG_SIZE * 0.75 }}>
+                  <Svg width={SVG_SIZE * 0.75} height={SVG_SIZE * 0.75}>
+                    <G transform={`rotate(-90, ${CX * 0.75}, ${CY * 0.75})`}>
+                      {/* Track */}
+                      <Circle
+                        cx={CX * 0.75}
+                        cy={CY * 0.75}
+                        r={RADIUS * 0.75}
+                        stroke="rgba(255,255,255,0.07)"
+                        strokeWidth={STROKE * 0.75}
+                        fill="none"
+                      />
+                      {/* Inner glow ring */}
+                      <Circle
+                        cx={CX * 0.75}
+                        cy={CY * 0.75}
+                        r={RADIUS * 0.75}
+                        stroke={colors.primaryGlow}
+                        strokeWidth={(STROKE + GLOW_EXTRA) * 0.75}
+                        fill="none"
+                        strokeDasharray={CIRC * 0.75}
+                        strokeDashoffset={strokeDashoffset * 0.75}
+                        strokeLinecap="round"
+                      />
+                      {/* Progress arc */}
+                      <Circle
+                        cx={CX * 0.75}
+                        cy={CY * 0.75}
+                        r={RADIUS * 0.75}
+                        stroke={colors.primary}
+                        strokeWidth={STROKE * 0.75}
+                        fill="none"
+                        strokeDasharray={CIRC * 0.75}
+                        strokeDashoffset={strokeDashoffset * 0.75}
+                        strokeLinecap="round"
+                      />
+                    </G>
+                  </Svg>
 
-          {/* ── Stats row ───────────────────────────────────────────────── */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalSessions}</Text>
-              <Text style={styles.statLabel}>Sessions</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <View style={styles.statValueRow}>
-                <Text style={styles.statValue}>{streak}</Text>
-                <Ionicons name="flame" size={18} color={colors.streak} style={styles.flameIcon} />
+                  {/* Center text */}
+                  <View style={[StyleSheet.absoluteFill, styles.ringCenter]}>
+                    <Text style={styles.ringLevel}>L{currentLevel}</Text>
+                    <Text style={styles.ringLevelLabel}>LEVEL</Text>
+                    {!isMaxLevel && (
+                      <Text style={styles.ringSessions}>
+                        {sessionsAtLevel}/{SESSIONS_TO_LEVEL_UP}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <Text style={styles.ringCaption}>
+                  {isMaxLevel
+                    ? '🏆 Programme Complete!'
+                    : `${SESSIONS_TO_LEVEL_UP - sessionsAtLevel} more to Level ${currentLevel + 1}`}
+                </Text>
+                <View style={styles.viewJourneyRow}>
+                  <Text style={styles.viewJourneyText}>View full journey</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                </View>
+              </TouchableOpacity>
+
+              {/* ── Stats row ───────────────────────────────────────────────── */}
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{totalSessions}</Text>
+                  <Text style={styles.statLabel}>Sessions</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{totalKm.toFixed(1)}</Text>
+                  <Text style={styles.statLabel}>Total km</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{bestStreak}</Text>
+                  <Text style={styles.statLabel}>Best Streak</Text>
+                </View>
               </View>
-              <Text style={styles.statLabel}>Day Streak</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalKm.toFixed(1)}</Text>
-              <Text style={styles.statLabel}>Total km</Text>
-            </View>
-          </View>
+            </>
+          )}
 
           {/* ── Weekly bar chart ─────────────────────────────────────────── */}
           <View style={styles.card}>
@@ -275,17 +456,33 @@ export default function ProgressScreen() {
             </View>
           </View>
 
-          {/* ── Best streak card ─────────────────────────────────────────── */}
-          {bestStreak > 0 && (
-            <View style={styles.streakCard}>
-              <View style={styles.streakLeft}>
-                <Text style={styles.streakEmoji}>🔥</Text>
-                <View>
-                  <Text style={styles.streakTitle}>Best Streak</Text>
-                  <Text style={styles.streakSub}>Personal record</Text>
+          {/* ── Next Milestone Teaser ───────────────────────────────────── */}
+          {upcomingMilestone && (
+            <View style={styles.milestoneTeaser}>
+              <View style={styles.milestoneTeaserContent}>
+                <Text style={styles.milestoneTeaserText}>
+                  {upcomingMilestone.remaining} more {
+                    upcomingMilestone.type === 'sessions' ? 'sessions' :
+                    upcomingMilestone.type === 'distance' ? 'km' :
+                    'days'
+                  } to reach
+                </Text>
+                <View style={styles.milestoneTeaserBadge}>
+                  <Text style={styles.milestoneTeaserEmoji}>
+                    {upcomingMilestone.type === 'sessions' && '🏅'}
+                    {upcomingMilestone.type === 'distance' && '🗺️'}
+                    {upcomingMilestone.type === 'streak' && '🔥'}
+                  </Text>
+                  <Text style={styles.milestoneTeaserLabel}>
+                    {upcomingMilestone.targetValue}
+                    {upcomingMilestone.type === 'distance' ? 'km' :
+                     upcomingMilestone.type === 'streak' ? '-day' : ''}{' '}
+                    {upcomingMilestone.type === 'sessions' && 'Sessions'}
+                    {upcomingMilestone.type === 'distance' && 'Total'}
+                    {upcomingMilestone.type === 'streak' && 'Streak'}
+                  </Text>
                 </View>
               </View>
-              <Text style={styles.streakValue}>{bestStreak} days</Text>
             </View>
           )}
 
@@ -301,23 +498,34 @@ export default function ProgressScreen() {
                 </Text>
               </View>
             ) : (
-              recentSessions.map((session, i) => (
-                <View key={`${session.id}-${i}`} style={styles.historyItem}>
-                  <View style={styles.historyLevelBadge}>
-                    <Text style={styles.historyLevelText}>L{session.planLevel}</Text>
+              recentSessions.map((session, i) => {
+                const badge = getSessionBadge(session, recentSessions, longestRunMinutes, currentLevel);
+                return (
+                  <View key={`${session.id}-${i}`} style={styles.historyItem}>
+                    <View style={styles.historyLevelBadge}>
+                      <Text style={styles.historyLevelText}>L{session.planLevel}</Text>
+                    </View>
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>{session.planTitle}</Text>
+                      <Text style={styles.historyDate}>{formatDate(session.date)}</Text>
+                    </View>
+                    <View style={styles.historyRight}>
+                      <View style={styles.historyDurationBadgeRow}>
+                        <Text style={styles.historyDuration}>{formatDuration(session.durationMinutes)}</Text>
+                        {badge && (
+                          <View style={styles.sessionBadge}>
+                            <Text style={styles.sessionBadgeEmoji}>{badge.emoji}</Text>
+                            <Text style={styles.sessionBadgeLabel}>{badge.label}</Text>
+                          </View>
+                        )}
+                      </View>
+                      {session.distanceKm > 0 && (
+                        <Text style={styles.historyDistance}>{session.distanceKm.toFixed(2)} km</Text>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.historyInfo}>
-                    <Text style={styles.historyTitle} numberOfLines={1}>{session.planTitle}</Text>
-                    <Text style={styles.historyDate}>{formatDate(session.date)}</Text>
-                  </View>
-                  <View style={styles.historyRight}>
-                    <Text style={styles.historyDuration}>{formatDuration(session.durationMinutes)}</Text>
-                    {session.distanceKm > 0 && (
-                      <Text style={styles.historyDistance}>{session.distanceKm.toFixed(2)} km</Text>
-                    )}
-                  </View>
-                </View>
-              ))
+                );
+              })
             )}
           </View>
 
@@ -353,18 +561,106 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerTitle: {
-    fontFamily: fonts.titleRegular,
+    fontFamily: fonts.semiBold,
     fontSize: 34,
     color: colors.textPrimary,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
 
-  // Ring section
-  ringSection: {
+  // Welcome card for first-time users
+  welcomeCard: {
     alignItems: 'center',
-    paddingVertical: 20,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: spacing.cardRadius,
+    padding: 32,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
     gap: 12,
+  },
+  welcomeEmoji: {
+    fontSize: 48,
+    marginBottom: 4,
+  },
+  welcomeTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+  welcomeSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 280,
+  },
+  welcomeHintRow: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 8,
+  },
+  welcomeHint: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  welcomeHintText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.textTertiary,
+    letterSpacing: 0.2,
+  },
+
+  // Hero streak section
+  heroStreakSection: {
+    alignItems: 'center',
+    paddingVertical: 28,
+    gap: 8,
+    marginBottom: 16,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: spacing.cardRadius,
+    borderWidth: 1,
+    borderColor: colors.streak + '30',
+  },
+  heroStreakTop: {
+    alignItems: 'center',
+    gap: 0,
+  },
+  heroFlame: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  heroStreakValue: {
+    fontFamily: fonts.titleRegular,
+    fontSize: 64,
+    color: colors.streak,
+    letterSpacing: 1,
+    lineHeight: 66,
+  },
+  heroStreakLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 12,
+    letterSpacing: 2.2,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  heroBestStreak: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+
+  // Level ring section (smaller)
+  levelRingSection: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 12,
+    marginBottom: 14,
   },
   ringCenter: {
     alignItems: 'center',
@@ -373,24 +669,24 @@ const styles = StyleSheet.create({
   },
   ringLevel: {
     fontFamily: fonts.titleRegular,
-    fontSize: 78,
+    fontSize: 56,
     color: colors.primaryBright,
     letterSpacing: 1,
-    lineHeight: 80,
+    lineHeight: 58,
   },
   ringLevelLabel: {
     fontFamily: fonts.bold,
-    fontSize: 11,
-    letterSpacing: 2.5,
+    fontSize: 10,
+    letterSpacing: 2.2,
     color: colors.textTertiary,
     textTransform: 'uppercase',
   },
   ringSessions: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: 11,
     color: colors.textSecondary,
     letterSpacing: 0.3,
-    marginTop: 6,
+    marginTop: 4,
   },
   ringCaption: {
     fontFamily: fonts.medium,
@@ -539,43 +835,46 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // Streak card
-  streakCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  // Milestone teaser
+  milestoneTeaser: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: spacing.cardRadius,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: spacing.cardPadding,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
-  streakLeft: {
+  milestoneTeaserContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    justifyContent: 'space-between',
   },
-  streakEmoji: { fontSize: 28 },
-  streakTitle: {
-    fontFamily: fonts.semiBold,
-    fontSize: 15,
-    color: colors.textPrimary,
-    letterSpacing: 0.3,
-  },
-  streakSub: {
-    fontFamily: fonts.regular,
-    fontSize: 12,
+  milestoneTeaserText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
     color: colors.textSecondary,
-    letterSpacing: 0.2,
-    marginTop: 2,
-  },
-  streakValue: {
-    fontFamily: fonts.bold,
-    fontSize: 24,
-    color: colors.streak,
     letterSpacing: 0.3,
+    flex: 1,
+  },
+  milestoneTeaserBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primaryDim,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  milestoneTeaserEmoji: {
+    fontSize: 16,
+  },
+  milestoneTeaserLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
 
   // History
@@ -636,11 +935,34 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 3,
   },
+  historyDurationBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   historyDuration: {
     fontFamily: fonts.bold,
     fontSize: 16,
     color: colors.textPrimary,
     letterSpacing: 0.3,
+  },
+  sessionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primaryDim,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  sessionBadgeEmoji: {
+    fontSize: 12,
+  },
+  sessionBadgeLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 10,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
   historyDistance: {
     fontFamily: fonts.regular,
