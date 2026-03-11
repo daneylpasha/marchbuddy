@@ -421,14 +421,22 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   };
 
   // Build interpolated background color
+  const segmentOutputColors = plan
+    ? plan.segments.map((seg) => {
+        const type = seg.type as keyof typeof segmentColors;
+        return segmentColors[type] || colors.background;
+      })
+    : [colors.background, colors.background];
+
+  const segmentInputRange =
+    segmentOutputColors.length <= 1
+      ? [0, 1]
+      : segmentOutputColors.map((_, i) => i);
+
+  // Ensure both arrays always match in length
   const bgColor = bgColorAnim.interpolate({
-    inputRange: [0, plan?.segments.length || 1],
-    outputRange: plan
-      ? plan.segments.map((seg) => {
-          const type = seg.type as keyof typeof segmentColors;
-          return segmentColors[type] || colors.background;
-        })
-      : [colors.background],
+    inputRange: segmentInputRange,
+    outputRange: segmentOutputColors,
     extrapolate: "clamp",
   });
 

@@ -82,12 +82,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw error;
     }
     // Reset all stores so new user starts fresh
+    const { useCoachSetupStore } = require('./coachSetupStore');
+    const { useRunProgressStore } = require('./runProgressStore');
     const { useProgressStore } = require('./progressStore');
     const { useWorkoutStore } = require('./workoutStore');
     const { useNutritionStore } = require('./nutritionStore');
     const { useWaterStore } = require('./waterStore');
     const { useChatStore } = require('./chatStore');
 
+    useCoachSetupStore.getState().resetSetup();
+    useRunProgressStore.getState().resetProgress();
     useProfileStore.setState({ profile: null, onboardingCompleted: false, isLoading: false });
     useProgressStore.getState().reset();
     useWorkoutStore.setState({ todayWorkout: null, workoutHistory: [], historyLoading: false, summary: null, isLoading: false });

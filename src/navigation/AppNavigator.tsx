@@ -11,7 +11,6 @@ import SplashAnimated from '../screens/splash/SplashAnimated';
 
 export type AuthStackParamList = {
   Login: undefined;
-  SignUp: undefined;
 };
 
 export type OnboardingStackParamList = {

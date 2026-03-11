@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useAuthStore } from '../../store/authStore';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import { colors, fonts, spacing } from '../../theme';
@@ -81,6 +82,27 @@ export default function SettingsScreen() {
             resetSetup();
             resetProgress();
             resetSettings();
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out?',
+      'You will need to sign in again. All local data will be cleared.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await useAuthStore.getState().signOut();
+            } catch (e) {
+              Alert.alert('Error', 'Could not sign out. Try again.');
+            }
           },
         },
       ],
@@ -172,6 +194,16 @@ export default function SettingsScreen() {
             label="Send Feedback"
             value="Bugs, ideas, or just say hi"
             onPress={() => navigation.navigate('Feedback')}
+            showChevron
+          />
+        </SettingsSection>
+
+        {/* Account */}
+        <SettingsSection title="ACCOUNT">
+          <SettingsRow
+            label="Sign Out"
+            labelStyle={styles.dangerText}
+            onPress={handleSignOut}
             showChevron
           />
         </SettingsSection>
