@@ -1,0 +1,157 @@
+name: Build & Submit to Play Store
+
+# Triggers on push to main when native files change, OR manually via workflow_dispatch
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'ios/**'
+      - 'app.json'
+      - 'eas.json'
+      - 'babel.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      submit_track:
+        description: 'Play Store track to submit to'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - production
+
+concurrency:
+  group: native-build-${{ github.sha }}
+  cancel-in-progress: false  # Don't cancel native builds mid-flight
+
+jobs:
+  build:
+    name: EAS Build (Android)
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.build.outputs.build_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Decode Google Service Account Key
+        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | base64 --decode > ./google-sa-key.json
+
+      - name: Run EAS Build
+        id: build
+        run: |
+          BUILD_OUTPUT=$(eas build --platform android --profile production --non-interactive --json 2>&1)
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id // empty')
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "Build ID: $BUILD_ID"
+
+      - name: Notify Slack - Build Started
+        if: success()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🔨 *Android Build Started*\n• Build ID: `${{ steps.build.outputs.build_id }}`\n• Commit: `${{ github.event.head_commit.message || 'Manual trigger' }}`\n• By: ${{ github.actor }}"
+            }
+
+  submit:
+    name: Submit to Play Store
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Decode Google Service Account Key
+        run: echo "${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}" | base64 --decode > ./google-sa-key.json
+
+      - name: Determine submit track
+        id: track
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "track=${{ github.event.inputs.submit_track }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "track=internal" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Submit to Play Store
+        run: |
+          eas submit --platform android \
+            --profile production \
+            --latest \
+            --non-interactive
+        env:
+          EAS_SUBMIT_TRACK: ${{ steps.track.outputs.track }}
+
+      - name: Notify Slack - Submit Success
+        if: success()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "✅ *Submitted to Play Store*\n• Track: `${{ steps.track.outputs.track }}`\n• Commit: `${{ github.event.head_commit.message || 'Manual trigger' }}`\n• By: ${{ github.actor }}\n• <https://play.google.com/console|Open Play Console>"
+            }
+
+      - name: Notify Slack - Submit Failed
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ *Play Store Submission Failed*\n• Track: `${{ steps.track.outputs.track }}`\n• <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+            }
+
+  notify-build-failure:
+    name: Notify Build Failure
+    needs: build
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack - Build Failed
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ *Android Build Failed*\n• Commit: `${{ github.event.head_commit.message || 'Manual trigger' }}`\n• By: ${{ github.actor }}\n• <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+            }

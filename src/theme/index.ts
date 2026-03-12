@@ -18,60 +18,66 @@ export const fonts = {
 // ─── Colors ───────────────────────────────────────────────────────────────
 
 export const colors = {
-  // Backgrounds
-  background: "black",
-  surface: "black",
-  surfaceElevated: "#2A2A2A",
-  surfaceBorder: "rgba(255,255,255,0.06)",
+  // Backgrounds — slightly off-black for warmth on all screen types
+  background: "#0A0A0A",
+  surface: "#0A0A0A",
+  surfaceElevated: "#1A1A1A",
+  surfaceBorder: "rgba(255,255,255,0.08)",
 
-  // Primary accent — dark green
-  primary: "#068a15",
-  primaryBright: "#0BA820",
-  primaryDim: "rgba(6,138,21,0.15)",
-  primaryGlow: "rgba(6,138,21,0.5)",
+  // Primary accent — warmer, more energetic green
+  primary: "#10B981",
+  primaryBright: "#34D399",
+  primaryDim: "rgba(16,185,129,0.15)",
+  primaryGlow: "rgba(16,185,129,0.45)",
 
   // Secondary accents
-  success: "#00E676",
-  successDim: "rgba(0,230,118,0.15)",
+  success: "#34D399",
+  successDim: "rgba(52,211,153,0.15)",
 
   // Gradient colors for buttons
-  gradientStart: "#068a15",
-  gradientEnd: "#0BA820",
-  warning: "#FF9800",
-  warningDim: "rgba(255,152,0,0.15)",
-  danger: "#FF3D71",
-  dangerDim: "rgba(255,61,113,0.15)",
+  gradientStart: "#10B981",
+  gradientEnd: "#34D399",
+  warning: "#FBBF24",
+  warningDim: "rgba(251,191,36,0.15)",
+  danger: "#F43F5E",
+  dangerDim: "rgba(244,63,94,0.15)",
 
   // Macro colors
-  protein: "#068a15",
-  carbs: "#FF9800",
-  fat: "#FF2D78",
+  protein: "#10B981",
+  carbs: "#FBBF24",
+  fat: "#F43F5E",
 
   // Muscle group colors
-  muscleLegs: "#00E676",
-  muscleChest: "#068a15",
-  muscleBack: "#FF6D00",
-  muscleShoulders: "#AB47BC",
-  muscleCore: "#FFD600",
-  muscleArms: "#FF3D71",
+  muscleLegs: "#34D399",
+  muscleChest: "#10B981",
+  muscleBack: "#FB923C",
+  muscleShoulders: "#A78BFA",
+  muscleCore: "#FBBF24",
+  muscleArms: "#F43F5E",
 
   // Text — improved contrast for dark backgrounds
   textPrimary: "#FFFFFF",
-  textSecondary: "#A0A0A0",
-  textTertiary: "#707070",
-  textMuted: "#5A5A5A",
+  textSecondary: "#A1A1AA",
+  textTertiary: "#71717A",
+  textMuted: "#52525B",
 
   // Specific
-  water: "#1DE9B6",
-  waterDim: "rgba(29,233,182,0.15)",
-  streak: "#FF9800",
-  divider: "#2A2A2A",
-  dotInactive: "#333",
+  water: "#2DD4BF",
+  waterDim: "rgba(45,212,191,0.15)",
+  streak: "#FB923C",
+  divider: "#1A1A1A",
+  dotInactive: "#3F3F46",
+
+  // Segment colors — used during active sessions
+  segmentWarmup: "rgba(16,185,129,0.06)",
+  segmentWalk: "rgba(56,189,248,0.10)",
+  segmentRun: "rgba(16,185,129,0.14)",
+  segmentCooldown: "rgba(167,139,250,0.08)",
 
   // Gradients (used as overlay backgrounds)
-  streakGradientStart: "rgba(6,138,21,0.08)",
-  streakGradientEnd: "rgba(255,45,120,0.06)",
-  cardGlow: "rgba(6,138,21,0.08)",
+  streakGradientStart: "rgba(16,185,129,0.08)",
+  streakGradientEnd: "rgba(244,63,94,0.06)",
+  cardGlow: "rgba(16,185,129,0.08)",
 } as const;
 
 // ─── Typography ───────────────────────────────────────────────────────────
@@ -85,13 +91,12 @@ export const typography = {
     letterSpacing: 0.8,
     textTransform: "uppercase" as const,
   },
-  // Screen titles — Bebas Neue (all-caps display)
+  // Screen titles — Montserrat SemiBold (reserve Bebas for hero moments)
   screenTitle: {
-    fontFamily: fonts.titleRegular,
-    fontSize: 34,
+    fontFamily: fonts.semiBold,
+    fontSize: 28,
     color: colors.textPrimary,
-    letterSpacing: 0.68,
-    textTransform: "uppercase" as const,
+    letterSpacing: -0.3,
   },
   // Section headers inside cards
   sectionTitle: {

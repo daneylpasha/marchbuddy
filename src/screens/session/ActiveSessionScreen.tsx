@@ -6,10 +6,12 @@ import {
   StatusBar,
   ActivityIndicator,
   Pressable,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useKeepAwake } from "expo-keep-awake";
+import * as Haptics from "expo-haptics";
 
 import { useActiveSessionStore } from "../../store/activeSessionStore";
 import { useSessionStore } from "../../store/sessionStore";
@@ -163,6 +165,22 @@ const overlayStyles = StyleSheet.create({
   },
 });
 
+// ─── Segment colors and messages ──────────────────────────────────────────────
+
+const segmentColors = {
+  warmup: colors.segmentWarmup,
+  walk: colors.segmentWalk,
+  run: colors.segmentRun,
+  cooldown: colors.segmentCooldown,
+};
+
+const SEGMENT_MESSAGES: Record<string, string[]> = {
+  warmup: ["Warming up...", "Easy does it"],
+  walk: ["Nice pace!", "Recover and breathe", "Walking strong"],
+  run: ["Let's go!", "You've got this!", "Push through!"],
+  cooldown: ["Almost done!", "Great work!", "Cool it down"],
+};
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ActiveSessionScreen({ navigation }: Props) {
@@ -186,6 +204,13 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const sessionCompletedRef = useRef(false);
   const isActiveRef = useRef(false);
   const pendingBackAction = useRef<any>(null);
+
+  // Animation refs for background color transition
+  const bgColorAnim = useRef(new Animated.Value(0)).current;
+  const transitionOpacityAnim = useRef(new Animated.Value(0)).current;
+
+  // Tracking state for halfway celebration
+  const halfwayShownRef = useRef(false);
 
   useEffect(() => {
     isActiveRef.current = isActive;
@@ -217,6 +242,8 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const [isInitializing, setIsInitializing] = useState(true);
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [endEarlyModalVisible, setEndEarlyModalVisible] = useState(false);
+  const [segmentTransitionMessage, setSegmentTransitionMessage] = useState<string | null>(null);
+  const [showHalfwayMessage, setShowHalfwayMessage] = useState(false);
 
   // ── Initialize ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -260,6 +287,63 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSegmentIndex, plan, isActive]);
+
+  // ── Handle segment transitions (message + background color animation) ────────
+  useEffect(() => {
+    if (!plan || currentSegmentIndex >= plan.segments.length) return;
+
+    const currentSeg = plan.segments[currentSegmentIndex];
+    const segmentType = currentSeg.type as keyof typeof SEGMENT_MESSAGES;
+
+    // Show transition message
+    const messages = SEGMENT_MESSAGES[segmentType];
+    if (messages && messages.length > 0) {
+      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+      setSegmentTransitionMessage(randomMsg);
+
+      // Fade in the message
+      Animated.sequence([
+        Animated.timing(transitionOpacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        // Hold for 1.4 seconds
+        Animated.delay(1400),
+        // Fade out
+        Animated.timing(transitionOpacityAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSegmentTransitionMessage(null);
+      });
+    }
+
+    // Animate background color transition (400ms)
+    Animated.timing(bgColorAnim, {
+      toValue: currentSegmentIndex,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+
+    // Check for halfway celebration
+    if (plan.segments.length > 0) {
+      const halfway = Math.floor(plan.segments.length / 2);
+      if (currentSegmentIndex >= halfway && !halfwayShownRef.current) {
+        halfwayShownRef.current = true;
+        setShowHalfwayMessage(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Fade out the halfway message after 2 seconds
+        setTimeout(() => {
+          setShowHalfwayMessage(false);
+        }, 2000);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSegmentIndex, plan]);
 
   // ── Block back during active session ───────────────────────────────────────
   useEffect(() => {
@@ -327,8 +411,44 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     );
   }
 
+  // Get current segment for background color
+  const getCurrentSegmentColor = (): string => {
+    if (!plan || currentSegmentIndex >= plan.segments.length) {
+      return colors.background;
+    }
+    const segmentType = plan.segments[currentSegmentIndex].type as keyof typeof segmentColors;
+    return segmentColors[segmentType] || colors.background;
+  };
+
+  // Build interpolated background color
+  const segmentOutputColors = plan
+    ? plan.segments.map((seg) => {
+        const type = seg.type as keyof typeof segmentColors;
+        return segmentColors[type] || colors.background;
+      })
+    : [colors.background, colors.background];
+
+  const segmentInputRange =
+    segmentOutputColors.length <= 1
+      ? [0, 1]
+      : segmentOutputColors.map((_, i) => i);
+
+  // Ensure both arrays always match in length
+  const bgColor = bgColorAnim.interpolate({
+    inputRange: segmentInputRange,
+    outputRange: segmentOutputColors,
+    extrapolate: "clamp",
+  });
+
   return (
-    <View style={styles.root}>
+    <Animated.View
+      style={[
+        styles.root,
+        {
+          backgroundColor: bgColor as any,
+        },
+      ]}
+    >
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <StatusBar barStyle="light-content" />
 
@@ -406,7 +526,29 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         onCancel={() => setEndEarlyModalVisible(false)}
         onConfirm={confirmEndEarly}
       />
-    </View>
+
+      {/* Segment transition message overlay */}
+      {segmentTransitionMessage && (
+        <Animated.View
+          style={[
+            styles.transitionMessageOverlay,
+            {
+              opacity: transitionOpacityAnim,
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.transitionMessageText}>{segmentTransitionMessage}</Text>
+        </Animated.View>
+      )}
+
+      {/* Halfway celebration message overlay */}
+      {showHalfwayMessage && (
+        <View style={styles.halfwayOverlay} pointerEvents="none">
+          <Text style={styles.halfwayText}>Halfway! 💪</Text>
+        </View>
+      )}
+    </Animated.View>
   );
 }
 
@@ -464,5 +606,31 @@ const styles = StyleSheet.create({
   controlsSection: {
     paddingHorizontal: 24,
     paddingBottom: 8,
+  },
+  transitionMessageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+    pointerEvents: "none",
+  },
+  transitionMessageText: {
+    fontSize: 32,
+    fontFamily: fonts.bold,
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  halfwayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+    pointerEvents: "none",
+  },
+  halfwayText: {
+    fontSize: 48,
+    fontFamily: fonts.bold,
+    color: colors.primary,
+    letterSpacing: 0.5,
   },
 });

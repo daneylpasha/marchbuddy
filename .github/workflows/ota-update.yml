@@ -1,0 +1,67 @@
+name: OTA Update (EAS Update)
+
+# Triggers on push to main, but only runs if no native files changed
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      # Native config changes that require a full build
+      - 'android/**'
+      - 'ios/**'
+      - 'app.json'
+      - 'eas.json'
+      - 'babel.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+
+concurrency:
+  group: ota-update-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  ota-update:
+    name: Publish OTA Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish OTA update
+        run: eas update --branch production --message "${{ github.event.head_commit.message }}"
+
+      - name: Notify Slack - Success
+        if: success()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "📲 *OTA Update Published*\n• Branch: `production`\n• Commit: `${{ github.event.head_commit.message }}`\n• By: ${{ github.actor }}\n• <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|View Commit>"
+            }
+
+      - name: Notify Slack - Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ *OTA Update Failed*\n• Commit: `${{ github.event.head_commit.message }}`\n• By: ${{ github.actor }}\n• <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Logs>"
+            }

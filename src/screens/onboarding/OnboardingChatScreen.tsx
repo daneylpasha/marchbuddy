@@ -14,19 +14,20 @@ import { colors, spacing, fonts } from '../../theme';
 import ChatBubble from '../../components/chat/ChatBubble';
 import TypingIndicator from '../../components/chat/TypingIndicator';
 import ChipSelector from '../../components/chat/ChipSelector';
+import OnboardingSummaryCard from '../../components/onboarding/OnboardingSummaryCard';
 import { useProfileStore } from '../../store/profileStore';
 import { useAuthStore } from '../../store/authStore';
 import { useProgressStore } from '../../store/progressStore';
 import {
   ONBOARDING_STAGES,
   TOTAL_USER_STEPS,
-  buildSummary,
   buildProfileFromData,
   generateSmartAcknowledgment,
   getEmptyOnboardingData,
   getStepNumber,
 } from '../../services/onboardingService';
 import type { OnboardingData } from '../../services/onboardingService';
+
 interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -40,6 +41,8 @@ export default function OnboardingChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [inputLocked, setInputLocked] = useState(true);
+  const [showSummary, setShowSummary] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const msgCounter = useRef(0);
 
@@ -56,10 +59,10 @@ export default function OnboardingChatScreen() {
     setInputLocked(true);
     for (const text of texts) {
       setIsTyping(true);
-      await delay(500 + Math.random() * 300);
+      await delay(400 + Math.random() * 200);
       setIsTyping(false);
       setMessages((prev) => [...prev, { id: nextId(), role: 'assistant', content: text }]);
-      await delay(150);
+      await delay(100);
     }
     setInputLocked(false);
   }, []);
@@ -79,7 +82,7 @@ export default function OnboardingChatScreen() {
   }, [messages, isTyping]);
 
   const currentStage = ONBOARDING_STAGES[stageIndex];
-  const stepNumber = getStepNumber(stageIndex);
+  const stepNumber = showSummary ? TOTAL_USER_STEPS : getStepNumber(stageIndex);
 
   const handleUserInput = async (rawInput: string) => {
     if (inputLocked || !rawInput.trim()) return;
@@ -101,46 +104,11 @@ export default function OnboardingChatScreen() {
     const parsed = stage.parse(rawInput);
     const newData = { ...data };
 
-    // Handle special fields that don't map directly
     switch (stage.id) {
       case 'primaryGoal':
         newData.primaryGoal = parsed;
         break;
-      case 'pastSports':
-        newData.pastSports = parsed;
-        break;
-      case 'injuries':
-        newData.injuries = parsed;
-        break;
-      case 'dietType':
-        newData.dietType = parsed;
-        break;
-      case 'allergies':
-        newData.allergies = parsed;
-        break;
-      case 'cuisineRegion':
-        newData.cuisineRegion = parsed;
-        break;
-      case 'cookingContext':
-        newData.cookingContext = parsed;
-        break;
-      case 'eatingOut':
-        newData.eatingOut = parsed;
-        break;
-      case 'workoutDays':
-        newData.workoutDays = parsed;
-        break;
-      case 'workoutTime':
-        newData.workoutTime = parsed;
-        break;
-      case 'equipment':
-        newData.equipment = parsed;
-        break;
-      case 'summary':
-        // handle confirmation
-        break;
       default:
-        // Direct-mapped fields
         if (stage.field) {
           (newData as any)[stage.field] = parsed;
         }
@@ -148,42 +116,16 @@ export default function OnboardingChatScreen() {
     }
     setData(newData);
 
-    // Handle summary stage specially
-    if (stage.id === 'summary') {
-      if (rawInput.includes('correct something') || rawInput.includes('correct')) {
-        // Loop back to name stage for corrections
-        const ackMessages = ["No problem! Let's go through it again. Just update what needs changing and confirm the rest."];
-        setStageIndex(0);
-        await pushAiMessages([...ackMessages, ...ONBOARDING_STAGES[0].messages]);
-        return;
-      }
-      // Confirmed — build profile and finish
+    // Check if this was the last question stage
+    const isLastStage = stageIndex === ONBOARDING_STAGES.length - 1;
+
+    if (isLastStage) {
+      // Show summary card instead of continuing chat
       setInputLocked(true);
       setIsTyping(true);
-      await delay(600);
+      await delay(300);
       setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nextId(),
-          role: 'assistant',
-          content: `Awesome, ${newData.name}! I'm building your personalized plan now. Let's get to work! 💪`,
-        },
-      ]);
-
-      // Save the profile — HomeScreen will handle plan generation on mount
-      if (user) {
-        const profile = buildProfileFromData(user.id, newData);
-        await updateProfile(profile);
-
-        // Create initial weight entry so Progress screen has data from day 1
-        if (profile.currentWeight && profile.currentWeight > 0) {
-          useProgressStore.getState().logWeight(user.id, profile.currentWeight);
-        }
-      }
-      // Small delay so the user sees the final message
-      await delay(1200);
-      setOnboardingCompleted(true);
+      setShowSummary(true);
       return;
     }
 
@@ -195,16 +137,7 @@ export default function OnboardingChatScreen() {
     setStageIndex(nextIndex);
 
     const nextStage = ONBOARDING_STAGES[nextIndex];
-    let nextMessages: string[];
-
-    if (nextStage.id === 'summary') {
-      // Build dynamic summary
-      const summaryText = buildSummary(newData);
-      nextMessages = [summaryText];
-    } else {
-      nextMessages = nextStage.messages;
-    }
-
+    const nextMessages = nextStage.messages;
     const allMessages = ack ? [ack, ...nextMessages] : nextMessages;
     await pushAiMessages(allMessages);
   };
@@ -217,7 +150,53 @@ export default function OnboardingChatScreen() {
     handleUserInput(option);
   };
 
+  // ─── Summary card handlers ──────────────────────────────────────────────────
+
+  const handleSummaryEdit = (field: keyof OnboardingData, value: any) => {
+    setData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSummaryConfirm = async () => {
+    setIsSaving(true);
+
+    // Save the profile
+    if (user) {
+      const profile = buildProfileFromData(user.id, data);
+      await updateProfile(profile);
+
+      // Create initial weight entry so Progress screen has data from day 1
+      if (profile.currentWeight && profile.currentWeight > 0) {
+        useProgressStore.getState().logWeight(user.id, profile.currentWeight);
+      }
+    }
+
+    await delay(800);
+    setOnboardingCompleted(true);
+  };
+
   // ─── Render ──────────────────────────────────────────────────────────────────
+
+  // If summary mode, show the editable summary card
+  if (showSummary) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Progress bar */}
+        <View style={styles.progressContainer}>
+          <Text style={styles.stepText}>Step {TOTAL_USER_STEPS} of {TOTAL_USER_STEPS}</Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '100%' }]} />
+          </View>
+        </View>
+
+        <OnboardingSummaryCard
+          data={data}
+          onEdit={handleSummaryEdit}
+          onConfirm={handleSummaryConfirm}
+          isLoading={isSaving}
+        />
+      </SafeAreaView>
+    );
+  }
 
   const renderInput = () => {
     if (inputLocked) return null;
@@ -253,7 +232,7 @@ export default function OnboardingChatScreen() {
             onPress={handleSubmitText}
             disabled={!inputText.trim() || inputLocked}
           >
-            <Text style={styles.sendButtonText}>→</Text>
+            <Text style={styles.sendButtonText}>&#x2192;</Text>
           </Pressable>
         </View>
         {isNumber && stage.numberUnit && (

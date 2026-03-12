@@ -2,7 +2,9 @@
 
 # Google Service Account Key (sensitive credentials - never commit)
 google-service-account.json
-marchbuddy-a1ae5b97bf28.json
+google-sa-key.json
+marchbuddy-*.json
+!marchbuddy-*.json.example
 
 # dependencies
 node_modules/
@@ -36,6 +38,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env.supabase
 
 # typescript
 *.tsbuildinfo

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SessionPlan } from '../../../types/session';
 import { formatDurationMinutes } from '../../../utils/sessionUtils';
 import { colors, fonts, spacing } from '../../../theme';
@@ -31,12 +32,7 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       style={({ pressed }) => [styles.container, pressed && styles.containerPressed]}
       onPress={onPress}
     >
-      {/* Recommended badge */}
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>RECOMMENDED</Text>
-      </View>
-
-      {/* Title */}
+      {/* Title — Bebas Neue hero moment */}
       <Text style={styles.title}>{plan.title}</Text>
 
       {/* Meta row */}
@@ -53,10 +49,14 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       {/* Summary */}
       <Text style={styles.summary}>{plan.summary}</Text>
 
-      {/* CTA */}
-      <View style={styles.button}>
-        <Text style={styles.buttonText}>Start This Session</Text>
-      </View>
+      {/* CTA — prominent, action-oriented */}
+      <Pressable
+        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        onPress={onPress}
+      >
+        <Text style={styles.buttonText}>Let's Go</Text>
+        <Ionicons name="arrow-forward" size={18} color="#fff" />
+      </Pressable>
     </Pressable>
   );
 };
@@ -69,31 +69,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
-  containerPressed: { opacity: 0.85 },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryDim,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 16,
-  },
-  badgeText: {
-    fontFamily: fonts.bold,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: colors.primary,
-  },
+  containerPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   title: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
+    fontFamily: fonts.titleRegular,
+    fontSize: 36,
     color: colors.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   metaText: {
     fontFamily: fonts.medium,
@@ -115,14 +103,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
+    flexDirection: 'row',
     backgroundColor: colors.primary,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonPressed: {
+    opacity: 0.85,
   },
   buttonText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
+    fontFamily: fonts.bold,
+    fontSize: 17,
     color: '#fff',
+    letterSpacing: 0.5,
   },
 });

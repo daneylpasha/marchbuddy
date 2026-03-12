@@ -12,6 +12,12 @@ interface RunProgressState {
   // Comeback tracking — ISO date string of when comeback was handled, or null
   comebackHandledToday: string | null;
 
+  // Rest day tracking — ISO date string of declared rest day
+  restDayDeclaredDate: string | null;
+
+  // Perfect week tracking
+  perfectWeekCelebrated: string | null; // weekStartDate of last celebrated perfect week
+
   // Actions
   initializeProgress: (userId: string) => void;
   updateAfterSession: (sessionData: {
@@ -27,6 +33,9 @@ interface RunProgressState {
   setLevel: (level: number) => void;
   markComebackHandled: () => void;
   shouldShowComeback: () => boolean;
+  declareRestDay: () => void;
+  isPerfectWeek: () => boolean;
+  markPerfectWeekCelebrated: () => void;
 }
 
 const createInitialProgress = (userId: string): UserProgress => ({
@@ -52,6 +61,8 @@ export const useRunProgressStore = create<RunProgressState>()(
       sessionHistory: [],
       isLoading: true,
       comebackHandledToday: null,
+      restDayDeclaredDate: null,
+      perfectWeekCelebrated: null,
 
       addToHistory: (record: SessionRecord) => {
         set((state) => {
@@ -198,6 +209,43 @@ export const useRunProgressStore = create<RunProgressState>()(
         );
 
         return daysSince >= 7;
+      },
+
+      // ─── Rest day saves streak ──────────────────────────────────────
+      declareRestDay: () => {
+        const current = get().progress;
+        if (!current) return;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Rest day counts as "activity" for streak purposes —
+        // update lastSessionDate so streak doesn't break tomorrow
+        set({
+          restDayDeclaredDate: today,
+          progress: {
+            ...current,
+            lastSessionDate: today,
+          },
+        });
+      },
+
+      // ─── Perfect week detection ──────────────────────────────────────
+      isPerfectWeek: () => {
+        const { progress, perfectWeekCelebrated } = get();
+        if (!progress) return false;
+
+        const TARGET_SESSIONS = 3;
+        const currentWeekStart = getWeekStartDate();
+
+        // Already celebrated this week?
+        if (perfectWeekCelebrated === currentWeekStart) return false;
+
+        return progress.sessionsThisWeek >= TARGET_SESSIONS;
+      },
+
+      markPerfectWeekCelebrated: () => {
+        const currentWeekStart = getWeekStartDate();
+        set({ perfectWeekCelebrated: currentWeekStart });
       },
     }),
     {

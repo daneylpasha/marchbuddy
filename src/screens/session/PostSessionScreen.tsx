@@ -195,7 +195,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
-        {/* Fixed action buttons */}
+        {/* Fixed action buttons — "Done" is primary, "Share" is secondary */}
         <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [
@@ -203,23 +203,23 @@ export default function PostSessionScreen({ navigation, route }: Props) {
               disabled && styles.buttonDisabled,
               pressed && !disabled && styles.buttonPressed,
             ]}
-            onPress={() => submit(true)}
+            onPress={() => submit(false)}
             disabled={disabled}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryButtonText}>Complete & Share</Text>
+              <Text style={styles.primaryButtonText}>Done</Text>
             )}
           </Pressable>
 
           <Pressable
             style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.6 }]}
-            onPress={() => submit(false)}
+            onPress={() => submit(true)}
             disabled={disabled}
           >
             <Text style={[styles.secondaryButtonText, disabled && styles.textDisabled]}>
-              Just Save
+              Share & Save
             </Text>
           </Pressable>
         </View>

@@ -47,6 +47,7 @@ export const CoachChatScreen: React.FC = () => {
   const sessionHistory = useRunProgressStore((state) => state.sessionHistory);
 
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [hasUsedQuickAction, setHasUsedQuickAction] = useState(false);
 
   useEffect(() => {
     initializeChat(setupData.userName || 'there');
@@ -110,10 +111,31 @@ export const CoachChatScreen: React.FC = () => {
     };
   };
 
+  // Build quick actions context from user journey data
+  const quickActionsContext = React.useMemo(() => {
+    const totalSessions = progress?.totalSessionsCompleted ?? 0;
+    const currentStreak = progress?.currentStreakDays ?? 0;
+    const currentLevel = progress?.currentLevel ?? 1;
+    let daysSinceLastSession: number | null = null;
+
+    if (progress?.lastSessionDate) {
+      const lastDate = new Date(progress.lastSessionDate);
+      const now = new Date();
+      lastDate.setHours(0, 0, 0, 0);
+      now.setHours(0, 0, 0, 0);
+      daysSinceLastSession = Math.floor(
+        (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+    }
+
+    return { totalSessions, currentStreak, daysSinceLastSession, currentLevel };
+  }, [progress]);
+
   const handleSendMessage = async (text: string, imageUri?: string) => {
     if (!text.trim() && !imageUri) return;
 
     setShowQuickActions(false);
+    setHasUsedQuickAction(true);
     addUserMessage(text, imageUri);
     setLoading(true);
 
@@ -182,8 +204,11 @@ export const CoachChatScreen: React.FC = () => {
           ListFooterComponent={
             <>
               {isLoading && <TypingIndicator />}
-              {showQuickActions && messages.length <= 1 && (
-                <QuickActions onSelect={(msg) => handleSendMessage(msg)} />
+              {showQuickActions && !hasUsedQuickAction && messages.length <= 4 && (
+                <QuickActions
+                  onSelect={(msg) => handleSendMessage(msg)}
+                  context={quickActionsContext}
+                />
               )}
             </>
           }

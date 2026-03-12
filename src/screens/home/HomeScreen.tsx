@@ -529,7 +529,7 @@ export default function HomeScreen() {
         )}
 
         {/* ── Workout Card ─────────────────────────────────────── */}
-        <Card onPress={() => navigation.navigate('Workout')}>
+        <Card onPress={() => navigation.navigate('Workout' as any)}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="barbell-outline" size={20} color={colors.primary} />
@@ -585,7 +585,7 @@ export default function HomeScreen() {
         </Card>
 
         {/* ── Nutrition Card ───────────────────────────────────── */}
-        <Card onPress={() => navigation.navigate('Nutrition')}>
+        <Card onPress={() => navigation.navigate('Nutrition' as any)}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
               <Ionicons name="restaurant-outline" size={20} color={colors.primary} />
@@ -700,7 +700,7 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.quickBtnText}>Talk to coach</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => navigation.navigate('Nutrition')}>
+          <Pressable style={styles.quickBtn} onPress={() => navigation.navigate('Nutrition' as any)}>
             <View style={[styles.quickBtnIcon, { backgroundColor: 'rgba(255,152,0,0.15)' }]}>
               <Ionicons name="camera" size={18} color={colors.warning} />
             </View>

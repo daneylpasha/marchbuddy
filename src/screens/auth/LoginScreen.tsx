@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
 import { authService } from '../../services/authService';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { colors, fonts } from '../../theme';
+import EmailAuthSheet from '../../components/auth/EmailAuthSheet';
+import type { EmailAuthSheetRef } from '../../components/auth/EmailAuthSheet';
 
 export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const userName = useCoachSetupStore((s) => s.setupData.userName);
+  const bottomSheetRef = useRef<EmailAuthSheetRef>(null);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -32,6 +34,10 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
   };
+
+  const handleOpenEmailAuth = useCallback(() => {
+    bottomSheetRef.current?.present();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -77,12 +83,26 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
+            {/* Email/password trigger */}
+            <TouchableOpacity
+              onPress={handleOpenEmailAuth}
+              activeOpacity={0.7}
+              style={styles.emailTrigger}
+            >
+              <Text style={styles.emailTriggerText}>
+                I'd like to sign in with email & password
+              </Text>
+            </TouchableOpacity>
+
             <Text style={styles.privacyText}>
               By signing in, you agree to our Terms of Service and Privacy Policy
             </Text>
           </View>
         </View>
       </SafeAreaView>
+
+      {/* Email auth bottom sheet */}
+      <EmailAuthSheet ref={bottomSheetRef} />
     </View>
   );
 }
@@ -150,12 +170,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
   },
+  emailTrigger: {
+    marginTop: 20,
+    paddingVertical: 8,
+  },
+  emailTriggerText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+    letterSpacing: 0.3,
+  },
   privacyText: {
     fontFamily: fonts.regular,
     fontSize: 12,
     color: colors.textTertiary,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 16,
     paddingHorizontal: 20,
     lineHeight: 18,
   },

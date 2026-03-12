@@ -18,6 +18,7 @@ import {
   Montserrat_600SemiBold,
   Montserrat_700Bold,
 } from '@expo-google-fonts/montserrat';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import AppNavigator from './src/navigation/AppNavigator';
 
@@ -56,10 +57,12 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'black' }}>
       <ErrorBoundary>
-        <NavigationContainer theme={NAV_THEME}>
-          <StatusBar style="light" backgroundColor="#000000" translucent={true} />
-          <AppNavigator />
-        </NavigationContainer>
+        <BottomSheetModalProvider>
+          <NavigationContainer theme={NAV_THEME}>
+            <StatusBar style="light" backgroundColor="#000000" translucent={true} />
+            <AppNavigator />
+          </NavigationContainer>
+        </BottomSheetModalProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
   );

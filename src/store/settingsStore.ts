@@ -4,19 +4,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SettingsState {
   distanceUnit: 'km' | 'miles';
-  notificationsEnabled: boolean;
   hapticFeedbackEnabled: boolean;
+  hasSeenFeatureTips: boolean;
 
   setDistanceUnit: (unit: 'km' | 'miles') => void;
-  setNotificationsEnabled: (enabled: boolean) => void;
   setHapticFeedbackEnabled: (enabled: boolean) => void;
+  setHasSeenFeatureTips: (seen: boolean) => void;
   resetSettings: () => void;
 }
 
 const defaultSettings = {
   distanceUnit: 'km' as const,
-  notificationsEnabled: true,
   hapticFeedbackEnabled: true,
+  hasSeenFeatureTips: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -25,8 +25,8 @@ export const useSettingsStore = create<SettingsState>()(
       ...defaultSettings,
 
       setDistanceUnit: (unit) => set({ distanceUnit: unit }),
-      setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       setHapticFeedbackEnabled: (enabled) => set({ hapticFeedbackEnabled: enabled }),
+      setHasSeenFeatureTips: (seen) => set({ hasSeenFeatureTips: seen }),
       resetSettings: () => set(defaultSettings),
     }),
     {

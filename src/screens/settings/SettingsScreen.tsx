@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useAuthStore } from '../../store/authStore';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import { colors, fonts, spacing } from '../../theme';
@@ -34,10 +35,8 @@ export default function SettingsScreen() {
 
   const {
     distanceUnit,
-    notificationsEnabled,
     hapticFeedbackEnabled,
     setDistanceUnit,
-    setNotificationsEnabled,
     setHapticFeedbackEnabled,
     resetSettings,
   } = useSettingsStore();
@@ -89,6 +88,27 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out?',
+      'You will need to sign in again. All local data will be cleared.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await useAuthStore.getState().signOut();
+            } catch (e) {
+              Alert.alert('Error', 'Could not sign out. Try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -129,9 +149,12 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label="Notifications"
-            value={notificationsEnabled ? 'On' : 'Off'}
-            onPress={() => setNotificationsEnabled(!notificationsEnabled)}
-            showChevron
+            value="Coming Soon"
+            rightElement={
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>COMING SOON</Text>
+              </View>
+            }
           />
           <SettingsRow
             label="Haptic Feedback"
@@ -171,6 +194,16 @@ export default function SettingsScreen() {
             label="Send Feedback"
             value="Bugs, ideas, or just say hi"
             onPress={() => navigation.navigate('Feedback')}
+            showChevron
+          />
+        </SettingsSection>
+
+        {/* Account */}
+        <SettingsSection title="ACCOUNT">
+          <SettingsRow
+            label="Sign Out"
+            labelStyle={styles.dangerText}
+            onPress={handleSignOut}
             showChevron
           />
         </SettingsSection>
@@ -229,6 +262,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 24,
+  },
+  comingSoonBadge: {
+    backgroundColor: colors.primaryDim,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+  },
+  comingSoonText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: colors.primary,
   },
   dangerText: {
     color: colors.danger,
