@@ -13,6 +13,7 @@ module.exports = defineConfig([
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      'react/no-unescaped-entities': 'off',
     },
   },
 ]);
