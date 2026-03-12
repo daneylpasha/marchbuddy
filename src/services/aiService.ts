@@ -3,7 +3,7 @@
 
 import { supabase } from '../api/supabase';
 import { imageUriToBase64 } from '../utils/imageUtils';
-import { SUPABASE_ANON_KEY } from '../config/env';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config/env';
 import type { ChatMessage, FoodSnap, MealPlan, ReadinessCheck, UserProfile, WaterLog, WorkoutPlan } from '../types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export interface FoodAnalysisResult {
 // ─── Edge Function caller ───────────────────────────────────────────────────
 
 async function callEdgeFunction<T>(functionName: string, body: object): Promise<T> {
-  const url = `${supabase.supabaseUrl}/functions/v1/${functionName}`;
+  const url = `${SUPABASE_URL}/functions/v1/${functionName}`;
   console.log(`📡 Calling Edge Function: ${functionName}... URL: ${url}`);
 
   // Use anon key — edge functions handle their own auth via the request body

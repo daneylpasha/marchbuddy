@@ -68,8 +68,8 @@ export function injectMockData() {
   });
 
   useChatStore.setState({
-    messages: mockChatMessages,
-    isAiTyping: false,
+    messages: mockChatMessages as any,
+    isLoading: false,
   });
 
   console.log('[Mock] All stores populated with mock data');
@@ -82,7 +82,7 @@ export function clearMockData() {
   useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [] });
   useWaterStore.setState({ todayWaterLog: null });
   useProgressStore.setState({ weightEntries: [], measurements: [], weeklySummaries: [], loaded: false });
-  useChatStore.setState({ messages: [], isAiTyping: false });
+  useChatStore.setState({ messages: [], isLoading: false });
 
   console.log('[Mock] All stores cleared');
 }
