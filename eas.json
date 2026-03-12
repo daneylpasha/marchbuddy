@@ -18,7 +18,7 @@
   "submit": {
     "production": {
       "android": {
-        "serviceAccountKeyPath": "./marchbuddy-a1ae5b97bf28.json",
+        "serviceAccountKeyPath": "./google-sa-key.json",
         "track": "internal"
       }
     }
