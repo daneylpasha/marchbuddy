@@ -73,12 +73,19 @@
           "savePhotosPermission": "MarchBuddy needs permission to save images to your gallery."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-updates"
     ],
     "extra": {
       "eas": {
         "projectId": "068b87b8-7c39-40b5-af36-e4ced0a3c81e"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/068b87b8-7c39-40b5-af36-e4ced0a3c81e"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
