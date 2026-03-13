@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -28,6 +29,8 @@ type NavProp = NativeStackNavigationProp<RunStackParamList>;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NavProp>();
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
 
   const setupData = useCoachSetupStore((s) => s.setupData);
   const resetSetup = useCoachSetupStore((s) => s.resetSetup);
@@ -88,6 +91,41 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account?',
+      'This will permanently delete your account and all associated data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete My Account',
+          style: 'destructive',
+          onPress: () => {
+            // Double confirmation for safety
+            Alert.alert(
+              'Are you absolutely sure?',
+              'All your progress, sessions, and personal data will be permanently removed.',
+              [
+                { text: 'Go Back', style: 'cancel' },
+                {
+                  text: 'Yes, Delete Everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await useAuthStore.getState().deleteAccount();
+                    } catch (e) {
+                      Alert.alert('Error', 'Could not delete account. Please try again or contact support.');
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  };
+
   const handleSignOut = () => {
     Alert.alert(
       'Sign Out?',
@@ -125,6 +163,31 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Guest Banner */}
+        {isGuest && (
+          <Pressable
+            style={styles.guestBanner}
+            onPress={exitGuestMode}
+          >
+            <LinearGradient
+              colors={['rgba(16,185,129,0.15)', 'rgba(16,185,129,0.05)']}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <View style={styles.guestBannerContent}>
+              <Ionicons name="person-add-outline" size={22} color={colors.primary} />
+              <View style={styles.guestBannerText}>
+                <Text style={styles.guestBannerTitle}>You're in Guest Mode</Text>
+                <Text style={styles.guestBannerSubtitle}>
+                  Sign up to save your progress and unlock all features
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+            </View>
+          </Pressable>
+        )}
+
         {/* Profile */}
         <SettingsSection title="PROFILE">
           <SettingsRow
@@ -200,12 +263,29 @@ export default function SettingsScreen() {
 
         {/* Account */}
         <SettingsSection title="ACCOUNT">
-          <SettingsRow
-            label="Sign Out"
-            labelStyle={styles.dangerText}
-            onPress={handleSignOut}
-            showChevron
-          />
+          {isGuest ? (
+            <SettingsRow
+              label="Create Account"
+              value="Save your progress"
+              onPress={exitGuestMode}
+              showChevron
+            />
+          ) : (
+            <>
+              <SettingsRow
+                label="Sign Out"
+                labelStyle={styles.dangerText}
+                onPress={handleSignOut}
+                showChevron
+              />
+              <SettingsRow
+                label="Delete Account"
+                labelStyle={styles.dangerText}
+                onPress={handleDeleteAccount}
+                showChevron
+              />
+            </>
+          )}
         </SettingsSection>
 
         {/* Danger Zone */}
@@ -276,6 +356,36 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1,
     color: colors.primary,
+  },
+  guestBanner: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 16,
+    borderRadius: spacing.cardRadius,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+    overflow: 'hidden',
+  },
+  guestBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  guestBannerText: {
+    flex: 1,
+    gap: 2,
+  },
+  guestBannerTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+    letterSpacing: 0.2,
+  },
+  guestBannerSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 0.2,
   },
   dangerText: {
     color: colors.danger,

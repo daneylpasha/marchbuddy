@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../../services/authService';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
+import { useAuthStore } from '../../store/authStore';
 import { colors, fonts } from '../../theme';
 import EmailAuthSheet from '../../components/auth/EmailAuthSheet';
 import type { EmailAuthSheetRef } from '../../components/auth/EmailAuthSheet';
@@ -19,6 +20,7 @@ import type { EmailAuthSheetRef } from '../../components/auth/EmailAuthSheet';
 export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const userName = useCoachSetupStore((s) => s.setupData.userName);
+  const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
   const bottomSheetRef = useRef<EmailAuthSheetRef>(null);
 
   const handleGoogleSignIn = async () => {
@@ -91,6 +93,18 @@ export default function LoginScreen() {
             >
               <Text style={styles.emailTriggerText}>
                 I'd like to sign in with email & password
+              </Text>
+            </TouchableOpacity>
+
+            {/* Guest mode */}
+            <TouchableOpacity
+              onPress={enterGuestMode}
+              activeOpacity={0.7}
+              style={styles.guestTrigger}
+            >
+              <Ionicons name="person-outline" size={16} color={colors.textTertiary} />
+              <Text style={styles.guestTriggerText}>
+                Skip for now — explore as guest
               </Text>
             </TouchableOpacity>
 
@@ -179,6 +193,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     textDecorationLine: 'underline',
+    letterSpacing: 0.3,
+  },
+  guestTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  guestTriggerText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
   },
   privacyText: {

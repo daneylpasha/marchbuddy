@@ -157,13 +157,23 @@ export const useCoachSetupStore = create<CoachSetupState>()(
       setupData: { ...s.setupData, startedAt: new Date().toISOString() },
     })),
 
-  markSetupComplete: () =>
+  markSetupComplete: () => {
+    // Clear any stale auth session so user is forced through login/guest flow
+    // after completing onboarding (prevents skipping LoginScreen when an old
+    // Supabase session lingers in SecureStore from a previous install).
+    const { useAuthStore } = require('./authStore');
+    const authState = useAuthStore.getState();
+    if (authState.isAuthenticated && !authState.isGuest) {
+      authState.logout();
+    }
+
     set((s) => ({
       setupComplete: true,
       // Generate a stable guest ID on first completion if one doesn't exist yet
       guestId: s.guestId ?? `guest-${Date.now()}`,
       setupData: { ...s.setupData, completedAt: new Date().toISOString() },
-    })),
+    }));
+  },
 
   resetSetup: () => set({ setupData: emptySetupData(), setupComplete: false, guestId: null }),
     }),
