@@ -10,6 +10,7 @@ interface AuthState {
   isInitializing: boolean;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isGuest: boolean;
 
   setSession: (session: Session | null) => void;
   signUp: (email: string, password: string) => Promise<void>;
@@ -17,6 +18,9 @@ interface AuthState {
   signOut: () => Promise<void>;
   logout: () => void;
   initialize: () => Promise<void>;
+  enterGuestMode: () => void;
+  exitGuestMode: () => void;
+  deleteAccount: () => Promise<void>;
 }
 
 const mapSupabaseUser = (supabaseUser: { id: string; email?: string; created_at: string }): User => ({
@@ -31,6 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitializing: true,
   isLoading: false,
   isAuthenticated: false,
+  isGuest: false,
 
   setSession: (session) => {
     set({
@@ -71,7 +76,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    set({ user: null, session: null, isAuthenticated: false });
+    set({ user: null, session: null, isAuthenticated: false, isGuest: false });
+  },
+
+  enterGuestMode: () => {
+    set({
+      isGuest: true,
+      isAuthenticated: true,
+      user: { id: 'guest', email: '', createdAt: new Date().toISOString() },
+      session: null,
+    });
+  },
+
+  exitGuestMode: () => {
+    set({ isGuest: false, isAuthenticated: false, user: null, session: null });
   },
 
   signOut: async () => {
@@ -99,7 +117,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useWaterStore.setState({ todayWaterLog: null });
     useChatStore.setState({ messages: [], isAiTyping: false });
 
-    set({ user: null, session: null, isAuthenticated: false, isLoading: false });
+    set({ user: null, session: null, isAuthenticated: false, isGuest: false, isLoading: false });
+  },
+
+  deleteAccount: async () => {
+    set({ isLoading: true });
+    try {
+      const session = get().session;
+      if (!session) throw new Error('No active session');
+
+      // Call Supabase Edge Function to delete user data and auth account
+      const { error: fnError } = await supabase.functions.invoke('delete-account', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (fnError) throw fnError;
+
+      // Reset all local stores
+      const { useCoachSetupStore } = require('./coachSetupStore');
+      const { useRunProgressStore } = require('./runProgressStore');
+      const { useProgressStore } = require('./progressStore');
+      const { useWorkoutStore } = require('./workoutStore');
+      const { useNutritionStore } = require('./nutritionStore');
+      const { useWaterStore } = require('./waterStore');
+      const { useChatStore } = require('./chatStore');
+
+      useCoachSetupStore.getState().resetSetup();
+      useRunProgressStore.getState().resetProgress();
+      useProfileStore.setState({ profile: null, onboardingCompleted: false, isLoading: false });
+      useProgressStore.getState().reset();
+      useWorkoutStore.setState({ todayWorkout: null, workoutHistory: [], historyLoading: false, summary: null, isLoading: false });
+      useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
+      useWaterStore.setState({ todayWaterLog: null });
+      useChatStore.setState({ messages: [], isAiTyping: false });
+
+      // Sign out locally
+      await supabase.auth.signOut();
+      set({ user: null, session: null, isAuthenticated: false, isGuest: false, isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
   },
 
   initialize: async () => {

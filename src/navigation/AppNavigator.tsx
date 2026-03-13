@@ -91,4 +91,5 @@ export default function AppNavigator() {
   }
 
   return <MainTabNavigator />;
+  // Note: Guest mode sets isAuthenticated=true, so guests flow through to MainTabNavigator
 }

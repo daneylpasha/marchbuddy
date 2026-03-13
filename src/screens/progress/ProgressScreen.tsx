@@ -18,6 +18,10 @@ import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useFeedbackStore } from '../../store/feedbackStore';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
+import { getWeekStartDate } from '../../utils/sessionUtils';
+import DataFilterChips from '../../components/progress/DataFilterChips';
+import FilteredStatsCard from '../../components/progress/FilteredStatsCard';
+import type { FilterPeriod } from '../../components/progress/DataFilterChips';
 import { RatingNudgeCard } from './components/RatingNudgeCard';
 import { MILESTONE_CONFIGS } from '../../constants/milestones';
 
@@ -192,6 +196,9 @@ export default function ProgressScreen() {
   const { progress, sessionHistory } = useRunProgressStore();
   const { setupData } = useCoachSetupStore();
   const shouldShowRatingNudge = useFeedbackStore((s) => s.shouldShowRatingNudge);
+
+  // Data filter period
+  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('this_week');
 
   // Animated streak counter
   const [displayedStreak, setDisplayedStreak] = useState(0);
@@ -415,13 +422,20 @@ export default function ProgressScreen() {
             </>
           )}
 
-          {/* ── Weekly bar chart ─────────────────────────────────────────── */}
-          <View style={styles.card}>
+          {/* ── Weekly bar chart (tappable → WeekDetail) ────────────────── */}
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('WeekDetail', { weekStartDate: getWeekStartDate() })}
+          >
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardTitle}>This Week</Text>
-              <Text style={styles.cardMeta}>
-                {sessionsThisWeek} sessions · {Math.round(minutesThisWeek)}m
-              </Text>
+              <View style={styles.cardHeaderRight}>
+                <Text style={styles.cardMeta}>
+                  {sessionsThisWeek} sessions · {Math.round(minutesThisWeek)}m
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+              </View>
             </View>
 
             <View style={styles.barChart}>
@@ -454,7 +468,13 @@ export default function ProgressScreen() {
                 );
               })}
             </View>
+          </TouchableOpacity>
+
+          {/* ── Data Filters ─────────────────────────────────────────────── */}
+          <View style={styles.filterSection}>
+            <DataFilterChips selected={filterPeriod} onSelect={setFilterPeriod} />
           </View>
+          <FilteredStatsCard period={filterPeriod} />
 
           {/* ── Next Milestone Teaser ───────────────────────────────────── */}
           {upcomingMilestone && (
@@ -769,6 +789,11 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: 0.3,
   },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   cardMeta: {
     fontFamily: fonts.regular,
     fontSize: 12,
@@ -833,6 +858,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: colors.textTertiary,
     letterSpacing: 0.2,
+  },
+
+  // Filter section
+  filterSection: {
+    marginBottom: 14,
+    marginHorizontal: -spacing.screenPadding,
+    paddingHorizontal: spacing.screenPadding,
   },
 
   // Milestone teaser
