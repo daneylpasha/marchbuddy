@@ -8,11 +8,15 @@ import { colors, fonts, spacing } from '../../../theme';
 interface RecommendedSessionCardProps {
   plan: SessionPlan;
   onPress: () => void;
+  onSchedule?: () => void;
+  isScheduled?: boolean;
 }
 
 export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
   plan,
   onPress,
+  onSchedule,
+  isScheduled,
 }) => {
   const getDifficultyColor = () => {
     switch (plan.difficulty) {
@@ -32,8 +36,24 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       style={({ pressed }) => [styles.container, pressed && styles.containerPressed]}
       onPress={onPress}
     >
-      {/* Title — Bebas Neue hero moment */}
-      <Text style={styles.title}>{plan.title}</Text>
+      {/* Title row with schedule icon */}
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>{plan.title}</Text>
+        {onSchedule && (
+          <Pressable
+            style={styles.scheduleIcon}
+            onPress={onSchedule}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isScheduled ? 'calendar' : 'calendar-outline'}
+              size={22}
+              color={isScheduled ? colors.primary : colors.textTertiary}
+            />
+            {isScheduled && <View style={styles.scheduleDot} />}
+          </Pressable>
+        )}
+      </View>
 
       {/* Meta row */}
       <View style={styles.metaRow}>
@@ -70,7 +90,26 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   containerPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  scheduleIcon: {
+    padding: 4,
+    marginTop: 4,
+  },
+  scheduleDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
   title: {
+    flex: 1,
     fontFamily: fonts.titleRegular,
     fontSize: 36,
     color: colors.textPrimary,

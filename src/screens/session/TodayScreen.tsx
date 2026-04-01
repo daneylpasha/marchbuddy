@@ -19,10 +19,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSessionStore } from '../../store/sessionStore';
+import { useScheduleStore } from '../../store/scheduleStore';
 import { sessionApi } from '../../services/sessionApi';
 import { SessionPlan } from '../../types/session';
 import { RecommendedSessionCard } from './components/RecommendedSessionCard';
 import { AlternativeSessionCard } from './components/AlternativeSessionCard';
+import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/ScheduleSheet';
 import { colors, fonts, spacing } from '../../theme';
 import { FeatureTips } from '../../components/FeatureTips';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
@@ -63,6 +65,9 @@ export default function TodayScreen({ navigation }: Props) {
     planAdjustment,
     clearPlanAdjustment,
   } = useSessionStore();
+
+  const getScheduleForSession = useScheduleStore((s) => s.getScheduleForSession);
+  const scheduleSheetRef = useRef<ScheduleSheetRef>(null);
 
   const hasFetchedRef = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -115,6 +120,11 @@ export default function TodayScreen({ navigation }: Props) {
   const handleSelectPlan = (plan: SessionPlan) => {
     setSelectedPlan(plan);
     navigation.navigate('SessionDetail');
+  };
+
+  const openSchedule = (plan: SessionPlan) => {
+    const existing = getScheduleForSession(plan.id);
+    scheduleSheetRef.current?.present(plan.id, plan.title, existing);
   };
 
   const handleRefresh = useCallback(async () => {
@@ -226,8 +236,32 @@ export default function TodayScreen({ navigation }: Props) {
                   <RecommendedSessionCard
                     plan={effectiveRecommended}
                     onPress={() => handleSelectPlan(effectiveRecommended)}
+                    onSchedule={() => openSchedule(effectiveRecommended)}
+                    isScheduled={!!getScheduleForSession(effectiveRecommended.id)}
                   />
                 )}
+
+                {/* Scheduled for later badge */}
+                {effectiveRecommended && getScheduleForSession(effectiveRecommended.id) && (() => {
+                  const sched = getScheduleForSession(effectiveRecommended.id)!;
+                  const dt = new Date(sched.scheduled_at);
+                  const isToday = dt.toDateString() === new Date().toDateString();
+                  const hours = dt.getHours();
+                  const mins = dt.getMinutes().toString().padStart(2, '0');
+                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                  const displayHour = hours % 12 || 12;
+                  const timeStr = `${displayHour}:${mins} ${ampm}`;
+                  return (
+                    <View style={styles.scheduledBadge}>
+                      <Ionicons name="calendar" size={14} color={colors.primary} />
+                      <Text style={styles.scheduledBadgeText}>
+                        {isToday
+                          ? `Scheduled for today at ${timeStr}`
+                          : `Scheduled for ${timeStr}`}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
                 {/* Inline coach message — subtle, below the hero card */}
                 {todayOptions.coachMessage ? (
@@ -355,6 +389,8 @@ export default function TodayScreen({ navigation }: Props) {
           </View>
         )}
       </ScrollView>
+
+      <ScheduleSheet ref={scheduleSheetRef} />
     </SafeAreaView>
   );
 }
@@ -504,6 +540,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 16,
+  },
+
+  // Scheduled badge
+  scheduledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  scheduledBadgeText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
 
   // Coach inline message (replaces separate CoachMessageCard)
