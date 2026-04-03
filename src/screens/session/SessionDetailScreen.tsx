@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSessionStore } from '../../store/sessionStore';
+import { useScheduleStore } from '../../store/scheduleStore';
 import { SegmentListItem } from './components/SegmentListItem';
 import { formatDurationMinutes } from '../../utils/sessionUtils';
+import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/ScheduleSheet';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -23,6 +25,8 @@ interface Props {
 
 export default function SessionDetailScreen({ navigation }: Props) {
   const { selectedPlan } = useSessionStore();
+  const getScheduleForSession = useScheduleStore((s) => s.getScheduleForSession);
+  const scheduleSheetRef = useRef<ScheduleSheetRef>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -113,7 +117,34 @@ export default function SessionDetailScreen({ navigation }: Props) {
         >
           <Text style={styles.beginButtonText}>Begin Session</Text>
         </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.scheduleButton,
+            pressed && styles.scheduleButtonPressed,
+          ]}
+          onPress={() => {
+            const existing = getScheduleForSession(selectedPlan.id);
+            scheduleSheetRef.current?.present(
+              selectedPlan.id,
+              selectedPlan.title,
+              existing,
+            );
+          }}
+        >
+          <Ionicons
+            name={getScheduleForSession(selectedPlan.id) ? 'calendar' : 'calendar-outline'}
+            size={18}
+            color={colors.primary}
+          />
+          <Text style={styles.scheduleButtonText}>
+            {getScheduleForSession(selectedPlan.id)
+              ? 'Edit Reminder'
+              : 'Schedule for Later'}
+          </Text>
+        </Pressable>
       </View>
+
+      <ScheduleSheet ref={scheduleSheetRef} />
     </View>
   );
 }
@@ -227,6 +258,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     paddingHorizontal: spacing.screenPadding,
     paddingTop: 16,
+    gap: 10,
   },
   beginButton: {
     backgroundColor: colors.primary,
@@ -243,5 +275,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     letterSpacing: 0.3,
+  },
+  scheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryDim,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+  },
+  scheduleButtonPressed: {
+    opacity: 0.7,
+  },
+  scheduleButtonText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
 });

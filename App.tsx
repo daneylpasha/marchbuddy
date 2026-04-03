@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { LogBox } from 'react-native';
 
 LogBox.ignoreLogs([
@@ -21,6 +21,10 @@ import {
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import AppNavigator from './src/navigation/AppNavigator';
+import { useNotificationListener } from './src/hooks/useNotificationListener';
+import { useNotificationStore } from './src/store/notificationStore';
+import { registerForPushNotifications } from './src/services/notificationService';
+import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
 
 const NAV_THEME = {
   ...DarkTheme,
@@ -46,11 +50,38 @@ export default function App() {
     Montserrat_700Bold,
   });
 
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const permissionStatus = useNotificationStore((s) => s.permissionStatus);
+  const canPrompt = useNotificationStore((s) => s.canPromptPermission);
+  const setLastPermissionPrompt = useNotificationStore((s) => s.setLastPermissionPrompt);
+
+  // Notification tap listener
+  useNotificationListener();
+
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
+
+  // Show permission modal after fonts load if we haven't asked yet
+  useEffect(() => {
+    if (fontsLoaded && permissionStatus === 'undetermined' && canPrompt()) {
+      // Delay to let onboarding complete first
+      const timer = setTimeout(() => setShowPermissionModal(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [fontsLoaded, permissionStatus, canPrompt]);
+
+  const handleAllowNotifications = useCallback(async () => {
+    setShowPermissionModal(false);
+    await registerForPushNotifications();
+  }, []);
+
+  const handleSkipNotifications = useCallback(() => {
+    setShowPermissionModal(false);
+    setLastPermissionPrompt(new Date().toISOString());
+  }, [setLastPermissionPrompt]);
 
   if (!fontsLoaded) return null;
 
@@ -61,6 +92,11 @@ export default function App() {
           <NavigationContainer theme={NAV_THEME}>
             <StatusBar style="light" backgroundColor="#000000" translucent={true} />
             <AppNavigator />
+            <NotificationPermissionModal
+              visible={showPermissionModal}
+              onAllow={handleAllowNotifications}
+              onSkip={handleSkipNotifications}
+            />
           </NavigationContainer>
         </BottomSheetModalProvider>
       </ErrorBoundary>

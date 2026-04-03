@@ -20,7 +20,10 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route, even when the app is in the background.",
-        "UIBackgroundModes": ["location", "audio"]
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -74,7 +77,8 @@
         }
       ],
       "expo-web-browser",
-      "expo-updates"
+      "expo-updates",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

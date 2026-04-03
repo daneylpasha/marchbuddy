@@ -212,7 +212,6 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label="Notifications"
-            value="Coming Soon"
             rightElement={
               <View style={styles.comingSoonBadge}>
                 <Text style={styles.comingSoonText}>COMING SOON</Text>
@@ -255,7 +254,6 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             label="Send Feedback"
-            value="Bugs, ideas, or just say hi"
             onPress={() => navigation.navigate('Feedback')}
             showChevron
           />
@@ -266,7 +264,6 @@ export default function SettingsScreen() {
           {isGuest ? (
             <SettingsRow
               label="Create Account"
-              value="Save your progress"
               onPress={exitGuestMode}
               showChevron
             />
