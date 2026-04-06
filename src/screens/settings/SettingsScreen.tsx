@@ -19,6 +19,8 @@ import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAuthStore } from '../../store/authStore';
+import { useNotificationStore } from '../../store/notificationStore';
+import { registerForPushNotifications } from '../../services/notificationService';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import { colors, fonts, spacing } from '../../theme';
@@ -43,6 +45,20 @@ export default function SettingsScreen() {
     setHapticFeedbackEnabled,
     resetSettings,
   } = useSettingsStore();
+
+  const notificationPermission = useNotificationStore((s) => s.permissionStatus);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    if (value) {
+      await registerForPushNotifications();
+    } else {
+      Alert.alert(
+        'Disable Notifications',
+        'To turn off notifications, go to your device Settings > Apps > March Buddy > Notifications.',
+        [{ text: 'OK' }],
+      );
+    }
+  };
 
   const formatStartDate = () => {
     if (!setupData.completedAt) return 'Recently';
@@ -213,9 +229,12 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Notifications"
             rightElement={
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>COMING SOON</Text>
-              </View>
+              <Switch
+                value={notificationPermission === 'granted'}
+                onValueChange={handleNotificationToggle}
+                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                thumbColor={notificationPermission === 'granted' ? colors.primary : colors.textTertiary}
+              />
             }
           />
           <SettingsRow
@@ -339,20 +358,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 24,
-  },
-  comingSoonBadge: {
-    backgroundColor: colors.primaryDim,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(16,185,129,0.25)',
-  },
-  comingSoonText: {
-    fontFamily: fonts.bold,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: colors.primary,
   },
   guestBanner: {
     marginHorizontal: spacing.lg,
