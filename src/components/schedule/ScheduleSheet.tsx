@@ -82,7 +82,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
 
-  const { scheduleSession, updateSchedule, cancelSchedule, setLocalNotificationId } =
+  const { scheduleSession, updateSchedule, cancelSchedule, getScheduleForSession, setLocalNotificationId } =
     useScheduleStore();
   const userName = useCoachSetupStore((s) => s.setupData.userName);
   const days = useMemo(() => getNext7Days(), []);
@@ -149,6 +149,15 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
           setLocalNotificationId(existingSchedule.id, notifId);
         }
       } else {
+        // Cancel any existing schedule for this session to prevent duplicates
+        const existing = getScheduleForSession(sessionKey);
+        if (existing) {
+          if (existing.local_notification_id) {
+            await cancelScheduledNotification(existing.local_notification_id);
+          }
+          await cancelSchedule(existing.id);
+        }
+
         const row = await scheduleSession(sessionKey, sessionTitle, scheduledAt);
         // Schedule local notification (Type A)
         const notifId = await scheduleSessionReminder(

@@ -94,6 +94,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     set({ isLoading: true });
+
+    // Clear push token from server before signing out
+    const { clearPushToken } = require('../services/notificationService');
+    await clearPushToken();
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       set({ isLoading: false });
@@ -125,6 +130,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const session = get().session;
       if (!session) throw new Error('No active session');
+
+      // Clear push token before account deletion
+      const { clearPushToken } = require('../services/notificationService');
+      await clearPushToken();
 
       // Call Supabase Edge Function to delete user data and auth account
       const { error: fnError } = await supabase.functions.invoke('delete-account', {

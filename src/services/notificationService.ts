@@ -93,6 +93,60 @@ export async function registerForPushNotifications(): Promise<string | null> {
 }
 
 /**
+ * Refresh push token — call on every app open to keep token up to date.
+ * Tokens can change after app reinstall, OS update, etc.
+ */
+export async function refreshPushToken(): Promise<void> {
+  const { permissionStatus } = useNotificationStore.getState();
+  if (permissionStatus !== 'granted') return;
+
+  await ensureChannels();
+
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '068b87b8-7c39-40b5-af36-e4ced0a3c81e',
+    });
+    const newToken = tokenData.data;
+    const currentToken = useNotificationStore.getState().expoPushToken;
+
+    // Only update if token changed
+    if (newToken && newToken !== currentToken) {
+      useNotificationStore.getState().setExpoPushToken(newToken);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ expo_push_token: newToken })
+          .eq('id', user.id);
+      }
+    }
+  } catch {
+    // Silently fail — simulators and some devices can't get tokens
+  }
+}
+
+/**
+ * Clear push token from server — call on logout/sign out.
+ */
+export async function clearPushToken(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ expo_push_token: null, notification_permission: 'undetermined' })
+        .eq('id', user.id);
+    }
+  } catch {
+    // Best-effort cleanup
+  }
+
+  useNotificationStore.getState().setExpoPushToken('');
+  useNotificationStore.getState().setPermissionStatus('undetermined');
+}
+
+/**
  * Schedule local notifications for a session reminder (Type A).
  * Schedules:
  *   1. At the exact scheduled time

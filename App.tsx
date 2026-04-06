@@ -8,6 +8,7 @@ LogBox.ignoreLogs([
   'Error sending chat message',
 ]);
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { navigationRef } from './src/navigation/navigationRef';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -23,7 +24,8 @@ import ErrorBoundary from './src/components/common/ErrorBoundary';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useNotificationListener } from './src/hooks/useNotificationListener';
 import { useNotificationStore } from './src/store/notificationStore';
-import { registerForPushNotifications } from './src/services/notificationService';
+import { registerForPushNotifications, refreshPushToken } from './src/services/notificationService';
+import { useAuthStore } from './src/store/authStore';
 import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
 
 const NAV_THEME = {
@@ -55,8 +57,18 @@ export default function App() {
   const canPrompt = useNotificationStore((s) => s.canPromptPermission);
   const setLastPermissionPrompt = useNotificationStore((s) => s.setLastPermissionPrompt);
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isGuest = useAuthStore((s) => s.isGuest);
+
   // Notification tap listener
   useNotificationListener();
+
+  // Refresh push token on every app open (tokens can change)
+  useEffect(() => {
+    if (isAuthenticated && !isGuest) {
+      refreshPushToken();
+    }
+  }, [isAuthenticated, isGuest]);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -89,7 +101,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'black' }}>
       <ErrorBoundary>
         <BottomSheetModalProvider>
-          <NavigationContainer theme={NAV_THEME}>
+          <NavigationContainer theme={NAV_THEME} ref={navigationRef}>
             <StatusBar style="light" backgroundColor="#000000" translucent={true} />
             <AppNavigator />
             <NotificationPermissionModal
