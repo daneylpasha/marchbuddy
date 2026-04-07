@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Linking,
   Pressable,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,6 +48,15 @@ export default function SettingsScreen() {
   } = useSettingsStore();
 
   const notificationPermission = useNotificationStore((s) => s.permissionStatus);
+  const setPermissionStatus = useNotificationStore((s) => s.setPermissionStatus);
+
+  // Sync store with actual OS permission on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
+    })();
+  }, [setPermissionStatus]);
 
   const handleNotificationToggle = async (value: boolean) => {
     if (value) {

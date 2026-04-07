@@ -41,41 +41,26 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
   const modalRef = useRef<BottomSheetModal>(null);
-  const scrollRef = useRef<any>(null);
   const { signIn, signUp, isLoading } = useAuthStore();
 
-  const snapPoints = useMemo(() => ['48%', '88%'], []);
+  const snapPoints = useMemo(() => ['48%'], []);
 
   useImperativeHandle(forwardedRef, () => ({
     present: () => modalRef.current?.present(),
   }));
 
-  // Track keyboard and auto-snap
+  // Snap sheet back down when keyboard hides
   useEffect(() => {
-    const showEvent =
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent =
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const onShow = (e: any) => {
-      setKeyboardHeight(e.endCoordinates.height);
-      modalRef.current?.snapToIndex(1);
-    };
     const onHide = () => {
-      setKeyboardHeight(0);
       modalRef.current?.snapToIndex(0);
     };
 
-    const showSub = Keyboard.addListener(showEvent, onShow);
-    const hideSub = Keyboard.addListener(hideEvent, onHide);
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+    const sub = Keyboard.addListener(hideEvent, onHide);
+    return () => sub.remove();
   }, []);
 
   const resetForm = useCallback(() => {
@@ -85,7 +70,6 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
     setError('');
     setSuccessMessage('');
     setShowPassword(false);
-    setKeyboardHeight(0);
   }, []);
 
   const handleDismiss = useCallback(() => {
@@ -165,15 +149,6 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
     [],
   );
 
-  // Scroll to a y offset when input focuses (so it's visible above keyboard)
-  const scrollToInput = (yOffset: number) => {
-    if (keyboardHeight > 0 || Platform.OS === 'android') {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: yOffset, animated: true });
-      }, 150);
-    }
-  };
-
   const isLogin = mode === 'login';
 
   return (
@@ -187,11 +162,7 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetScrollView
-        ref={scrollRef}
-        contentContainerStyle={[
-          styles.content,
-          keyboardHeight > 0 && { paddingBottom: keyboardHeight },
-        ]}
+        contentContainerStyle={styles.content}
         bounces={false}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -239,7 +210,6 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
               setEmail(text);
               setError('');
             }}
-            onFocus={() => scrollToInput(0)}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
@@ -264,7 +234,6 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
               setPassword(text);
               setError('');
             }}
-            onFocus={() => scrollToInput(80)}
             secureTextEntry={!showPassword}
             autoComplete={isLogin ? 'current-password' : 'new-password'}
             editable={!isLoading}
@@ -300,7 +269,6 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
                 setConfirmPassword(text);
                 setError('');
               }}
-              onFocus={() => scrollToInput(140)}
               secureTextEntry={!showPassword}
               autoComplete="new-password"
               editable={!isLoading}

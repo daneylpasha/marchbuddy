@@ -268,7 +268,11 @@ export default function TodayScreen({ navigation }: Props) {
                   <View style={styles.coachInline}>
                     <Ionicons name="chatbubble" size={14} color={colors.primary} />
                     <Text style={styles.coachInlineText}>
-                      {todayOptions.coachMessage}
+                      {todayOptions.coachMessage.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
+                        part.startsWith('**') && part.endsWith('**')
+                          ? <Text key={i} style={{ fontFamily: fonts.bold, fontStyle: 'normal' }}>{part.slice(2, -2)}</Text>
+                          : part
+                      )}
                     </Text>
                   </View>
                 ) : null}

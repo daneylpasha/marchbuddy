@@ -238,7 +238,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
           <View style={styles.confirmationContainer}>
             <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
             <Text style={styles.confirmationText}>
-              Reminder set for {confirmation}
+              Scheduled for {confirmation}
             </Text>
           </View>
         ) : (
@@ -319,7 +319,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.submitButtonText}>
-                  {existingSchedule ? 'Update Reminder' : 'Set Reminder'}
+                  {existingSchedule ? 'Update Schedule' : 'Set Schedule'}
                 </Text>
               )}
             </Pressable>
@@ -327,7 +327,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
             {/* Cancel link */}
             <Pressable style={styles.cancelLink} onPress={handleCancel}>
               <Text style={styles.cancelLinkText}>
-                {existingSchedule ? 'Remove Reminder' : 'Cancel'}
+                {existingSchedule ? 'Remove Schedule' : 'Cancel'}
               </Text>
             </Pressable>
           </>
