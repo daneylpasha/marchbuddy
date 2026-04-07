@@ -3,13 +3,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ─── Message pools ────────────────────────────────────────────────────────
 
-const MISSED_MESSAGES = [
-  "No worries, {{name}}. Life happens. Your session is still here when you're ready.",
-  "Missed today's session? That's okay — tomorrow is a clean slate.",
-  "Even a 5-minute walk counts. We're not keeping score here.",
-  "Hey {{name}}, no stress. Rest is part of the process too.",
-  "Skipped today? No big deal. Show up when you can, {{name}}.",
-  "{{name}}, your session will be waiting. No judgment, no pressure.",
+const UPCOMING_MESSAGES = [
+  "Hey {{name}}, your session is coming up soon. Let's crush it!",
+  "{{name}}, time to get ready! Your session starts soon.",
+  "Heads up {{name}} — your workout is almost here. You've got this!",
+  "{{name}}, your session is around the corner. Lace up!",
+  "Almost time, {{name}}! Get ready to show up for yourself.",
+  "{{name}}, your body is ready. Your session starts soon — let's go!",
 ];
 
 const REENGAGEMENT_DAY2 = [
@@ -138,35 +138,35 @@ Deno.serve(async (req: Request) => {
         .eq('user_id', user.id)
         .gte('sent_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .limit(1);
-
       if (recentLog && recentLog.length > 0) continue;
 
       const userName = user.name || 'there';
       const token = user.expo_push_token;
 
-      // Check for missed scheduled sessions (Type B)
-      const { data: missedSessions } = await supabase
+      // Check for upcoming scheduled sessions (Type B) — within next 60 minutes
+      const { data: upcomingSessions } = await supabase
         .from('scheduled_sessions')
         .select('id, session_title, scheduled_at')
         .eq('user_id', user.id)
         .eq('notified', false)
-        .lt('scheduled_at', new Date().toISOString())
-        .gte(
+        .gt('scheduled_at', new Date().toISOString())
+        .lte(
           'scheduled_at',
-          new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         );
 
-      if (missedSessions && missedSessions.length > 0) {
-        const msg = applyName(pickRandom(MISSED_MESSAGES), userName);
-        await sendExpoPush(token, 'Missed Session', msg, { type: 'B' });
+      if (upcomingSessions && upcomingSessions.length > 0) {
+        const session = upcomingSessions[0];
+        const msg = applyName(pickRandom(UPCOMING_MESSAGES), userName);
+        await sendExpoPush(token, `${session.session_title} — Starting Soon`, msg, { type: 'B' });
 
-        // Mark as notified
+        // Mark as notified so we don't remind again
         await supabase
           .from('scheduled_sessions')
           .update({ notified: true })
           .in(
             'id',
-            missedSessions.map((s: { id: string }) => s.id),
+            upcomingSessions.map((s: { id: string }) => s.id),
           );
 
         await supabase.from('notification_log').insert({

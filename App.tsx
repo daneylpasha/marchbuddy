@@ -63,10 +63,10 @@ export default function App() {
   // Notification tap listener
   useNotificationListener();
 
-  // Refresh push token on every app open (tokens can change)
+  // Register/refresh push token after login (ensures token is saved to Supabase)
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
-      refreshPushToken();
+      registerForPushNotifications();
     }
   }, [isAuthenticated, isGuest]);
 

@@ -240,15 +240,15 @@ export async function cancelScheduledNotification(
 }
 
 /**
- * Pool of missed session messages (Type B) — soft, no guilt.
+ * Pool of upcoming session messages (Type B) — motivate before the session.
  */
-export const MISSED_SESSION_MESSAGES = [
-  "No worries, {{name}}. Life happens. Your session is still here when you're ready.",
-  "Missed today's session? That's okay — tomorrow is a clean slate.",
-  "Even a 5-minute walk counts. We're not keeping score here.",
-  "Hey {{name}}, no stress. Rest is part of the process too.",
-  "Skipped today? No big deal. Show up when you can, {{name}}.",
-  "{{name}}, your session will be waiting. No judgment, no pressure.",
+export const UPCOMING_SESSION_MESSAGES = [
+  "Hey {{name}}, your session is coming up soon. Let's crush it!",
+  "{{name}}, time to get ready! Your session starts soon.",
+  "Heads up {{name}} — your workout is almost here. You've got this!",
+  "{{name}}, your session is around the corner. Lace up!",
+  "Almost time, {{name}}! Get ready to show up for yourself.",
+  "{{name}}, your body is ready. Your session starts soon — let's go!",
 ];
 
 /**

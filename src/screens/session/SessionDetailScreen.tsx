@@ -138,7 +138,7 @@ export default function SessionDetailScreen({ navigation }: Props) {
           />
           <Text style={styles.scheduleButtonText}>
             {getScheduleForSession(selectedPlan.id)
-              ? 'Edit Reminder'
+              ? 'Edit Schedule'
               : 'Schedule for Later'}
           </Text>
         </Pressable>
