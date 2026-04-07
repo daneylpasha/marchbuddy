@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "437178117175",
+    "project_id": "marchbuddy-8dc10",
+    "storage_bucket": "marchbuddy-8dc10.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437178117175:android:20a41c34879f61b31963b2",
+        "android_client_info": {
+          "package_name": "com.marchbuddy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoTQ4Q08atWlP530V7r5yrJWHGAB74ACY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
