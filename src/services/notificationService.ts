@@ -86,8 +86,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
     return token;
   } catch (error) {
-    console.error('Failed to get push token:', error);
-    // Push token fails on simulators — that's fine, local notifications still work
+    // Push token fails on simulators/emulators without Play Services — that's fine, local notifications still work
     return null;
   }
 }
