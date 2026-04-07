@@ -79,8 +79,10 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
 
-  const { scheduleSession, updateSchedule, cancelSchedule, setLocalNotificationId } =
+  const { scheduleSession, updateSchedule, cancelSchedule, getScheduleForSession, setLocalNotificationId } =
     useScheduleStore();
   const userName = useCoachSetupStore((s) => s.setupData.userName);
   const days = useMemo(() => getNext7Days(), []);
@@ -92,7 +94,9 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
       setSessionTitle(title);
       setExistingSchedule(existing ?? null);
       setConfirmation(null);
+      setErrorMsg(null);
       setIsSubmitting(false);
+      setShowTimePicker(Platform.OS === 'ios');
 
       if (existing) {
         const existingDate = new Date(existing.scheduled_at);
@@ -145,6 +149,15 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
           setLocalNotificationId(existingSchedule.id, notifId);
         }
       } else {
+        // Cancel any existing schedule for this session to prevent duplicates
+        const existing = getScheduleForSession(sessionKey);
+        if (existing) {
+          if (existing.local_notification_id) {
+            await cancelScheduledNotification(existing.local_notification_id);
+          }
+          await cancelSchedule(existing.id);
+        }
+
         const row = await scheduleSession(sessionKey, sessionTitle, scheduledAt);
         // Schedule local notification (Type A)
         const notifId = await scheduleSessionReminder(
@@ -162,8 +175,10 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
 
       // Auto-dismiss after showing confirmation
       setTimeout(() => modalRef.current?.dismiss(), 2000);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Schedule failed:', e);
+      setErrorMsg('Something went wrong. Please try again.');
+      setTimeout(() => modalRef.current?.dismiss(), 2500);
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +229,12 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetView style={styles.content}>
-        {confirmation ? (
+        {errorMsg ? (
+          <View style={styles.confirmationContainer}>
+            <Ionicons name="alert-circle" size={48} color="#EF4444" />
+            <Text style={styles.confirmationText}>{errorMsg}</Text>
+          </View>
+        ) : confirmation ? (
           <View style={styles.confirmationContainer}>
             <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
             <Text style={styles.confirmationText}>
@@ -259,17 +279,30 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
             {/* Time picker */}
             <View style={styles.timeSection}>
               <Text style={styles.timeLabel}>Time</Text>
-              <DateTimePicker
-                value={selectedTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, date) => {
-                  if (date) setSelectedTime(date);
-                }}
-                themeVariant="dark"
-                minuteInterval={5}
-                style={styles.timePicker}
-              />
+              {Platform.OS === 'android' ? (
+                <Pressable
+                  style={styles.androidTimeButton}
+                  onPress={() => setShowTimePicker(true)}
+                >
+                  <Text style={styles.androidTimeText}>
+                    {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={selectedTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(_, date) => {
+                    if (Platform.OS === 'android') setShowTimePicker(false);
+                    if (date) setSelectedTime(date);
+                  }}
+                  themeVariant="dark"
+                  minuteInterval={5}
+                  style={styles.timePicker}
+                />
+              )}
             </View>
 
             {/* Submit button */}
@@ -372,6 +405,19 @@ const styles = StyleSheet.create({
   },
   timePicker: {
     flex: 1,
+  },
+  androidTimeButton: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  androidTimeText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.textPrimary,
   },
   submitButton: {
     backgroundColor: colors.primary,

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
+import { useAuthStore } from './authStore';
 
 export interface ScheduledSession {
   id: string;
@@ -39,61 +40,93 @@ interface ScheduleState {
   setLocalNotificationId: (scheduleId: string, notificationId: string) => void;
 }
 
+function createLocalRow(sessionKey: string, title: string, scheduledAt: Date, id?: string): ScheduledSession {
+  return {
+    id: id ?? `local_${Date.now()}`,
+    user_id: 'guest',
+    session_key: sessionKey,
+    session_title: title,
+    scheduled_at: scheduledAt.toISOString(),
+    notified: false,
+    local_notification_id: null,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export const useScheduleStore = create<ScheduleState>()(
   persist(
     (set, get) => ({
       scheduledSessions: [],
 
       scheduleSession: async (sessionKey, title, scheduledAt) => {
-        const { data, error } = await supabase.functions.invoke('schedule-session', {
-          method: 'POST',
-          body: {
+        const { isGuest, user } = useAuthStore.getState();
+
+        if (isGuest || !user) {
+          const row = createLocalRow(sessionKey, title, scheduledAt);
+          set((s) => ({ scheduledSessions: [...s.scheduledSessions, row] }));
+          return row;
+        }
+
+        const { data, error } = await supabase
+          .from('scheduled_sessions')
+          .insert({
+            user_id: user.id,
             session_key: sessionKey,
             session_title: title,
             scheduled_at: scheduledAt.toISOString(),
-          },
-        });
+          })
+          .select()
+          .single();
 
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error ?? 'Failed to schedule');
+        if (error) throw new Error(error.message);
 
-        const row = data.data as ScheduledSession;
-        set((s) => ({
-          scheduledSessions: [...s.scheduledSessions, row],
-        }));
+        const row = data as ScheduledSession;
+        set((s) => ({ scheduledSessions: [...s.scheduledSessions, row] }));
         return row;
       },
 
       updateSchedule: async (id, sessionKey, title, scheduledAt) => {
-        const { data, error } = await supabase.functions.invoke('schedule-session', {
-          method: 'PUT',
-          body: {
-            id,
+        const { isGuest } = useAuthStore.getState();
+
+        if (isGuest) {
+          const row = createLocalRow(sessionKey, title, scheduledAt, id);
+          set((s) => ({
+            scheduledSessions: s.scheduledSessions.map((ss) => (ss.id === id ? row : ss)),
+          }));
+          return row;
+        }
+
+        const { data, error } = await supabase
+          .from('scheduled_sessions')
+          .update({
             session_key: sessionKey,
             session_title: title,
             scheduled_at: scheduledAt.toISOString(),
-          },
-        });
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
-        if (error) throw error;
-        if (!data?.success) throw new Error(data?.error ?? 'Failed to update');
+        if (error) throw new Error(error.message);
 
-        const row = data.data as ScheduledSession;
+        const row = data as ScheduledSession;
         set((s) => ({
-          scheduledSessions: s.scheduledSessions.map((ss) =>
-            ss.id === id ? row : ss,
-          ),
+          scheduledSessions: s.scheduledSessions.map((ss) => (ss.id === id ? row : ss)),
         }));
         return row;
       },
 
       cancelSchedule: async (id) => {
-        const { error } = await supabase.functions.invoke('schedule-session', {
-          method: 'DELETE',
-          body: { id },
-        });
+        const { isGuest } = useAuthStore.getState();
 
-        if (error) throw error;
+        if (!isGuest) {
+          const { error } = await supabase
+            .from('scheduled_sessions')
+            .delete()
+            .eq('id', id);
+
+          if (error) throw new Error(error.message);
+        }
 
         set((s) => ({
           scheduledSessions: s.scheduledSessions.filter((ss) => ss.id !== id),
