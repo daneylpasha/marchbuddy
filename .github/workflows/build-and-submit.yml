@@ -5,9 +5,11 @@ on:
   push:
     branches: [main]
     paths:
+      - 'src/**'
       - 'android/**'
       - 'ios/**'
       - 'app.json'
+      - 'app.config.*'
       - 'eas.json'
       - 'babel.config.js'
       - 'package.json'

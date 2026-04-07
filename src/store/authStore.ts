@@ -169,29 +169,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initialize: async () => {
-    console.log('🔐 Checking existing session...');
     set({ isInitializing: true });
 
     // Check for existing session
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      console.log('🔐 Session found for user:', session.user.id);
       // Proactively refresh the token to ensure it's valid
       const { data: refreshed } = await supabase.auth.refreshSession();
       if (refreshed.session) {
-        console.log('🔐 Session refreshed successfully');
         get().setSession(refreshed.session);
       } else {
-        console.log('🔐 Refresh failed, using existing session');
         get().setSession(session);
       }
-    } else {
-      console.log('🔐 No existing session found');
     }
 
     // Listen for auth state changes
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔄 Auth state changed:', event, session?.user?.id ?? 'no user');
+    supabase.auth.onAuthStateChange((_event, session) => {
+      // Auth state changed — session updated silently
       get().setSession(session);
     });
 
