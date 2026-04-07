@@ -12,6 +12,8 @@ on:
       - 'babel.config.js'
       - 'package.json'
       - 'package-lock.json'
+      - 'google-services.json'
+      - 'google-services.json'
   workflow_dispatch:
     inputs:
       submit_track:
