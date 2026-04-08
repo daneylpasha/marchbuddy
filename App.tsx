@@ -12,6 +12,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import {
   Montserrat_400Regular,
@@ -98,20 +99,22 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'black' }}>
-      <ErrorBoundary>
-        <BottomSheetModalProvider>
-          <NavigationContainer theme={NAV_THEME} ref={navigationRef}>
-            <StatusBar style="light" backgroundColor="#000000" translucent={true} />
-            <AppNavigator />
-            <NotificationPermissionModal
-              visible={showPermissionModal}
-              onAllow={handleAllowNotifications}
-              onSkip={handleSkipNotifications}
-            />
-          </NavigationContainer>
-        </BottomSheetModalProvider>
-      </ErrorBoundary>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'black' }}>
+        <ErrorBoundary>
+          <BottomSheetModalProvider>
+            <NavigationContainer theme={NAV_THEME} ref={navigationRef}>
+              <StatusBar style="light" backgroundColor="#000000" translucent={true} />
+              <AppNavigator />
+              <NotificationPermissionModal
+                visible={showPermissionModal}
+                onAllow={handleAllowNotifications}
+                onSkip={handleSkipNotifications}
+              />
+            </NavigationContainer>
+          </BottomSheetModalProvider>
+        </ErrorBoundary>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

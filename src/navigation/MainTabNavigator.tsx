@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import RunNavigator from './RunNavigator';
 import ProgressNavigator from './ProgressNavigator';
@@ -22,10 +23,13 @@ const CoachStack = createNativeStackNavigator();
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
 
-const TAB_ICONS: Record<keyof MainTabParamList, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }> = {
-  Run:      { focused: 'walk',           unfocused: 'walk-outline' },
-  Progress: { focused: 'stats-chart',    unfocused: 'stats-chart-outline' },
-  Coach:    { focused: 'chatbubble',     unfocused: 'chatbubble-outline' },
+const TAB_ICONS: Record<
+  keyof MainTabParamList,
+  { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap }
+> = {
+  Run: { focused: 'walk', unfocused: 'walk-outline' },
+  Progress: { focused: 'stats-chart', unfocused: 'stats-chart-outline' },
+  Coach: { focused: 'chatbubble', unfocused: 'chatbubble-outline' },
 };
 
 // ─── Coach Stack Navigator ────────────────────────────────────────────────────
@@ -42,12 +46,14 @@ function CoachStackNavigator() {
 
 export default function MainTabNavigator() {
   const hasUnread = useChatStore((state) => state.hasUnread);
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) : 0;
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { paddingBottom: bottomPadding, height: 74 + bottomPadding }],
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: '#666',
         tabBarLabelStyle: styles.tabLabel,
@@ -72,11 +78,7 @@ export default function MainTabNavigator() {
     >
       <Tab.Screen name="Run" component={RunNavigator} options={{ tabBarLabel: 'Today' }} />
       <Tab.Screen name="Progress" component={ProgressNavigator} />
-      <Tab.Screen
-        name="Coach"
-        component={CoachStackNavigator}
-        options={{ tabBarLabel: 'Coach' }}
-      />
+      <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
     </Tab.Navigator>
   );
 }

@@ -80,7 +80,7 @@ jobs:
           fi
 
       - name: Submit to Play Store
-        run: eas submit --platform android --profile production --latest --non-interactive
+        run: eas submit --platform android --profile production --latest --non-interactive --no-wait
 
       - name: Notify Slack - Success
         if: success()
