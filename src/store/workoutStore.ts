@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Exercise, ReadinessCheck, WorkoutPlan } from '../types';
 import type { WorkoutChange } from '../services/aiService';
 import { useAuthStore } from './authStore';
+import { useNetworkStore } from './networkStore';
 import {
   getTodayWorkout,
   upsertWorkout,
@@ -15,6 +16,8 @@ import {
 import type { PersonalRecord } from '../api/database';
 import { supabase } from '../api/supabase';
 import { MOCK_MODE } from '../mock';
+import { offlineCache, CACHE_KEYS } from '../services/offlineCache';
+import { offlineQueue } from '../services/offlineQueue';
 
 interface WorkoutSummary {
   completed: number;
@@ -78,6 +81,21 @@ function buildSummary(exercises: Exercise[]): WorkoutSummary {
   };
 }
 
+function cacheWorkout(workout: WorkoutPlan | null) {
+  if (workout) {
+    offlineCache.set(CACHE_KEYS.TODAY_WORKOUT, workout, workout.userId);
+  }
+}
+
+function persistOrQueue(action: string, args: unknown[], fn: () => Promise<unknown>) {
+  const isConnected = useNetworkStore.getState().isConnected;
+  if (isConnected) {
+    fn().catch((e) => console.error(`[workoutStore] ${action} persist error:`, e));
+  } else {
+    offlineQueue.enqueue(action, args);
+  }
+}
+
 export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   todayWorkout: null,
   isLoading: false,
@@ -92,10 +110,19 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     if (MOCK_MODE) return;
     set({ historyLoading: true });
     try {
-      const history = await getWorkoutHistory(userId, 50, 0);
-      set({ workoutHistory: history });
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        const history = await getWorkoutHistory(userId, 50, 0);
+        set({ workoutHistory: history });
+        offlineCache.set(CACHE_KEYS.WORKOUT_HISTORY, history, userId);
+      } else {
+        const cached = await offlineCache.get<WorkoutPlan[]>(CACHE_KEYS.WORKOUT_HISTORY, userId);
+        if (cached) set({ workoutHistory: cached });
+      }
     } catch (e) {
       console.error('[workoutStore] fetchWorkoutHistory error:', e);
+      const cached = await offlineCache.get<WorkoutPlan[]>(CACHE_KEYS.WORKOUT_HISTORY, userId);
+      if (cached) set({ workoutHistory: cached });
     } finally {
       set({ historyLoading: false });
     }
@@ -104,30 +131,38 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   fetchPersonalRecords: async (userId) => {
     if (MOCK_MODE) return;
     try {
-      const records = await getPersonalRecords(userId);
-      set({ personalRecords: records });
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        const records = await getPersonalRecords(userId);
+        set({ personalRecords: records });
+        // Cache as serializable array
+        offlineCache.set(CACHE_KEYS.PERSONAL_RECORDS, Array.from(records.entries()), userId);
+      } else {
+        const cached = await offlineCache.get<[string, PersonalRecord][]>(CACHE_KEYS.PERSONAL_RECORDS, userId);
+        if (cached) set({ personalRecords: new Map(cached) });
+      }
     } catch (e) {
       console.error('[workoutStore] fetchPersonalRecords error:', e);
+      const cached = await offlineCache.get<[string, PersonalRecord][]>(CACHE_KEYS.PERSONAL_RECORDS, userId);
+      if (cached) set({ personalRecords: new Map(cached) });
     }
   },
 
   checkAndRecordPR: (exercise) => {
     const weight = exercise.actualWeight ?? exercise.weight;
     const reps = exercise.actualReps ?? exercise.reps;
-    if (!weight || weight <= 0) return; // Skip bodyweight exercises
+    if (!weight || weight <= 0) return;
 
     const records = get().personalRecords;
     const existing = records.get(exercise.name);
     const today = new Date().toISOString().split('T')[0];
 
-    // Check if this is a new PR
     const isNewPR = !existing
       || weight > existing.weightKg
       || (weight === existing.weightKg && reps > existing.reps);
 
     if (!isNewPR) return;
 
-    // Optimistic update
     const newRecord: PersonalRecord = { exerciseName: exercise.name, weightKg: weight, reps, date: today };
     const updatedRecords = new Map(records);
     updatedRecords.set(exercise.name, newRecord);
@@ -143,11 +178,15 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       },
     });
 
-    // Persist in background
+    // Cache updated records
     const userId = useAuthStore.getState().user?.id;
+    if (userId) {
+      offlineCache.set(CACHE_KEYS.PERSONAL_RECORDS, Array.from(updatedRecords.entries()), userId);
+    }
+
     if (userId && !MOCK_MODE) {
-      upsertPersonalRecord(userId, exercise.name, weight, reps, today).catch((e) =>
-        console.error('[workoutStore] upsertPersonalRecord error:', e),
+      persistOrQueue('upsertPersonalRecord', [userId, exercise.name, weight, reps, today], () =>
+        upsertPersonalRecord(userId, exercise.name, weight, reps, today),
       );
     }
   },
@@ -159,10 +198,19 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   fetchExerciseHistory: async (userId) => {
     if (MOCK_MODE) return;
     try {
-      const history = await getRecentExerciseHistory(userId);
-      set({ exerciseHistory: history });
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        const history = await getRecentExerciseHistory(userId);
+        set({ exerciseHistory: history });
+        offlineCache.set(CACHE_KEYS.EXERCISE_HISTORY, Array.from(history.entries()), userId);
+      } else {
+        const cached = await offlineCache.get<[string, ExercisePerformance][]>(CACHE_KEYS.EXERCISE_HISTORY, userId);
+        if (cached) set({ exerciseHistory: new Map(cached) });
+      }
     } catch (e) {
       console.error('[workoutStore] fetchExerciseHistory error:', e);
+      const cached = await offlineCache.get<[string, ExercisePerformance][]>(CACHE_KEYS.EXERCISE_HISTORY, userId);
+      if (cached) set({ exerciseHistory: new Map(cached) });
     }
   },
 
@@ -171,10 +219,27 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     set({ isLoading: true });
     try {
       const today = new Date().toISOString().split('T')[0];
-      const workout = await getTodayWorkout(userId, today);
-      set({ todayWorkout: workout ?? null });
+      const isConnected = useNetworkStore.getState().isConnected;
+
+      if (isConnected) {
+        const workout = await getTodayWorkout(userId, today);
+        set({ todayWorkout: workout ?? null });
+        if (workout) {
+          offlineCache.set(CACHE_KEYS.TODAY_WORKOUT, workout, userId);
+        }
+      } else {
+        const cached = await offlineCache.get<WorkoutPlan>(CACHE_KEYS.TODAY_WORKOUT, userId);
+        if (cached && cached.date === today) {
+          set({ todayWorkout: cached });
+        }
+      }
     } catch (e) {
       console.error('[workoutStore] fetchTodayWorkout error:', e);
+      const today = new Date().toISOString().split('T')[0];
+      const cached = await offlineCache.get<WorkoutPlan>(CACHE_KEYS.TODAY_WORKOUT, userId);
+      if (cached && cached.date === today) {
+        set({ todayWorkout: cached });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -185,40 +250,38 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     if (!workout || workout.status !== 'pending') return;
 
     const startedAt = workout.workoutStartedAt ?? new Date().toISOString();
+    const updated = { ...workout, status: 'in-progress' as const, workoutStartedAt: startedAt };
+    set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
-    // Optimistic update
-    set({ todayWorkout: { ...workout, status: 'in-progress', workoutStartedAt: startedAt } });
-
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      updateWorkoutStatus(workout.id, 'in-progress').catch((e) =>
-        console.error('[workoutStore] startWorkout persist error:', e),
+      persistOrQueue('updateWorkoutStatus', [workout.id, 'in-progress'], () =>
+        updateWorkoutStatus(workout.id, 'in-progress'),
       );
     }
   },
 
   updateExerciseFeedback: (exerciseId, feedback) => {
-    // Use functional set to always read latest state (prevents race conditions)
     set((state) => {
       const workout = state.todayWorkout;
       if (!workout) return state;
       const exercises = workout.exercises.map((ex) =>
         ex.id === exerciseId ? { ...ex, feedback } : ex,
       );
-      return { todayWorkout: { ...workout, exercises } };
+      const updated = { ...workout, exercises };
+      cacheWorkout(updated);
+      return { todayWorkout: updated };
     });
 
-    // Persist latest state in background
     const updated = get().todayWorkout;
     const userId = useAuthStore.getState().user?.id;
     if (userId && updated && !MOCK_MODE) {
-      dbUpdateExerciseFeedback(updated.id, updated.exercises).catch((e) =>
-        console.error('[workoutStore] updateExerciseFeedback persist error:', e),
+      persistOrQueue('updateExerciseFeedback', [updated.id, updated.exercises], () =>
+        dbUpdateExerciseFeedback(updated.id, updated.exercises),
       );
     }
 
-    // Check for personal record on completion
     if (feedback === 'completed' || feedback === 'too-easy') {
       const exercise = updated?.exercises.find((ex) => ex.id === exerciseId);
       if (exercise) {
@@ -234,14 +297,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       const exercises = workout.exercises.map((ex) =>
         ex.id === exerciseId ? { ...ex, ...actuals } : ex,
       );
-      return { todayWorkout: { ...workout, exercises } };
+      const updated = { ...workout, exercises };
+      cacheWorkout(updated);
+      return { todayWorkout: updated };
     });
 
     const updated = get().todayWorkout;
     const userId = useAuthStore.getState().user?.id;
     if (userId && updated && !MOCK_MODE) {
-      dbUpdateExerciseFeedback(updated.id, updated.exercises).catch((e) =>
-        console.error('[workoutStore] updateExerciseActuals persist error:', e),
+      persistOrQueue('updateExerciseFeedback', [updated.id, updated.exercises], () =>
+        dbUpdateExerciseFeedback(updated.id, updated.exercises),
       );
     }
   },
@@ -252,15 +317,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
     const updated = { ...workout, energyLevel: level };
     set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
     if (!MOCK_MODE) {
-      supabase
-        .from('workout_plans')
-        .update({ energy_level: level })
-        .eq('id', workout.id)
-        .then(({ error }) => {
-          if (error) console.error('[workoutStore] setEnergyLevel persist error:', error);
-        });
+      persistOrQueue('updateWorkoutColumn', [workout.id, 'energy_level', level], async () => {
+        const { error } = await supabase
+          .from('workout_plans')
+          .update({ energy_level: level })
+          .eq('id', workout.id);
+        if (error) throw error;
+      });
     }
   },
 
@@ -270,15 +336,16 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
     const updated = { ...workout, readiness, energyLevel: readiness.energyLevel };
     set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
     if (!MOCK_MODE) {
-      supabase
-        .from('workout_plans')
-        .update({ readiness, energy_level: readiness.energyLevel })
-        .eq('id', workout.id)
-        .then(({ error }) => {
-          if (error) console.error('[workoutStore] setReadiness persist error:', error);
-        });
+      persistOrQueue('updateWorkoutColumns', [workout.id, { readiness, energy_level: readiness.energyLevel }], async () => {
+        const { error } = await supabase
+          .from('workout_plans')
+          .update({ readiness, energy_level: readiness.energyLevel })
+          .eq('id', workout.id);
+        if (error) throw error;
+      });
     }
   },
 
@@ -286,7 +353,6 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     const workout = get().todayWorkout;
     if (!workout) return;
 
-    // Reduce volume: halve sets (min 1), reduce reps by ~30%
     const exercises = workout.exercises.map((ex) => ({
       ...ex,
       sets: Math.max(1, Math.round(ex.sets * 0.5)),
@@ -299,12 +365,12 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       aiNotes: 'Recovery mode — lighter session to match your energy. Focus on form, not intensity.',
     };
     set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      dbUpdateExerciseFeedback(workout.id, exercises).catch((e) =>
-        console.error('[workoutStore] switchToRecovery persist error:', e),
+      persistOrQueue('updateExerciseFeedback', [workout.id, exercises], () =>
+        dbUpdateExerciseFeedback(workout.id, exercises),
       );
     }
   },
@@ -329,12 +395,12 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
     const updated = { ...workout, exercises };
     set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      dbUpdateExerciseFeedback(workout.id, exercises).catch((e) =>
-        console.error('[workoutStore] applyWorkoutChanges persist error:', e),
+      persistOrQueue('updateExerciseFeedback', [workout.id, exercises], () =>
+        dbUpdateExerciseFeedback(workout.id, exercises),
       );
     }
   },
@@ -361,12 +427,12 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
 
     const updated = { ...workout, exercises };
     set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      dbUpdateExerciseFeedback(workout.id, exercises).catch((e) =>
-        console.error('[workoutStore] swapExercise persist error:', e),
+      persistOrQueue('updateExerciseFeedback', [workout.id, exercises], () =>
+        dbUpdateExerciseFeedback(workout.id, exercises),
       );
     }
   },
@@ -375,16 +441,18 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     const workout = get().todayWorkout;
     if (!workout) return;
 
-    set({ todayWorkout: { ...workout, sessionRPE: rpe } });
+    const updated = { ...workout, sessionRPE: rpe };
+    set({ todayWorkout: updated });
+    cacheWorkout(updated);
 
     if (!MOCK_MODE) {
-      supabase
-        .from('workout_plans')
-        .update({ session_rpe: rpe })
-        .eq('id', workout.id)
-        .then(({ error }) => {
-          if (error) console.error('[workoutStore] setSessionRPE persist error:', error);
-        });
+      persistOrQueue('updateWorkoutColumn', [workout.id, 'session_rpe', rpe], async () => {
+        const { error } = await supabase
+          .from('workout_plans')
+          .update({ session_rpe: rpe })
+          .eq('id', workout.id);
+        if (error) throw error;
+      });
     }
   },
 
@@ -393,18 +461,14 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     if (!workout) return;
 
     const summary = buildSummary(workout.exercises);
+    const updated = { ...workout, status: 'completed' as const };
+    set({ todayWorkout: updated, summary });
+    cacheWorkout(updated);
 
-    // Optimistic update
-    set({
-      todayWorkout: { ...workout, status: 'completed' },
-      summary,
-    });
-
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      updateWorkoutStatus(workout.id, 'completed', summary as unknown as Record<string, unknown>).catch(
-        (e) => console.error('[workoutStore] completeWorkout persist error:', e),
+      persistOrQueue('updateWorkoutStatus', [workout.id, 'completed', summary], () =>
+        updateWorkoutStatus(workout.id, 'completed', summary as unknown as Record<string, unknown>),
       );
     }
   },
@@ -413,17 +477,14 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     const workout = get().todayWorkout;
     if (!workout) return;
 
-    // Optimistic update
-    set({
-      todayWorkout: { ...workout, status: 'skipped' },
-      summary: null,
-    });
+    const updated = { ...workout, status: 'skipped' as const };
+    set({ todayWorkout: updated, summary: null });
+    cacheWorkout(updated);
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      updateWorkoutStatus(workout.id, 'skipped').catch((e) =>
-        console.error('[workoutStore] skipWorkout persist error:', e),
+      persistOrQueue('updateWorkoutStatus', [workout.id, 'skipped'], () =>
+        updateWorkoutStatus(workout.id, 'skipped'),
       );
     }
   },

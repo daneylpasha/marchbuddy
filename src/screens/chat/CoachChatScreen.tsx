@@ -4,6 +4,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  View,
+  Text,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +15,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSessionStore } from '../../store/sessionStore';
+import { useNetworkStore } from '../../store/networkStore';
 import { chatApi } from '../../services/chatApi';
 import { getLevelDefinition } from '../../constants/sessionTemplates';
 import type { ChatMessage as ChatMessageType, ChatContext } from '../../types/chat';
@@ -23,11 +26,12 @@ import { ChatInput } from './components/ChatInput';
 import { QuickActions } from './components/QuickActions';
 import { TypingIndicator } from './components/TypingIndicator';
 import { CoachChatBanner } from './components/CoachChatBanner';
-import { colors } from '../../theme';
+import { colors, fonts } from '../../theme';
 
 export const CoachChatScreen: React.FC = () => {
   const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
+  const isConnected = useNetworkStore((s) => s.isConnected);
 
   const {
     messages,
@@ -192,6 +196,13 @@ export const CoachChatScreen: React.FC = () => {
       <SafeAreaView style={styles.flex} edges={['top']}>
         <ChatHeader onBack={() => navigation.goBack()} />
         <CoachChatBanner />
+        {!isConnected && (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineBannerText}>
+              You're offline — new plans and coach replies won't be available until you're back online.
+            </Text>
+          </View>
+        )}
 
         <FlatList
           ref={flatListRef}
@@ -214,7 +225,7 @@ export const CoachChatScreen: React.FC = () => {
           }
         />
 
-        <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+        <ChatInput onSend={handleSendMessage} disabled={isLoading || !isConnected} />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -237,5 +248,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
+  },
+  offlineBanner: {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245,158,11,0.2)',
+  },
+  offlineBannerText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: '#F59E0B',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

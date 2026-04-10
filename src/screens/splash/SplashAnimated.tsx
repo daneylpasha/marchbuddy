@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { fonts } from "../../theme";
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// Text-based logo replaced with icon.png asset
+const iconSource = require('../../../assets/icon.png');
 
 interface Props {
   hiding: boolean;
@@ -37,13 +39,12 @@ export default function SplashAnimated({ hiding, onHidden }: Props) {
   return (
     <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
       <LinearGradient
-        colors={["transparent", "transparent", "#1a1a1a", "#212020"]}
+        colors={['transparent', 'transparent', '#1a1a1a', '#212020']}
         locations={[0, 0.6, 0.85, 1]}
         style={StyleSheet.absoluteFill}
       />
       <Animated.View style={[styles.content, { opacity: textOpacity }]}>
-        <Animated.Text style={styles.march}>MARCH</Animated.Text>
-        <Animated.Text style={styles.buddy}>BUDDY</Animated.Text>
+        <Animated.Image source={iconSource} style={styles.icon} resizeMode="contain" />
       </Animated.View>
     </Animated.View>
   );
@@ -52,28 +53,15 @@ export default function SplashAnimated({ hiding, onHidden }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
-    alignItems: "center",
+    alignItems: 'center',
   },
-  march: {
-    fontFamily: fonts.titleRegular,
-    fontSize: 80,
-    color: "#FFFFFF",
-    letterSpacing: -2,
-    lineHeight: 80,
-    includeFontPadding: false,
-  },
-  buddy: {
-    fontFamily: fonts.titleRegular,
-    fontSize: 80,
-    color: "#FFFFFF",
-    letterSpacing: 0,
-    lineHeight: 80,
-    marginTop: -22,
-    includeFontPadding: false,
+  icon: {
+    width: 350,
+    height: 350,
   },
 });

@@ -6,6 +6,8 @@ LogBox.ignoreLogs([
   'Edge Function returned a non-2xx',
   'Error calling generate-session-options',
   'Error sending chat message',
+  'Failed to generate coach reply',
+  'LayoutAnimationEnabledExperimental',
 ]);
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -27,6 +29,10 @@ import { useNotificationListener } from './src/hooks/useNotificationListener';
 import { useNotificationStore } from './src/store/notificationStore';
 import { registerForPushNotifications, refreshPushToken } from './src/services/notificationService';
 import { useAuthStore } from './src/store/authStore';
+import { useNetworkStore } from './src/store/networkStore';
+import { offlineQueue } from './src/services/offlineQueue';
+import { registerOfflineActions } from './src/services/offlineActions';
+import { offlineCache } from './src/services/offlineCache';
 import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
 
 const NAV_THEME = {
@@ -63,6 +69,18 @@ export default function App() {
 
   // Notification tap listener
   useNotificationListener();
+
+  // Initialize offline support
+  useEffect(() => {
+    registerOfflineActions();
+    offlineQueue.startListening();
+    offlineCache.clearExpired();
+    const unsubNetwork = useNetworkStore.getState().startListening();
+    return () => {
+      offlineQueue.stopListening();
+      unsubNetwork();
+    };
+  }, []);
 
   // Register/refresh push token after login (ensures token is saved to Supabase)
   useEffect(() => {

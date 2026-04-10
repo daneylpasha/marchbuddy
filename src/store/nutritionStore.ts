@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { FoodSnap, Meal, MealPlan } from '../types';
 import { useAuthStore } from './authStore';
+import { useNetworkStore } from './networkStore';
 import {
   getTodayMealPlan,
   upsertMealPlan,
@@ -9,6 +10,8 @@ import {
   getTodayFoodSnaps,
 } from '../api/database';
 import { MOCK_MODE } from '../mock';
+import { offlineCache, CACHE_KEYS } from '../services/offlineCache';
+import { offlineQueue } from '../services/offlineQueue';
 
 interface ConsumedTotals {
   calories: number;
@@ -39,20 +42,42 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     set({ isLoading: true });
     try {
       const today = new Date().toISOString().split('T')[0];
+      const isConnected = useNetworkStore.getState().isConnected;
 
-      // Fetch meal plan and food snaps in parallel
-      const [plan, snaps] = await Promise.all([
-        getTodayMealPlan(userId, today),
-        getTodayFoodSnaps(userId, today),
-      ]);
+      if (isConnected) {
+        const [plan, snaps] = await Promise.all([
+          getTodayMealPlan(userId, today),
+          getTodayFoodSnaps(userId, today),
+        ]);
 
-      set({ todayMealPlan: plan ?? null });
+        set({ todayMealPlan: plan ?? null });
+        if (plan) offlineCache.set(CACHE_KEYS.TODAY_MEAL_PLAN, plan, userId);
 
-      if (snaps.length > 0) {
-        set({ foodSnaps: snaps });
+        if (snaps.length > 0) {
+          set({ foodSnaps: snaps });
+          offlineCache.set(CACHE_KEYS.FOOD_SNAPS, snaps, userId);
+        }
+      } else {
+        // Offline — load from cache
+        const [cachedPlan, cachedSnaps] = await Promise.all([
+          offlineCache.get<MealPlan>(CACHE_KEYS.TODAY_MEAL_PLAN, userId),
+          offlineCache.get<FoodSnap[]>(CACHE_KEYS.FOOD_SNAPS, userId),
+        ]);
+        if (cachedPlan && cachedPlan.date === today) {
+          set({ todayMealPlan: cachedPlan });
+        }
+        if (cachedSnaps && cachedSnaps.length > 0) {
+          set({ foodSnaps: cachedSnaps });
+        }
       }
     } catch (e) {
       console.error('[nutritionStore] fetchTodayMealPlan error:', e);
+      // Fallback to cache
+      const today = new Date().toISOString().split('T')[0];
+      const cached = await offlineCache.get<MealPlan>(CACHE_KEYS.TODAY_MEAL_PLAN, userId);
+      if (cached && cached.date === today) {
+        set({ todayMealPlan: cached });
+      }
     } finally {
       set({ isLoading: false });
     }
@@ -62,7 +87,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     const plan = get().todayMealPlan;
     if (!plan) return;
 
-    // Optimistic update
     const meals = plan.meals.map((meal) =>
       meal.id === mealId
         ? {
@@ -80,30 +104,42 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     );
     const updated = { ...plan, meals };
     set({ todayMealPlan: updated });
+    offlineCache.set(CACHE_KEYS.TODAY_MEAL_PLAN, updated, plan.userId);
 
-    // Persist in background
     if (!MOCK_MODE) {
-      dbUpdateMealFeedback(plan.id, meals).catch((e) =>
-        console.error('[nutritionStore] updateMealFeedback persist error:', e),
-      );
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        dbUpdateMealFeedback(plan.id, meals).catch((e) =>
+          console.error('[nutritionStore] updateMealFeedback persist error:', e),
+        );
+      } else {
+        offlineQueue.enqueue('updateMealFeedback', [plan.id, meals]);
+      }
     }
   },
 
   addFoodSnap: (snap) => {
-    // Optimistic update
-    set((state) => ({ foodSnaps: [...state.foodSnaps, snap] }));
+    set((state) => {
+      const snaps = [...state.foodSnaps, snap];
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) offlineCache.set(CACHE_KEYS.FOOD_SNAPS, snaps, userId);
+      return { foodSnaps: snaps };
+    });
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      saveFoodSnap(userId, snap).catch((e) =>
-        console.error('[nutritionStore] addFoodSnap persist error:', e),
-      );
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        saveFoodSnap(userId, snap).catch((e) =>
+          console.error('[nutritionStore] addFoodSnap persist error:', e),
+        );
+      } else {
+        offlineQueue.enqueue('saveFoodSnap', [userId, snap]);
+      }
     }
   },
 
   updateFoodSnap: (snapId, updates) => {
-    // Optimistic update only — no dedicated DB call for partial snap updates yet
     set((state) => ({
       foodSnaps: state.foodSnaps.map((s) =>
         s.id === snapId ? { ...s, ...updates } : s,
@@ -120,7 +156,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     let carbs = 0;
     let fat = 0;
 
-    // Count meals marked as ate-it or swapped
     if (plan) {
       for (const meal of plan.meals) {
         if (meal.feedback === 'ate-it') {
@@ -129,7 +164,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
           carbs += meal.carbs;
           fat += meal.fat;
         } else if (meal.feedback === 'swapped') {
-          // Use AI-estimated swap nutrition if available, otherwise fall back to original
           calories += meal.swapCalories ?? meal.calories;
           protein += meal.swapProtein ?? meal.protein;
           carbs += meal.swapCarbs ?? meal.carbs;
@@ -138,7 +172,6 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
       }
     }
 
-    // Add food snaps
     for (const snap of snaps) {
       const vals = snap.userAmended && snap.amendedValues ? snap.amendedValues : snap.aiEstimate;
       calories += vals.calories ?? 0;
