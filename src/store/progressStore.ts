@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { BodyMeasurement, WeeklySummary, WeightEntry } from '../types';
 import { useAuthStore } from './authStore';
+import { useNetworkStore } from './networkStore';
 import {
   getWeightEntries,
   saveWeightEntry,
@@ -18,6 +19,8 @@ import { useNutritionStore } from './nutritionStore';
 import { useWaterStore } from './waterStore';
 import { useChatStore } from './chatStore';
 import { generateUUID } from '../utils/uuid';
+import { offlineCache, CACHE_KEYS } from '../services/offlineCache';
+import { offlineQueue } from '../services/offlineQueue';
 
 interface ProgressState {
   weightEntries: WeightEntry[];
@@ -56,25 +59,60 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
 
   loadProgressData: async (userId) => {
     if (MOCK_MODE) return;
-    // Re-fetch if user changed
     if (get().loaded && get()._loadedUserId === userId) return;
     try {
-      const [weights, measures, summaries] = await Promise.all([
-        getWeightEntries(userId),
-        getMeasurements(userId),
-        getWeeklySummaries(userId),
-      ]);
+      const isConnected = useNetworkStore.getState().isConnected;
 
+      if (isConnected) {
+        const [weights, measures, summaries] = await Promise.all([
+          getWeightEntries(userId),
+          getMeasurements(userId),
+          getWeeklySummaries(userId),
+        ]);
+
+        set({
+          weightEntries: weights,
+          measurements: measures,
+          weeklySummaries: summaries,
+          loaded: true,
+          _loadedUserId: userId,
+        });
+
+        // Cache all progress data
+        offlineCache.set(CACHE_KEYS.WEIGHT_ENTRIES, weights, userId);
+        offlineCache.set(CACHE_KEYS.MEASUREMENTS, measures, userId);
+        offlineCache.set(CACHE_KEYS.WEEKLY_SUMMARIES, summaries, userId);
+      } else {
+        // Offline — load from cache
+        const [weights, measures, summaries] = await Promise.all([
+          offlineCache.get<WeightEntry[]>(CACHE_KEYS.WEIGHT_ENTRIES, userId),
+          offlineCache.get<BodyMeasurement[]>(CACHE_KEYS.MEASUREMENTS, userId),
+          offlineCache.get<WeeklySummary[]>(CACHE_KEYS.WEEKLY_SUMMARIES, userId),
+        ]);
+
+        set({
+          weightEntries: weights ?? [],
+          measurements: measures ?? [],
+          weeklySummaries: summaries ?? [],
+          loaded: true,
+          _loadedUserId: userId,
+        });
+      }
+    } catch (e) {
+      console.error('[progressStore] loadProgressData error:', e);
+      // Fallback to cache
+      const [weights, measures, summaries] = await Promise.all([
+        offlineCache.get<WeightEntry[]>(CACHE_KEYS.WEIGHT_ENTRIES, userId),
+        offlineCache.get<BodyMeasurement[]>(CACHE_KEYS.MEASUREMENTS, userId),
+        offlineCache.get<WeeklySummary[]>(CACHE_KEYS.WEEKLY_SUMMARIES, userId),
+      ]);
       set({
-        weightEntries: weights,
-        measurements: measures,
-        weeklySummaries: summaries,
+        weightEntries: weights ?? [],
+        measurements: measures ?? [],
+        weeklySummaries: summaries ?? [],
         loaded: true,
         _loadedUserId: userId,
       });
-    } catch (e) {
-      console.error('[progressStore] loadProgressData error:', e);
-      set({ loaded: true, _loadedUserId: userId });
     }
   },
 
@@ -88,36 +126,58 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     };
 
     // Optimistic update
-    set((state) => ({ weightEntries: [...state.weightEntries, entry] }));
+    set((state) => {
+      const entries = [...state.weightEntries, entry];
+      offlineCache.set(CACHE_KEYS.WEIGHT_ENTRIES, entries, userId);
+      return { weightEntries: entries };
+    });
 
-    // Persist in background
     if (!MOCK_MODE) {
-      saveWeightEntry(userId, weight, date).catch((e) =>
-        console.error('[progressStore] logWeight persist error:', e),
-      );
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        saveWeightEntry(userId, weight, date).catch((e) =>
+          console.error('[progressStore] logWeight persist error:', e),
+        );
+      } else {
+        offlineQueue.enqueue('saveWeightEntry', [userId, weight, date]);
+      }
     }
   },
 
   logMeasurement: (measurement) => {
     // Optimistic update
-    set((state) => ({ measurements: [...state.measurements, measurement] }));
+    set((state) => {
+      const measurements = [...state.measurements, measurement];
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) offlineCache.set(CACHE_KEYS.MEASUREMENTS, measurements, userId);
+      return { measurements };
+    });
 
-    // Persist in background
     const userId = useAuthStore.getState().user?.id;
     if (userId && !MOCK_MODE) {
-      saveMeasurement(userId, measurement).catch((e) =>
-        console.error('[progressStore] logMeasurement persist error:', e),
-      );
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        saveMeasurement(userId, measurement).catch((e) =>
+          console.error('[progressStore] logMeasurement persist error:', e),
+        );
+      } else {
+        offlineQueue.enqueue('saveMeasurement', [userId, measurement]);
+      }
     }
   },
 
   fetchWeeklySummary: async (userId) => {
     if (MOCK_MODE) return;
     try {
-      const summaries = await getWeeklySummaries(userId);
-      if (summaries.length > 0) {
-        set({ weeklySummaries: summaries });
+      const isConnected = useNetworkStore.getState().isConnected;
+      if (isConnected) {
+        const summaries = await getWeeklySummaries(userId);
+        if (summaries.length > 0) {
+          set({ weeklySummaries: summaries });
+          offlineCache.set(CACHE_KEYS.WEEKLY_SUMMARIES, summaries, userId);
+        }
       }
+      // If offline, cached data is already loaded from loadProgressData
     } catch (e) {
       console.error('[progressStore] fetchWeeklySummary error:', e);
     }
@@ -125,13 +185,17 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
 
   generateAndSaveWeeklySummary: async (userId) => {
     if (get().generatingSummary) return;
+
+    // This requires AI — only works online
+    const isConnected = useNetworkStore.getState().isConnected;
+    if (!isConnected) return;
+
     set({ generatingSummary: true });
 
     try {
       const profile = useProfileStore.getState().profile;
       if (!profile) throw new Error('No profile');
 
-      // Gather week data from stores
       const todayWorkout = useWorkoutStore.getState().todayWorkout;
       const todayMealPlan = useNutritionStore.getState().todayMealPlan;
       const todayWaterLog = useWaterStore.getState().todayWaterLog;
@@ -159,12 +223,12 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         createdAt: new Date().toISOString(),
       };
 
-      // Optimistic update
-      set((state) => ({
-        weeklySummaries: [summary, ...state.weeklySummaries.filter((s) => s.weekStartDate !== weekStart)],
-      }));
+      set((state) => {
+        const summaries = [summary, ...state.weeklySummaries.filter((s) => s.weekStartDate !== weekStart)];
+        offlineCache.set(CACHE_KEYS.WEEKLY_SUMMARIES, summaries, userId);
+        return { weeklySummaries: summaries };
+      });
 
-      // Persist in background
       if (!MOCK_MODE) {
         saveWeeklySummary(userId, weekStart, result.summaryText, result.insights).catch((e) =>
           console.error('[progressStore] saveWeeklySummary persist error:', e),
