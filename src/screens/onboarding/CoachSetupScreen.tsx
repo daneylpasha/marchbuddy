@@ -25,7 +25,6 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 // ─── Step & source types ──────────────────────────────────────────────────────
 
 type ScreenStep =
-  | "welcome"
   | "name"
   | "activity"
   | "coach-reply"
@@ -106,7 +105,7 @@ const thinkingStyles = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CoachSetupScreen() {
-  const [currentStep, setCurrentStep] = useState<ScreenStep>("welcome");
+  const [currentStep, setCurrentStep] = useState<ScreenStep>("name");
   const [nameInput, setNameInput] = useState("");
   const [coachReplyText, setCoachReplyText] = useState("");
   const [coachReplyQuote, setCoachReplyQuote] = useState("");
@@ -305,7 +304,7 @@ export default function CoachSetupScreen() {
   const goBack = () => {
     switch (currentStep) {
       case "name":
-        transitionTo("welcome");
+        // First step — no back navigation
         break;
       case "activity":
         transitionTo("name");
@@ -463,29 +462,6 @@ export default function CoachSetupScreen() {
     </View>
   );
 
-  const renderWelcome = () => (
-    <View style={[styles.screen, styles.screenNoBack]}>
-      <View style={styles.body}>
-        <Text style={styles.welcomeHeading}>Let's get you moving</Text>
-        <Text style={styles.welcomeBody}>
-          I'm your coach for this running journey. We'll start with just a few
-          quick questions to understand your situation, then jump into Level 1.
-        </Text>
-      </View>
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            pressed && styles.primaryBtnPressed,
-          ]}
-          onPress={() => transitionTo("name")}
-        >
-          <Text style={styles.primaryBtnLabel}>Continue</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-
   const renderNameInput = () => (
     <ScrollView
       ref={inputScrollRef}
@@ -609,8 +585,6 @@ export default function CoachSetupScreen() {
     if (isGeneratingReply) return renderThinking();
 
     switch (currentStep) {
-      case "welcome":
-        return renderWelcome();
       case "name":
         return renderNameInput();
       case "activity":
@@ -694,23 +668,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   footer: { paddingTop: 16, paddingBottom: 4 },
-
-  // ── Welcome ──
-  welcomeHeading: {
-    fontFamily: fonts.titleRegular,
-    fontSize: 44,
-    color: colors.textPrimary,
-    lineHeight: 52,
-    letterSpacing: 0.5,
-    marginBottom: 28,
-  },
-  welcomeBody: {
-    fontFamily: fonts.regular,
-    fontSize: 17,
-    color: colors.textSecondary,
-    lineHeight: 27,
-    letterSpacing: 0.2,
-  },
 
   // ── Name input ──
   bigInput: {

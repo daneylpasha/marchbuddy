@@ -42,11 +42,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       session,
       user: session?.user ? mapSupabaseUser(session.user) : null,
       isAuthenticated: !!session,
+      isGuest: false,
     });
 
-    // Auto-load profile when session is set
+    // Auto-load profile and restore setup state when session is set
     if (session?.user) {
       useProfileStore.getState().fetchProfile(session.user.id);
+
+      // Restore setupComplete from server for returning users
+      const { useCoachSetupStore } = require('./coachSetupStore');
+      const { useSettingsStore } = require('./settingsStore');
+      const setupStore = useCoachSetupStore.getState();
+      if (!setupStore.setupComplete) {
+        (async () => {
+          try {
+            const { data } = await supabase
+              .from('user_onboarding')
+              .select('onboarding_completed_at, user_name, activity_level, preferred_time')
+              .eq('user_id', session.user.id)
+              .single();
+            if (data?.onboarding_completed_at) {
+              useCoachSetupStore.setState({
+                setupComplete: true,
+                setupData: {
+                  ...useCoachSetupStore.getState().setupData,
+                  userName: data.user_name || '',
+                  activityLevel: data.activity_level || null,
+                  timePreference: data.preferred_time || null,
+                  completedAt: data.onboarding_completed_at,
+                },
+              });
+              useSettingsStore.getState().setHasSeenIntro(true);
+            }
+          } catch (err) {
+            console.error('Error restoring setup:', err);
+          }
+        })();
+      }
     }
   },
 
@@ -60,6 +92,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Session may be null if email confirmation is required
     if (data.session) {
       get().setSession(data.session);
+      // Migrate any local guest data to Supabase
+      const { authService } = require('../services/authService');
+      authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
     }
     set({ isLoading: false });
   },
@@ -72,6 +107,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw error;
     }
     get().setSession(data.session);
+    // Migrate any local guest data to Supabase
+    const { authService } = require('../services/authService');
+    authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
     set({ isLoading: false });
   },
 
@@ -171,15 +209,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     set({ isInitializing: true });
 
-    // Check for existing session
+    // Check for existing session (local — works offline)
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Proactively refresh the token to ensure it's valid
-      const { data: refreshed } = await supabase.auth.refreshSession();
-      if (refreshed.session) {
-        get().setSession(refreshed.session);
-      } else {
+      // Try to refresh token, but don't block on network failure
+      try {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        get().setSession(refreshed.session ?? session);
+      } catch {
+        // Offline or network error — use existing local session
         get().setSession(session);
+      }
+    } else {
+      // No Supabase session — check if user was in guest mode
+      const { useCoachSetupStore } = require('./coachSetupStore');
+      const setupStore = useCoachSetupStore.getState();
+      if (setupStore.setupComplete && setupStore.guestId) {
+        get().enterGuestMode();
       }
     }
 

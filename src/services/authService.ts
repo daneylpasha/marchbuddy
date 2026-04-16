@@ -3,6 +3,8 @@ import { supabase } from '../api/supabase';
 import { useAuthStore } from '../store/authStore';
 import { useCoachSetupStore } from '../store/coachSetupStore';
 import { useRunProgressStore } from '../store/runProgressStore';
+import { useScheduleStore } from '../store/scheduleStore';
+import { useChatStore } from '../store/chatStore';
 
 export const authService = {
   async signInWithGoogleOAuth(): Promise<{ success: boolean; error?: string }> {
@@ -103,6 +105,40 @@ export const authService = {
         }, { onConflict: 'user_id' });
 
       if (progressError) console.error('Error syncing progress:', progressError);
+
+      // Sync guest scheduled sessions
+      const scheduleStore = useScheduleStore.getState();
+      const guestSessions = scheduleStore.scheduledSessions.filter(
+        (s) => s.user_id === 'guest',
+      );
+      for (const session of guestSessions) {
+        const { error: schedError } = await supabase
+          .from('scheduled_sessions')
+          .insert({
+            user_id: userId,
+            session_key: session.session_key,
+            session_title: session.session_title,
+            scheduled_at: session.scheduled_at,
+            notified: session.notified,
+          });
+        if (schedError) console.error('Error syncing schedule:', schedError);
+      }
+
+      // Sync chat messages
+      const chatStore = useChatStore.getState();
+      if (chatStore.messages.length > 0) {
+        for (const msg of chatStore.messages) {
+          const { error: chatError } = await supabase
+            .from('chat_messages')
+            .insert({
+              user_id: userId,
+              role: msg.role,
+              content: msg.content,
+              image_url: msg.imageUri ?? null,
+            });
+          if (chatError) console.error('Error syncing chat message:', chatError);
+        }
+      }
 
       console.log('Local data synced to Supabase');
     } catch (error) {
