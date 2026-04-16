@@ -293,6 +293,7 @@ export default function SettingsScreen() {
           {isGuest ? (
             <SettingsRow
               label="Create Account"
+              labelStyle={{ color: colors.primary, fontFamily: fonts.semiBold }}
               onPress={exitGuestMode}
               showChevron
             />
@@ -394,8 +395,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   guestBannerSubtitle: {
-    fontFamily: fonts.regular,
-    fontSize: 12,
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
     color: colors.textSecondary,
     letterSpacing: 0.2,
   },

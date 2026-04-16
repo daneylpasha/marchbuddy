@@ -158,14 +158,9 @@ export const useCoachSetupStore = create<CoachSetupState>()(
     })),
 
   markSetupComplete: () => {
-    // Clear any stale auth session so user is forced through login/guest flow
-    // after completing onboarding (prevents skipping LoginScreen when an old
-    // Supabase session lingers in SecureStore from a previous install).
-    const { useAuthStore } = require('./authStore');
-    const authState = useAuthStore.getState();
-    if (authState.isAuthenticated && !authState.isGuest) {
-      authState.logout();
-    }
+    // Mark intro as seen so welcome/feature screens never show again
+    const { useSettingsStore } = require('./settingsStore');
+    useSettingsStore.getState().setHasSeenIntro(true);
 
     set((s) => ({
       setupComplete: true,

@@ -95,14 +95,14 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  // Show permission modal after fonts load if we haven't asked yet
+  // Show permission modal after user reaches home (past intro + setup)
+  const setupComplete = require('./src/store/coachSetupStore').useCoachSetupStore((s: any) => s.setupComplete);
   useEffect(() => {
-    if (fontsLoaded && permissionStatus === 'undetermined' && canPrompt()) {
-      // Delay to let onboarding complete first
+    if (fontsLoaded && isAuthenticated && setupComplete && permissionStatus === 'undetermined' && canPrompt()) {
       const timer = setTimeout(() => setShowPermissionModal(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [fontsLoaded, permissionStatus, canPrompt]);
+  }, [fontsLoaded, isAuthenticated, setupComplete, permissionStatus, canPrompt]);
 
   const handleAllowNotifications = useCallback(async () => {
     setShowPermissionModal(false);

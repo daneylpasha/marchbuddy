@@ -6,10 +6,12 @@ interface SettingsState {
   distanceUnit: 'km' | 'miles';
   hapticFeedbackEnabled: boolean;
   hasSeenFeatureTips: boolean;
+  hasSeenIntro: boolean;
 
   setDistanceUnit: (unit: 'km' | 'miles') => void;
   setHapticFeedbackEnabled: (enabled: boolean) => void;
   setHasSeenFeatureTips: (seen: boolean) => void;
+  setHasSeenIntro: (seen: boolean) => void;
   resetSettings: () => void;
 }
 
@@ -17,6 +19,7 @@ const defaultSettings = {
   distanceUnit: 'km' as const,
   hapticFeedbackEnabled: true,
   hasSeenFeatureTips: false,
+  hasSeenIntro: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -27,6 +30,7 @@ export const useSettingsStore = create<SettingsState>()(
       setDistanceUnit: (unit) => set({ distanceUnit: unit }),
       setHapticFeedbackEnabled: (enabled) => set({ hapticFeedbackEnabled: enabled }),
       setHasSeenFeatureTips: (seen) => set({ hasSeenFeatureTips: seen }),
+      setHasSeenIntro: (seen) => set({ hasSeenIntro: seen }),
       resetSettings: () => set(defaultSettings),
     }),
     {

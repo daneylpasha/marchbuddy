@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,34 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../../services/authService';
-import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useAuthStore } from '../../store/authStore';
 import { colors, fonts } from '../../theme';
 import EmailAuthSheet from '../../components/auth/EmailAuthSheet';
 import type { EmailAuthSheetRef } from '../../components/auth/EmailAuthSheet';
+import type { IntroStackParamList } from '../../navigation/AppNavigator';
 
-export default function LoginScreen() {
+interface Props {
+  navigation?: NativeStackNavigationProp<IntroStackParamList, 'Auth'>;
+}
+
+export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
-  const userName = useCoachSetupStore((s) => s.setupData.userName);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
   const bottomSheetRef = useRef<EmailAuthSheetRef>(null);
+
+  const isIntroFlow = !!navigation;
+  const prevAuthRef = useRef(isAuthenticated);
+
+  // Navigate to CoachSetup when auth succeeds in intro flow
+  useEffect(() => {
+    if (!prevAuthRef.current && isAuthenticated && isIntroFlow) {
+      navigation.replace('CoachSetup');
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, isIntroFlow, navigation]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -41,6 +57,12 @@ export default function LoginScreen() {
     bottomSheetRef.current?.present();
   }, []);
 
+  const handleGuestMode = () => {
+    enterGuestMode();
+    // For intro flow, the useEffect above handles navigation to CoachSetup
+    // For standalone, AppNavigator reactively shows the right screen
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -52,10 +74,12 @@ export default function LoginScreen() {
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.greeting}>
-              Great job,{'\n'}{userName || 'there'}!
+              {isIntroFlow ? 'Welcome to\nMarch Buddy' : 'Welcome\nBack!'}
             </Text>
             <Text style={styles.subtitle}>
-              Let's save your progress so you never lose it
+              {isIntroFlow
+                ? 'Sign up to save your progress and unlock all features'
+                : 'Sign in to continue your journey'}
             </Text>
           </View>
 
@@ -98,7 +122,7 @@ export default function LoginScreen() {
 
             {/* Guest mode */}
             <TouchableOpacity
-              onPress={enterGuestMode}
+              onPress={handleGuestMode}
               activeOpacity={0.7}
               style={styles.guestTrigger}
             >
