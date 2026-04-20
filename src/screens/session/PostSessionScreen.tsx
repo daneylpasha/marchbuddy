@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FeedbackRating, CompletedSession } from '../../types/session';
 import { sessionApi } from '../../services/sessionApi';
 import { feedbackApi } from '../../services/feedbackApi';
+import { logSessionCompletion } from '../../services/notifications/completionLogger';
 import { detectMilestone } from '../../constants/milestones';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
@@ -79,6 +80,15 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           })
           .catch(() => {});
       }
+
+      // Log a real completion so the re-engagement Edge Function can
+      // base activity on "did they run" instead of "did they schedule"
+      // (P3 fix for Phase-1 audit bug #2). Fire-and-forget.
+      void logSessionCompletion({
+        sessionKey: session.planId,
+        sessionTitle: session.planTitle,
+        completedAt: new Date(session.completedAt),
+      });
 
       // Keep local progress store in sync
       updateAfterSession({

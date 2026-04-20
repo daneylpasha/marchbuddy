@@ -21,6 +21,7 @@ import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { registerForPushNotifications } from '../../services/notificationService';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
@@ -49,6 +50,48 @@ export default function SettingsScreen() {
 
   const notificationPermission = useNotificationStore((s) => s.permissionStatus);
   const setPermissionStatus = useNotificationStore((s) => s.setPermissionStatus);
+
+  const prefs = useNotificationPrefsStore((s) => s.prefs);
+  const setPref = useNotificationPrefsStore((s) => s.setPref);
+  const setQuietHours = useNotificationPrefsStore((s) => s.setQuietHours);
+  const hydratePrefs = useNotificationPrefsStore((s) => s.hydrateFromServer);
+
+  // Hydrate prefs on mount so the toggles reflect server-side truth
+  useEffect(() => {
+    hydratePrefs();
+  }, [hydratePrefs]);
+
+  const quietHoursGranted = notificationPermission === 'granted';
+
+  const formatHour = (h: number): string => {
+    const hh = ((h % 24) + 24) % 24;
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const display = hh % 12 || 12;
+    return `${display} ${ampm}`;
+  };
+
+  const promptQuietHours = () => {
+    Alert.alert(
+      'Quiet Hours',
+      `Notifications won't be sent during quiet hours, evaluated in your local time.\n\nCurrent: ${formatHour(prefs.quiet_hours_start)} — ${formatHour(prefs.quiet_hours_end)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Late evening (10 PM – 7 AM)',
+          onPress: () => setQuietHours(22, 7),
+        },
+        {
+          text: 'Early night (9 PM – 6 AM)',
+          onPress: () => setQuietHours(21, 6),
+        },
+        {
+          text: 'Always on (disable)',
+          onPress: () => setQuietHours(0, 0),
+          style: 'destructive',
+        },
+      ],
+    );
+  };
 
   // Sync store with actual OS permission on mount
   useEffect(() => {
@@ -257,6 +300,46 @@ export default function SettingsScreen() {
                 thumbColor={hapticFeedbackEnabled ? colors.primary : colors.textTertiary}
               />
             }
+          />
+        </SettingsSection>
+
+        {/* Notification Preferences (granular) */}
+        <SettingsSection title="NOTIFICATION PREFERENCES">
+          <SettingsRow
+            label="Session Reminders"
+            value={prefs.session_reminders ? 'On' : 'Off'}
+            rightElement={
+              <Switch
+                value={prefs.session_reminders}
+                onValueChange={(v) => setPref('session_reminders', v)}
+                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                thumbColor={prefs.session_reminders ? colors.primary : colors.textTertiary}
+                disabled={!quietHoursGranted}
+              />
+            }
+          />
+          <SettingsRow
+            label="Motivational Check-ins"
+            value={prefs.reengagement ? 'On' : 'Off'}
+            rightElement={
+              <Switch
+                value={prefs.reengagement}
+                onValueChange={(v) => setPref('reengagement', v)}
+                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                thumbColor={prefs.reengagement ? colors.primary : colors.textTertiary}
+                disabled={!quietHoursGranted}
+              />
+            }
+          />
+          <SettingsRow
+            label="Quiet Hours"
+            value={
+              prefs.quiet_hours_start === prefs.quiet_hours_end
+                ? 'Off'
+                : `${formatHour(prefs.quiet_hours_start)} — ${formatHour(prefs.quiet_hours_end)}`
+            }
+            onPress={promptQuietHours}
+            showChevron
           />
         </SettingsSection>
 

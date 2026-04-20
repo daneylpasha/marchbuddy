@@ -1,16 +1,20 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// ─── Message pools ────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────
 
-const UPCOMING_MESSAGES = [
-  "Hey {{name}}, your session is coming up soon. Let's crush it!",
-  "{{name}}, time to get ready! Your session starts soon.",
-  "Heads up {{name}} — your workout is almost here. You've got this!",
-  "{{name}}, your session is around the corner. Lace up!",
-  "Almost time, {{name}}! Get ready to show up for yourself.",
-  "{{name}}, your body is ready. Your session starts soon — let's go!",
-];
+// A re-engagement "campaign" is a single dormancy period, keyed by the
+// user's last-activity date. We send at most MAX_PUSHES_PER_CAMPAIGN pushes
+// total per campaign; once hit we go silent until the user becomes active
+// again (which rolls the last-activity date forward → new campaign_id).
+const REENGAGEMENT_CAMPAIGN_ID_PREFIX = 'reengagement_';
+const MAX_PUSHES_PER_CAMPAIGN = 3;
+
+// Default quiet hours (user local time) when the user has no prefs set.
+const DEFAULT_QUIET_START = 22;
+const DEFAULT_QUIET_END = 7;
+
+// ─── Message pools ────────────────────────────────────────────────────────
 
 const REENGAGEMENT_DAY2 = [
   "Hey {{name}}, just checking in. Your body misses moving.",
@@ -43,9 +47,46 @@ function applyName(template: string, name: string): string {
   return template.replace(/\{\{name\}\}/g, name);
 }
 
-function isQuietHours(): boolean {
-  const hour = new Date().getHours();
-  return hour >= 22 || hour < 7;
+// ─── Timezone-aware quiet hours ───────────────────────────────────────────
+
+/**
+ * Get the current hour (0–23) in the given IANA timezone.
+ * Falls back to UTC if the timezone is invalid.
+ */
+function getHourInTimezone(timezone: string): number {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    });
+    const parts = fmt.formatToParts(new Date());
+    const hourPart = parts.find((p) => p.type === 'hour');
+    if (!hourPart) return new Date().getUTCHours();
+    // Intl may return "24" for midnight in some locales/engines — normalize to 0
+    const hour = parseInt(hourPart.value, 10);
+    return hour === 24 ? 0 : hour;
+  } catch {
+    return new Date().getUTCHours();
+  }
+}
+
+/**
+ * Evaluate quiet hours for a specific user.
+ * Supports wrap-around windows (e.g. 22 → 7).
+ */
+function isQuietHoursForUser(
+  timezone: string,
+  quietStart: number,
+  quietEnd: number,
+): boolean {
+  const hour = getHourInTimezone(timezone || 'UTC');
+  if (quietStart === quietEnd) return false; // window disabled
+  if (quietStart < quietEnd) {
+    return hour >= quietStart && hour < quietEnd;
+  }
+  // Wrap-around (e.g. 22 → 7 means 22:00–06:59)
+  return hour >= quietStart || hour < quietEnd;
 }
 
 // ─── Expo Push API ────────────────────────────────────────────────────────
@@ -80,6 +121,23 @@ async function sendExpoPush(
   return resp.json();
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────
+
+interface NotificationPrefs {
+  session_reminders?: boolean;
+  reengagement?: boolean;
+  quiet_hours_start?: number;
+  quiet_hours_end?: number;
+}
+
+interface UserRow {
+  id: string;
+  name: string | null;
+  expo_push_token: string;
+  timezone: string | null;
+  notification_prefs: NotificationPrefs | null;
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -101,18 +159,10 @@ Deno.serve(async (req: Request) => {
       // cron trigger — process all users
     }
 
-    // Skip during quiet hours
-    if (isQuietHours()) {
-      return new Response(
-        JSON.stringify({ skipped: true, reason: 'quiet_hours' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // Build user query
+    // Build user query (now includes timezone + prefs)
     let query = supabase
       .from('profiles')
-      .select('id, name, expo_push_token')
+      .select('id, name, expo_push_token, timezone, notification_prefs')
       .not('expo_push_token', 'is', null);
 
     if (targetUserId) {
@@ -129,69 +179,77 @@ Deno.serve(async (req: Request) => {
     }
 
     let sentCount = 0;
+    let skippedQuiet = 0;
+    let skippedPrefs = 0;
+    let skippedRateLimit = 0;
+    let skippedCampaignCap = 0;
 
-    for (const user of users) {
-      // Rate limit: max 1 push per day per user
+    for (const user of users as UserRow[]) {
+      const userName = user.name || 'there';
+      const token = user.expo_push_token;
+      const prefs = user.notification_prefs ?? {};
+      const timezone = user.timezone || 'UTC';
+
+      // ── Per-user pref: re-engagement opt-out ─────────────────────────
+      if (prefs.reengagement === false) {
+        skippedPrefs++;
+        continue;
+      }
+
+      // ── Per-user quiet hours ─────────────────────────────────────────
+      const quietStart = prefs.quiet_hours_start ?? DEFAULT_QUIET_START;
+      const quietEnd = prefs.quiet_hours_end ?? DEFAULT_QUIET_END;
+      if (isQuietHoursForUser(timezone, quietStart, quietEnd)) {
+        skippedQuiet++;
+        continue;
+      }
+
+      // ── Rate limit: max 1 push per 24h per user ──────────────────────
       const { data: recentLog } = await supabase
         .from('notification_log')
         .select('id')
         .eq('user_id', user.id)
         .gte('sent_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .limit(1);
-      if (recentLog && recentLog.length > 0) continue;
-
-      const userName = user.name || 'there';
-      const token = user.expo_push_token;
-
-      // Check for upcoming scheduled sessions (Type B) — within next 60 minutes
-      const { data: upcomingSessions } = await supabase
-        .from('scheduled_sessions')
-        .select('id, session_title, scheduled_at')
-        .eq('user_id', user.id)
-        .eq('notified', false)
-        .gt('scheduled_at', new Date().toISOString())
-        .lte(
-          'scheduled_at',
-          new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        );
-
-      if (upcomingSessions && upcomingSessions.length > 0) {
-        const session = upcomingSessions[0];
-        const msg = applyName(pickRandom(UPCOMING_MESSAGES), userName);
-        await sendExpoPush(token, `${session.session_title} — Starting Soon`, msg, { type: 'B' });
-
-        // Mark as notified so we don't remind again
-        await supabase
-          .from('scheduled_sessions')
-          .update({ notified: true })
-          .in(
-            'id',
-            upcomingSessions.map((s: { id: string }) => s.id),
-          );
-
-        await supabase.from('notification_log').insert({
-          user_id: user.id,
-          type: 'B',
-          message: msg,
-        });
-
-        sentCount++;
+      if (recentLog && recentLog.length > 0) {
+        skippedRateLimit++;
         continue;
       }
 
-      // Check for inactivity (Type C)
-      // Look at the most recent session completion
-      const { data: lastSession } = await supabase
-        .from('scheduled_sessions')
-        .select('created_at')
+      // ── Re-engagement (Type C) ───────────────────────────────────────
+      //
+      // NOTE: Type B ("Starting Soon" for upcoming sessions) has been
+      // removed. The local on-device Type A notification already fires
+      // 30 min before the scheduled time, so server Type B was a pure
+      // duplicate and a primary cause of notification fatigue.
+      //
+      // Activity signal (Phase 3): prefer real completions from
+      // `completed_sessions`. Only fall back to `scheduled_sessions`
+      // for legacy users who completed sessions before that table
+      // was introduced.
+      const { data: lastCompletion } = await supabase
+        .from('completed_sessions')
+        .select('completed_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('completed_at', { ascending: false })
         .limit(1);
 
-      // Calculate days since last activity
-      const lastDate = lastSession?.[0]?.created_at
-        ? new Date(lastSession[0].created_at)
+      let lastDate: Date | null = lastCompletion?.[0]?.completed_at
+        ? new Date(lastCompletion[0].completed_at)
         : null;
+
+      if (!lastDate) {
+        const { data: lastSession } = await supabase
+          .from('scheduled_sessions')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        lastDate = lastSession?.[0]?.created_at
+          ? new Date(lastSession[0].created_at)
+          : null;
+      }
 
       if (!lastDate) continue;
 
@@ -200,6 +258,27 @@ Deno.serve(async (req: Request) => {
       );
 
       if (daysSince < 2) continue;
+
+      // ── Campaign cap: max N pushes per dormancy period ───────────────
+      //
+      // campaign_id is keyed to the user's last-activity date, so it is
+      // stable for the duration of this dormancy period. When the user
+      // books a new session, lastDate moves forward → new campaign_id →
+      // cap resets naturally. No time window needed.
+      const campaignId =
+        REENGAGEMENT_CAMPAIGN_ID_PREFIX +
+        lastDate.toISOString().slice(0, 10); // YYYY-MM-DD of last activity
+
+      const { count: campaignCount } = await supabase
+        .from('notification_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('campaign_id', campaignId);
+
+      if ((campaignCount ?? 0) >= MAX_PUSHES_PER_CAMPAIGN) {
+        skippedCampaignCap++;
+        continue;
+      }
 
       let pool: string[];
       if (daysSince === 2) {
@@ -217,19 +296,30 @@ Deno.serve(async (req: Request) => {
         user_id: user.id,
         type: 'C',
         message: msg,
+        campaign_id: campaignId,
+        source: 'push',
       });
 
       sentCount++;
     }
 
     return new Response(
-      JSON.stringify({ success: true, sent: sentCount }),
+      JSON.stringify({
+        success: true,
+        sent: sentCount,
+        skipped: {
+          quiet_hours: skippedQuiet,
+          prefs: skippedPrefs,
+          rate_limit: skippedRateLimit,
+          campaign_cap: skippedCampaignCap,
+        },
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
     console.error('send-push-notification error:', err);
     return new Response(
-      JSON.stringify({ error: err.message ?? 'Internal error' }),
+      JSON.stringify({ error: (err as Error).message ?? 'Internal error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

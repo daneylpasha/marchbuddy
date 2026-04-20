@@ -27,7 +27,7 @@ import { useScheduleStore, type ScheduledSession } from '../../store/scheduleSto
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import {
   scheduleSessionReminder,
-  cancelScheduledNotification,
+  cancelAllForSession,
 } from '../../services/notificationService';
 import { colors, fonts, spacing } from '../../theme';
 
@@ -129,21 +129,22 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
       );
 
       if (existingSchedule) {
-        // Cancel old local notification if it exists
-        if (existingSchedule.local_notification_id) {
-          await cancelScheduledNotification(existingSchedule.local_notification_id);
-        }
+        // Defensive cancel: wipes everything on-device for this
+        // sessionKey, even if local_notification_id was null (fixes
+        // the ghost-notification race from the Phase-1 audit).
+        await cancelAllForSession(sessionKey, existingSchedule.local_notification_id);
+
         await updateSchedule(
           existingSchedule.id,
           sessionKey,
           sessionTitle,
           scheduledAt,
         );
-        // Schedule new local notification
         const notifId = await scheduleSessionReminder(
           sessionTitle,
           scheduledAt,
           userName || 'there',
+          sessionKey,
         );
         if (notifId) {
           setLocalNotificationId(existingSchedule.id, notifId);
@@ -152,18 +153,20 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
         // Cancel any existing schedule for this session to prevent duplicates
         const existing = getScheduleForSession(sessionKey);
         if (existing) {
-          if (existing.local_notification_id) {
-            await cancelScheduledNotification(existing.local_notification_id);
-          }
+          await cancelAllForSession(sessionKey, existing.local_notification_id);
           await cancelSchedule(existing.id);
+        } else {
+          // No DB row but there may still be device-level ghosts —
+          // sweep anything matching this sessionKey just in case.
+          await cancelAllForSession(sessionKey);
         }
 
         const row = await scheduleSession(sessionKey, sessionTitle, scheduledAt);
-        // Schedule local notification (Type A)
         const notifId = await scheduleSessionReminder(
           sessionTitle,
           scheduledAt,
           userName || 'there',
+          sessionKey,
         );
         if (notifId) {
           setLocalNotificationId(row.id, notifId);
@@ -188,10 +191,9 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
     if (existingSchedule) {
       setIsSubmitting(true);
       try {
-        // Cancel the local notification
-        if (existingSchedule.local_notification_id) {
-          await cancelScheduledNotification(existingSchedule.local_notification_id);
-        }
+        // Defensive cancel — wipes stored IDs and any stragglers
+        // matching this sessionKey.
+        await cancelAllForSession(sessionKey, existingSchedule.local_notification_id);
         await cancelSchedule(existingSchedule.id);
         modalRef.current?.dismiss();
       } catch (e) {
