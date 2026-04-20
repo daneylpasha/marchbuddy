@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../api/supabase';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, hasLocalGuestDataToMigrate } from '../store/authStore';
 import { useCoachSetupStore } from '../store/coachSetupStore';
 import { useRunProgressStore } from '../store/runProgressStore';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -10,6 +10,7 @@ export const authService = {
   async signInWithGoogleOAuth(): Promise<{ success: boolean; error?: string }> {
     try {
       const redirectTo = 'marchbuddy://auth/callback';
+      const hasGuestData = hasLocalGuestDataToMigrate();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -48,7 +49,12 @@ export const authService = {
 
       if (sessionData.session) {
         useAuthStore.getState().setSession(sessionData.session);
-        await this.syncLocalDataToSupabase(sessionData.session.user.id);
+        // Only migrate when local guest data actually exists. Prevents a
+        // plain re-signin from upserting reset/default values on top of the
+        // user's real server data.
+        if (hasGuestData) {
+          await this.syncLocalDataToSupabase(sessionData.session.user.id);
+        }
         return { success: true };
       }
 
@@ -88,23 +94,34 @@ export const authService = {
       }
 
       const p = runProgressStore.progress;
-      const { error: progressError } = await supabase
-        .from('user_run_progress')
-        .upsert({
-          user_id: userId,
-          current_level: p?.currentLevel ?? 1,
-          sessions_at_current_level: p?.sessionsAtCurrentLevel ?? 0,
-          total_sessions_completed: p?.totalSessionsCompleted ?? 0,
-          total_distance_km: p?.totalDistanceKm ?? 0,
-          total_duration_minutes: p?.totalDurationMinutes ?? 0,
-          longest_run_minutes: p?.longestRunMinutes ?? 0,
-          current_streak_days: p?.currentStreakDays ?? 0,
-          best_streak_days: p?.bestStreakDays ?? 0,
-          last_session_date: p?.lastSessionDate ?? null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+      // Only upsert run_progress when the local store actually has meaningful
+      // data to migrate. Otherwise we'd overwrite existing server data with
+      // post-reset defaults.
+      const hasLocalProgress = !!p && (
+        (p.totalSessionsCompleted ?? 0) > 0 ||
+        (p.currentLevel ?? 1) > 1 ||
+        (p.totalDistanceKm ?? 0) > 0 ||
+        (p.currentStreakDays ?? 0) > 0
+      );
+      if (hasLocalProgress) {
+        const { error: progressError } = await supabase
+          .from('user_run_progress')
+          .upsert({
+            user_id: userId,
+            current_level: p.currentLevel ?? 1,
+            sessions_at_current_level: p.sessionsAtCurrentLevel ?? 0,
+            total_sessions_completed: p.totalSessionsCompleted ?? 0,
+            total_distance_km: p.totalDistanceKm ?? 0,
+            total_duration_minutes: p.totalDurationMinutes ?? 0,
+            longest_run_minutes: p.longestRunMinutes ?? 0,
+            current_streak_days: p.currentStreakDays ?? 0,
+            best_streak_days: p.bestStreakDays ?? 0,
+            last_session_date: p.lastSessionDate ?? null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
 
-      if (progressError) console.error('Error syncing progress:', progressError);
+        if (progressError) console.error('Error syncing progress:', progressError);
+      }
 
       // Sync guest scheduled sessions
       const scheduleStore = useScheduleStore.getState();

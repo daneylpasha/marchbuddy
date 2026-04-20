@@ -28,6 +28,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { useNotificationListener } from './src/hooks/useNotificationListener';
 import { useNotificationStore } from './src/store/notificationStore';
 import { registerForPushNotifications, refreshPushToken } from './src/services/notificationService';
+import { useNotificationPrefsStore } from './src/store/notificationPrefsStore';
 import { useAuthStore } from './src/store/authStore';
 import { useNetworkStore } from './src/store/networkStore';
 import { offlineQueue } from './src/services/offlineQueue';
@@ -83,9 +84,12 @@ export default function App() {
   }, []);
 
   // Register/refresh push token after login (ensures token is saved to Supabase)
+  // and hydrate notification prefs from the server so the client can
+  // pre-check them before scheduling local reminders.
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
       registerForPushNotifications();
+      useNotificationPrefsStore.getState().hydrateFromServer();
     }
   }, [isAuthenticated, isGuest]);
 

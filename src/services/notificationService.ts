@@ -2,6 +2,11 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useNotificationStore } from '../store/notificationStore';
 import { supabase } from '../api/supabase';
+import {
+  scheduleForSession as managerScheduleForSession,
+  cancelByIds as managerCancelByIds,
+  cancelForSession as managerCancelForSession,
+} from './notifications/NotificationManager';
 
 // Configure notification behavior — shows banner even when app is in foreground
 Notifications.setNotificationHandler({
@@ -34,6 +39,19 @@ async function ensureChannels(): Promise<void> {
     importance: Notifications.AndroidImportance.DEFAULT,
     sound: 'default',
   });
+}
+
+/**
+ * Best-effort device timezone (IANA, e.g. "Asia/Karachi"). Used by the
+ * push Edge Function so quiet hours can be evaluated in user local time
+ * instead of UTC. Falls back to 'UTC' if unavailable.
+ */
+function getDeviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
 }
 
 /**
@@ -72,7 +90,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
     useNotificationStore.getState().setExpoPushToken(token);
 
-    // Save to Supabase profile
+    // Save to Supabase profile (include device timezone so server-side
+    // quiet hours work for this user).
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase
@@ -80,6 +99,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
         .update({
           expo_push_token: token,
           notification_permission: 'granted',
+          timezone: getDeviceTimezone(),
         })
         .eq('id', user.id);
     }
@@ -108,17 +128,26 @@ export async function refreshPushToken(): Promise<void> {
     const newToken = tokenData.data;
     const currentToken = useNotificationStore.getState().expoPushToken;
 
-    // Only update if token changed
+    // Only update if token changed. We always refresh timezone though —
+    // cheap and handles the case where the user travels or changes
+    // device locale between sessions.
+    const { data: { user } } = await supabase.auth.getUser();
     if (newToken && newToken !== currentToken) {
       useNotificationStore.getState().setExpoPushToken(newToken);
-
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase
           .from('profiles')
-          .update({ expo_push_token: newToken })
+          .update({
+            expo_push_token: newToken,
+            timezone: getDeviceTimezone(),
+          })
           .eq('id', user.id);
       }
+    } else if (user) {
+      await supabase
+        .from('profiles')
+        .update({ timezone: getDeviceTimezone() })
+        .eq('id', user.id);
     }
   } catch {
     // Silently fail — simulators and some devices can't get tokens
@@ -147,79 +176,36 @@ export async function clearPushToken(): Promise<void> {
 
 /**
  * Schedule local notifications for a session reminder (Type A).
- * Schedules:
- *   1. At the exact scheduled time
- *   2. 30 minutes before (if far enough in the future)
+ * Delegates to NotificationManager so that prefs, dedup, and the
+ * sessionKey payload are all centralized.
  *
- * Returns comma-separated notification IDs for cancellation.
+ * Signature note: sessionKey was added for deep-linking but is
+ * optional to keep older call-sites working during the migration.
+ * New code should always pass it.
  */
 export async function scheduleSessionReminder(
   sessionTitle: string,
   scheduledAt: Date,
   userName: string,
+  sessionKey?: string,
 ): Promise<string | null> {
-  // Ensure permission
+  // Ensure permission prompt still happens from this entry point, as
+  // callers relied on it previously.
   let { permissionStatus } = useNotificationStore.getState();
   if (permissionStatus !== 'granted') {
     permissionStatus = await requestPermissions();
     if (permissionStatus !== 'granted') return null;
   }
 
-  await ensureChannels();
-
-  const now = new Date();
-  const ids: string[] = [];
-  const channelId = Platform.OS === 'android' ? 'session-reminders' : undefined;
-
-  // 1. Notification at the exact scheduled time
-  if (scheduledAt > now) {
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Time for ${sessionTitle}!`,
-          body: `${userName}, your session is starting now. Let's go!`,
-          data: { type: 'A', sessionTitle },
-          sound: true,
-          ...(channelId && { channelId }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: scheduledAt,
-          channelId,
-        },
-      });
-      ids.push(id);
-    } catch (error) {
-      console.error('Failed to schedule session notification:', error);
-    }
-  }
-
-  // 2. Reminder 30 minutes before (only if >30 min away)
-  const earlyDate = new Date(scheduledAt.getTime() - 30 * 60 * 1000);
-  if (earlyDate > now) {
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Session Reminder',
-          body: `Hey ${userName}! Your ${sessionTitle} starts in 30 minutes. Lace up!`,
-          data: { type: 'A', sessionTitle },
-          sound: true,
-          ...(channelId && { channelId }),
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: earlyDate,
-          channelId,
-        },
-      });
-      ids.push(id);
-    } catch (error) {
-      console.error('Failed to schedule early reminder:', error);
-    }
-  }
-
-  // Return all IDs joined — so we can cancel all of them later
-  return ids.length > 0 ? ids.join(',') : null;
+  return managerScheduleForSession({
+    // Fallback: derive a stable key from title+time if the caller
+    // didn't supply one. Old code paths won't break, but they also
+    // won't get the dedup benefit — fine for the transition window.
+    sessionKey: sessionKey ?? `${sessionTitle}:${scheduledAt.toISOString()}`,
+    sessionTitle,
+    scheduledAt,
+    userName,
+  });
 }
 
 /**
@@ -229,14 +215,19 @@ export async function scheduleSessionReminder(
 export async function cancelScheduledNotification(
   notificationId: string,
 ): Promise<void> {
-  const ids = notificationId.split(',');
-  for (const id of ids) {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(id.trim());
-    } catch (error) {
-      console.error('Failed to cancel notification:', error);
-    }
-  }
+  await managerCancelByIds(notificationId);
+}
+
+/**
+ * Defensively cancel everything scheduled for a given sessionKey.
+ * Use this when re-scheduling to prevent ghost notifications from
+ * prior rows that may have lost their stored ID.
+ */
+export async function cancelAllForSession(
+  sessionKey: string,
+  storedIds?: string | null,
+): Promise<void> {
+  await managerCancelForSession(sessionKey, storedIds);
 }
 
 /**

@@ -12,12 +12,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { colors, fonts, spacing, touchTarget } from "../../theme";
 import {
   useCoachSetupStore,
   type ActivityLevel,
   type TimePreference,
 } from "../../store/coachSetupStore";
+import { useAuthStore } from "../../store/authStore";
 import { generateCoachReply } from "../../services/onboardingApi";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -105,6 +107,7 @@ const thinkingStyles = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CoachSetupScreen() {
+  const navigation = useNavigation<any>();
   const [currentStep, setCurrentStep] = useState<ScreenStep>("name");
   const [nameInput, setNameInput] = useState("");
   const [coachReplyText, setCoachReplyText] = useState("");
@@ -303,9 +306,22 @@ export default function CoachSetupScreen() {
 
   const goBack = () => {
     switch (currentStep) {
-      case "name":
-        // First step — no back navigation
+      case "name": {
+        // First step — exit back to the login screen.
+        // Guest re-entry flow (LoginScreen standalone): exitGuestMode() causes
+        // AppNavigator to re-render to LoginScreen via !isAuthenticated.
+        // First-time intro flow (IntroStack): also navigate to the 'Auth'
+        // screen, since LoginScreen was replaced in the stack when guest mode
+        // was entered.
+        const { isGuest: inGuest, exitGuestMode } = useAuthStore.getState();
+        if (inGuest) exitGuestMode();
+        try {
+          navigation?.navigate?.("Auth");
+        } catch {
+          // Screen not in this navigator — AppNavigator handles re-render
+        }
         break;
+      }
       case "activity":
         transitionTo("name");
         break;

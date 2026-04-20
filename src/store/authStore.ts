@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import type { User } from '../types';
 import { useProfileStore } from './profileStore';
+import { offlineCache } from '../services/offlineCache';
 
 interface AuthState {
   user: User | null;
@@ -28,6 +29,16 @@ const mapSupabaseUser = (supabaseUser: { id: string; email?: string; created_at:
   email: supabaseUser.email ?? '',
   createdAt: supabaseUser.created_at,
 });
+
+// Detect guest data that should migrate to a real account. Uses guestId +
+// setupComplete so the migration works even after `exitGuestMode` has been
+// called (e.g. from the Settings "Create Account" flow, which exits guest
+// mode before the user actually signs in).
+export const hasLocalGuestDataToMigrate = (): boolean => {
+  const { useCoachSetupStore } = require('./coachSetupStore');
+  const setup = useCoachSetupStore.getState();
+  return !!setup.guestId && !!setup.setupComplete;
+};
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -60,7 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               .from('user_onboarding')
               .select('onboarding_completed_at, user_name, activity_level, preferred_time')
               .eq('user_id', session.user.id)
-              .single();
+              .maybeSingle();
             if (data?.onboarding_completed_at) {
               useCoachSetupStore.setState({
                 setupComplete: true,
@@ -84,6 +95,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (email, password) => {
     set({ isLoading: true });
+    const hasGuestData = hasLocalGuestDataToMigrate();
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       set({ isLoading: false });
@@ -92,24 +104,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Session may be null if email confirmation is required
     if (data.session) {
       get().setSession(data.session);
-      // Migrate any local guest data to Supabase
-      const { authService } = require('../services/authService');
-      authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
+      if (hasGuestData) {
+        const { authService } = require('../services/authService');
+        authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
+      }
     }
     set({ isLoading: false });
   },
 
   signIn: async (email, password) => {
     set({ isLoading: true });
+    const hasGuestData = hasLocalGuestDataToMigrate();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       set({ isLoading: false });
       throw error;
     }
     get().setSession(data.session);
-    // Migrate any local guest data to Supabase
-    const { authService } = require('../services/authService');
-    authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
+    if (hasGuestData) {
+      const { authService } = require('../services/authService');
+      authService.syncLocalDataToSupabase(data.session.user.id).catch(console.error);
+    }
     set({ isLoading: false });
   },
 
@@ -150,6 +165,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { useNutritionStore } = require('./nutritionStore');
     const { useWaterStore } = require('./waterStore');
     const { useChatStore } = require('./chatStore');
+    const { useScheduleStore } = require('./scheduleStore');
 
     useCoachSetupStore.getState().resetSetup();
     useRunProgressStore.getState().resetProgress();
@@ -159,6 +175,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
     useWaterStore.setState({ todayWaterLog: null });
     useChatStore.setState({ messages: [], isAiTyping: false });
+    useScheduleStore.setState({ scheduledSessions: [] });
+
+    // Clear persisted cache so a re-login starts from fresh server data
+    await offlineCache.clearAll();
 
     set({ user: null, session: null, isAuthenticated: false, isGuest: false, isLoading: false });
   },
@@ -187,6 +207,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { useNutritionStore } = require('./nutritionStore');
       const { useWaterStore } = require('./waterStore');
       const { useChatStore } = require('./chatStore');
+      const { useScheduleStore } = require('./scheduleStore');
 
       useCoachSetupStore.getState().resetSetup();
       useRunProgressStore.getState().resetProgress();
@@ -196,6 +217,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
       useWaterStore.setState({ todayWaterLog: null });
       useChatStore.setState({ messages: [], isAiTyping: false });
+      useScheduleStore.setState({ scheduledSessions: [] });
+
+      await offlineCache.clearAll();
 
       // Sign out locally
       await supabase.auth.signOut();

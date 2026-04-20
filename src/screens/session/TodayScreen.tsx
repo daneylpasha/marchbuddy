@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { useScheduleStore } from '../../store/scheduleStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { sessionApi } from '../../services/sessionApi';
 import { SessionPlan } from '../../types/session';
 import { RecommendedSessionCard } from './components/RecommendedSessionCard';
@@ -121,6 +122,39 @@ export default function TodayScreen({ navigation }: Props) {
     setSelectedPlan(plan);
     navigation.navigate('SessionDetail');
   };
+
+  // ── Notification deep-link ──────────────────────────────────────────
+  //
+  // When the user taps a session reminder, the notification listener
+  // records {sessionKey, type} in notificationStore. If today's options
+  // include that plan, auto-open its detail screen — otherwise we stay
+  // on Today. Either way the tap is consumed so we don't re-trigger
+  // on the next focus.
+  const lastNotificationTap = useNotificationStore((s) => s.lastNotificationTap);
+  const clearNotificationTap = useNotificationStore((s) => s.clearNotificationTap);
+  useEffect(() => {
+    const tapKey = lastNotificationTap?.sessionKey;
+    if (!tapKey || !todayOptions) return;
+
+    // Only honour taps within the last 2 minutes — avoids re-firing
+    // the deep-link on every mount long after the user interacted.
+    const ts = lastNotificationTap?.timestamp ?? 0;
+    if (Date.now() - ts > 2 * 60 * 1000) {
+      clearNotificationTap();
+      return;
+    }
+
+    const match =
+      (todayOptions.recommended?.id === tapKey ? todayOptions.recommended : null) ??
+      todayOptions.alternatives.find((a) => a.id === tapKey) ??
+      null;
+
+    if (match) {
+      setSelectedPlan(match);
+      navigation.navigate('SessionDetail');
+    }
+    clearNotificationTap();
+  }, [lastNotificationTap, todayOptions, setSelectedPlan, navigation, clearNotificationTap]);
 
   const openSchedule = (plan: SessionPlan) => {
     const existing = getScheduleForSession(plan.id);
