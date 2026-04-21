@@ -12,6 +12,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   isGuest: boolean;
+  isRestoringSession: boolean;
 
   setSession: (session: Session | null) => void;
   signUp: (email: string, password: string) => Promise<void>;
@@ -47,50 +48,105 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   isAuthenticated: false,
   isGuest: false,
+  isRestoringSession: false,
 
   setSession: (session) => {
+    const hasUser = !!session?.user;
+    // If there is local guest data to migrate, the calling flow will upload it
+    // via syncLocalDataToSupabase. Skip the restore-from-server step so we do
+    // not clobber the local guest data before the sync runs.
+    const needsMigration = hasUser && hasLocalGuestDataToMigrate();
+
     set({
       session,
       user: session?.user ? mapSupabaseUser(session.user) : null,
       isAuthenticated: !!session,
       isGuest: false,
+      isRestoringSession: hasUser && !needsMigration,
     });
 
-    // Auto-load profile and restore setup state when session is set
-    if (session?.user) {
-      useProfileStore.getState().fetchProfile(session.user.id);
-
-      // Restore setupComplete from server for returning users
-      const { useCoachSetupStore } = require('./coachSetupStore');
-      const { useSettingsStore } = require('./settingsStore');
-      const setupStore = useCoachSetupStore.getState();
-      if (!setupStore.setupComplete) {
-        (async () => {
-          try {
-            const { data } = await supabase
-              .from('user_onboarding')
-              .select('onboarding_completed_at, user_name, activity_level, preferred_time')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-            if (data?.onboarding_completed_at) {
-              useCoachSetupStore.setState({
-                setupComplete: true,
-                setupData: {
-                  ...useCoachSetupStore.getState().setupData,
-                  userName: data.user_name || '',
-                  activityLevel: data.activity_level || null,
-                  timePreference: data.preferred_time || null,
-                  completedAt: data.onboarding_completed_at,
-                },
-              });
-              useSettingsStore.getState().setHasSeenIntro(true);
-            }
-          } catch (err) {
-            console.error('Error restoring setup:', err);
-          }
-        })();
-      }
+    if (!hasUser || needsMigration) {
+      return;
     }
+
+    // Returning user (no local guest data) — hydrate all user state from server
+    // so streak, level, and onboarding data survive sign-out → sign-in cycles.
+    (async () => {
+      try {
+        await useProfileStore.getState().fetchProfile(session.user.id);
+
+        const { useCoachSetupStore } = require('./coachSetupStore');
+        const { useSettingsStore } = require('./settingsStore');
+
+        const [onboardingRes, progressRes] = await Promise.all([
+          supabase
+            .from('user_onboarding')
+            .select(
+              'onboarding_completed_at, user_name, activity_level, preferred_time, trigger_statement, past_failure_reason, primary_fear, practical_obstacles, anchor_person, success_vision, start_preference',
+            )
+            .eq('user_id', session.user.id)
+            .maybeSingle(),
+          supabase
+            .from('user_run_progress')
+            .select(
+              'current_level, sessions_at_current_level, total_sessions_completed, total_distance_km, total_duration_minutes, longest_run_minutes, current_streak_days, best_streak_days, last_session_date',
+            )
+            .eq('user_id', session.user.id)
+            .maybeSingle(),
+        ]);
+
+        const onboardingData = onboardingRes.data;
+        if (onboardingData?.onboarding_completed_at) {
+          const current = useCoachSetupStore.getState();
+          useCoachSetupStore.setState({
+            setupComplete: true,
+            setupData: {
+              ...current.setupData,
+              userName: onboardingData.user_name ?? current.setupData.userName,
+              activityLevel: onboardingData.activity_level ?? current.setupData.activityLevel,
+              timePreference: onboardingData.preferred_time ?? current.setupData.timePreference,
+              triggerStatement:
+                onboardingData.trigger_statement ?? current.setupData.triggerStatement,
+              pastFailureReason:
+                onboardingData.past_failure_reason ?? current.setupData.pastFailureReason,
+              primaryFear: onboardingData.primary_fear ?? current.setupData.primaryFear,
+              obstacles: onboardingData.practical_obstacles ?? current.setupData.obstacles,
+              anchorPerson: onboardingData.anchor_person ?? current.setupData.anchorPerson,
+              successVision: onboardingData.success_vision ?? current.setupData.successVision,
+              preferredStartDate:
+                onboardingData.start_preference ?? current.setupData.preferredStartDate,
+              completedAt: onboardingData.onboarding_completed_at,
+            },
+          });
+          useSettingsStore.getState().setHasSeenIntro(true);
+        }
+
+        const progressData = progressRes.data;
+        if (progressData) {
+          const { useRunProgressStore } = require('./runProgressStore');
+          const { getWeekStartDate } = require('../utils/sessionUtils');
+          useRunProgressStore.getState().setProgress({
+            userId: session.user.id,
+            currentLevel: progressData.current_level ?? 1,
+            sessionsAtCurrentLevel: progressData.sessions_at_current_level ?? 0,
+            totalSessionsCompleted: progressData.total_sessions_completed ?? 0,
+            totalDistanceKm: progressData.total_distance_km ?? 0,
+            totalDurationMinutes: progressData.total_duration_minutes ?? 0,
+            longestRunMinutes: progressData.longest_run_minutes ?? 0,
+            currentStreakDays: progressData.current_streak_days ?? 0,
+            bestStreakDays: progressData.best_streak_days ?? 0,
+            lastSessionDate: progressData.last_session_date ?? null,
+            sessionsThisWeek: 0,
+            minutesThisWeek: 0,
+            weekStartDate: getWeekStartDate(),
+          });
+        }
+      } catch (err) {
+        console.error('Error restoring session:', err);
+      } finally {
+        set({ isRestoringSession: false });
+      }
+    })();
   },
 
   signUp: async (email, password) => {
