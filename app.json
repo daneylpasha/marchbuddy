@@ -10,6 +10,9 @@
     "newArchEnabled": true,
     "scheme": "marchbuddy",
     "splash": {
+      "image": "./assets/splash-empty.png",
+      "imageWidth": 1,
+      "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
@@ -55,7 +58,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#000000"
+          "image": "./assets/splash-empty.png",
+          "imageWidth": 1,
+          "backgroundColor": "#000000",
+          "resizeMode": "contain"
         }
       ],
       "expo-secure-store",
