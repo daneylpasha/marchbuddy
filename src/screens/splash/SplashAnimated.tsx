@@ -2,8 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Text-based logo replaced with icon.png asset
-const iconSource = require('../../../assets/icon.png');
+// Transparent-background variant of the logo so it blends over the gradient
+// without showing the solid-black bounding box that icon.png has baked in.
+const iconSource = require('../../../assets/splash-logo-transparent.png');
 
 interface Props {
   hiding: boolean;

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Image, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../store/coachSetupStore';
 import { useAuthStore } from '../store/authStore';
@@ -9,6 +11,37 @@ import CoachSetupScreen from '../screens/onboarding/CoachSetupScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import MainTabNavigator from './MainTabNavigator';
 import SplashAnimated from '../screens/splash/SplashAnimated';
+
+const restoreIconSource = require('../../assets/splash-logo-transparent.png');
+
+// Static splash-styled screen shown while server state is re-hydrating after a
+// mid-session sign-in. Prevents the brief flash of the name/coach-setup screen
+// caused by `setupComplete` not yet being restored from the server.
+function RestoringSessionView() {
+  return (
+    <View style={restoreStyles.container}>
+      <LinearGradient
+        colors={['transparent', 'transparent', '#1a1a1a', '#212020']}
+        locations={[0, 0.6, 0.85, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <Image source={restoreIconSource} style={restoreStyles.icon} resizeMode="contain" />
+    </View>
+  );
+}
+
+const restoreStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  icon: {
+    width: 350,
+    height: 350,
+  },
+});
 
 // ─── Param lists ─────────────────────────────────────────────────────────────
 
@@ -64,6 +97,7 @@ export default function AppNavigator() {
 
   const setupComplete = useCoachSetupStore((s) => s.setupComplete);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isRestoringSession = useAuthStore((s) => s.isRestoringSession);
   const hasSeenIntro = useSettingsStore((s) => s.hasSeenIntro);
 
   // Minimum splash display time
@@ -106,7 +140,10 @@ export default function AppNavigator() {
   }, []);
 
   // Splash starts hiding only when all stores hydrated + auth ready + min time
-  const splashHiding = isHydrated && isSettingsHydrated && isAuthReady && minTimeElapsed;
+  // + server state restored. Blocks dismissal during the restore window at
+  // cold-start so we never flash the name screen before setupComplete rehydrates.
+  const splashHiding =
+    isHydrated && isSettingsHydrated && isAuthReady && minTimeElapsed && !isRestoringSession;
 
   if (!splashGone) {
     return (
@@ -115,6 +152,13 @@ export default function AppNavigator() {
         onHidden={() => setSplashGone(true)}
       />
     );
+  }
+
+  // Mid-session sign-in: block navigation decisions until server state restores
+  // so we don't briefly render the coach-setup (name) screen before setupComplete
+  // is re-hydrated from the server.
+  if (isAuthenticated && isRestoringSession) {
+    return <RestoringSessionView />;
   }
 
   // First-time user: show welcome → feature onboarding → auth → coach setup
