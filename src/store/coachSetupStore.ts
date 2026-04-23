@@ -162,10 +162,17 @@ export const useCoachSetupStore = create<CoachSetupState>()(
     const { useSettingsStore } = require('./settingsStore');
     useSettingsStore.getState().setHasSeenIntro(true);
 
+    // Only mint a guestId for actual guests (no Supabase session). For
+    // authenticated users, guestId MUST stay null — otherwise a subsequent
+    // sign-in misidentifies their local state as "guest with data to
+    // migrate" and triggers the conflict-resolution dialog ("Use Existing
+    // Account / Keep Guest") even though they're the real account owner.
+    const { useAuthStore } = require('./authStore');
+    const isAuthenticatedUser = !!useAuthStore.getState().session;
+
     set((s) => ({
       setupComplete: true,
-      // Generate a stable guest ID on first completion if one doesn't exist yet
-      guestId: s.guestId ?? `guest-${Date.now()}`,
+      guestId: isAuthenticatedUser ? null : (s.guestId ?? `guest-${Date.now()}`),
       setupData: { ...s.setupData, completedAt: new Date().toISOString() },
     }));
   },

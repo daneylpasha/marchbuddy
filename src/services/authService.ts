@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../api/supabase';
-import { useAuthStore, hasLocalGuestDataToMigrate } from '../store/authStore';
+import { useAuthStore } from '../store/authStore';
 import { useCoachSetupStore } from '../store/coachSetupStore';
 import { useRunProgressStore } from '../store/runProgressStore';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -10,13 +10,22 @@ export const authService = {
   async signInWithGoogleOAuth(): Promise<{ success: boolean; error?: string }> {
     try {
       const redirectTo = 'marchbuddy://auth/callback';
-      const hasGuestData = hasLocalGuestDataToMigrate();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
           skipBrowserRedirect: true,
+          // Force Google to show the account picker every time instead of
+          // silently reusing whichever account is already signed in on the
+          // device. Without this, a user who has multiple Gmail accounts
+          // can't pick a different one — Google auto-picks the default
+          // and returns a session for that email immediately. With
+          // prompt=select_account, Google always asks "which account?"
+          // so users can register with a second email, switch accounts, etc.
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
 
@@ -48,13 +57,12 @@ export const authService = {
       if (sessionError) throw sessionError;
 
       if (sessionData.session) {
-        useAuthStore.getState().setSession(sessionData.session);
-        // Only migrate when local guest data actually exists. Prevents a
-        // plain re-signin from upserting reset/default values on top of the
-        // user's real server data.
-        if (hasGuestData) {
-          await this.syncLocalDataToSupabase(sessionData.session.user.id);
-        }
+        // Do NOT call authStore.setSession here. Supabase's own
+        // onAuthStateChange listener (wired up in authStore.initialize) fires
+        // SIGNED_IN on successful setSession and drives the unified resolver.
+        // Calling setSession here in addition would spawn a second concurrent
+        // resolver and race with the conflict-rollback flow for guests who
+        // try to sign in to an already-registered email.
         return { success: true };
       }
 
@@ -67,6 +75,35 @@ export const authService = {
 
   async syncLocalDataToSupabase(userId: string): Promise<void> {
     try {
+      // SAFETY GUARD: never overwrite an account that already has onboarding
+      // data on the server. The primary caller (authStore.setSession) already
+      // checks for this, but we double-check here in case this method is ever
+      // called from another code path. Without this guard, signing in with
+      // Google using a previously-registered email while local guest data
+      // exists would upsert the new guest's answers on top of the user's
+      // real account — silently corrupting their progress.
+      const { data: existing, error: existingError } = await supabase
+        .from('user_onboarding')
+        .select('onboarding_completed_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (existingError) {
+        // Loud error so missing-table / RLS issues are obvious in dev. The
+        // user_onboarding table must exist in the project — run the
+        // migration in supabase/migrations/*_user_onboarding_table.sql if
+        // this fires with code "PGRST205" or "42P01" (table not found).
+        console.error(
+          '[syncLocalDataToSupabase] Pre-sync check FAILED — onboarding will NOT be saved to server. Error:',
+          existingError,
+        );
+        return;
+      }
+      if (existing?.onboarding_completed_at) {
+        console.log('Server already has onboarding data — skipping guest-data migration.');
+        return;
+      }
+
       const coachSetupStore = useCoachSetupStore.getState();
       const runProgressStore = useRunProgressStore.getState();
 
@@ -90,7 +127,14 @@ export const authService = {
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
 
-        if (onboardingError) console.error('Error syncing onboarding:', onboardingError);
+        if (onboardingError) {
+          console.error(
+            '[syncLocalDataToSupabase] FAILED to upsert user_onboarding — re-signin will not restore data. Error:',
+            onboardingError,
+          );
+        } else {
+          console.log('[syncLocalDataToSupabase] user_onboarding upsert OK for user', userId);
+        }
       }
 
       const p = runProgressStore.progress;
@@ -160,6 +204,51 @@ export const authService = {
       console.log('Local data synced to Supabase');
     } catch (error) {
       console.error('Error syncing data:', error);
+    }
+  },
+
+  /**
+   * Push the user's current run progress (level, streak, totals) to the
+   * server's user_run_progress table. Call this after every session
+   * completion / level increment so a sign-out → sign-in cycle restores the
+   * user's training history. Without it, runs only live in AsyncStorage and
+   * are wiped on sign-out — the next sign-in finds an empty server row and
+   * the user appears to start from Level 1, 0 sessions completed.
+   *
+   * Safe for guests too: if there's no Supabase session we early-return
+   * (guests can't write to user_run_progress because of RLS).
+   */
+  async pushRunProgress(): Promise<void> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return; // Guest or signed-out — skip
+
+      const { useRunProgressStore } = require('../store/runProgressStore');
+      const p = useRunProgressStore.getState().progress;
+      if (!p) return;
+
+      const { error } = await supabase
+        .from('user_run_progress')
+        .upsert(
+          {
+            user_id: session.user.id,
+            current_level: p.currentLevel ?? 1,
+            sessions_at_current_level: p.sessionsAtCurrentLevel ?? 0,
+            total_sessions_completed: p.totalSessionsCompleted ?? 0,
+            total_distance_km: p.totalDistanceKm ?? 0,
+            total_duration_minutes: p.totalDurationMinutes ?? 0,
+            longest_run_minutes: p.longestRunMinutes ?? 0,
+            current_streak_days: p.currentStreakDays ?? 0,
+            best_streak_days: p.bestStreakDays ?? 0,
+            last_session_date: p.lastSessionDate ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+
+      if (error) console.error('pushRunProgress upsert error:', error);
+    } catch (err) {
+      console.error('pushRunProgress failed:', err);
     }
   },
 

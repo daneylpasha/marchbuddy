@@ -398,7 +398,13 @@ export default function TodayScreen({ navigation }: Props) {
             {!isRestDay && streak > 0 && restDayDeclaredDate !== new Date().toISOString().split('T')[0] && (
               <Pressable
                 style={styles.restDayButton}
-                onPress={declareRestDay}
+                onPress={() => {
+                  declareRestDay();
+                  // Push updated progress to server so the rest-day-saved
+                  // streak survives sign-out → sign-in.
+                  const { authService } = require('../../services/authService');
+                  authService.pushRunProgress().catch(() => {});
+                }}
               >
                 <Ionicons name="bed-outline" size={16} color={colors.textTertiary} />
                 <Text style={styles.restDayButtonText}>

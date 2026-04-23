@@ -118,6 +118,17 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       // Force Today screen to refresh options next visit
       clearTodayOptions();
 
+      // Push the updated progress (level, streak, totals) to the server so
+      // it survives sign-out → sign-in cycles. Without this, completed runs
+      // only live in AsyncStorage; the next sign-in restores the user_name
+      // from the server but their level/streak/total-sessions reset to
+      // defaults, making it look like all their work was lost.
+      // Fire-and-forget — never blocks the user from advancing.
+      const { authService } = require('../../services/authService');
+      authService.pushRunProgress().catch((err: unknown) => {
+        console.warn('Failed to push run progress to server:', err);
+      });
+
       // Read state again after potential incrementLevel()
       const finalProgress = useRunProgressStore.getState().progress;
       const newLevel = finalProgress?.currentLevel ?? session.planLevel;
