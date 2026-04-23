@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -24,20 +24,16 @@ interface Props {
 
 export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
   const bottomSheetRef = useRef<EmailAuthSheetRef>(null);
 
   const isIntroFlow = !!navigation;
-  const prevAuthRef = useRef(isAuthenticated);
 
-  // Navigate to CoachSetup when auth succeeds in intro flow
-  useEffect(() => {
-    if (!prevAuthRef.current && isAuthenticated && isIntroFlow) {
-      navigation.replace('CoachSetup');
-    }
-    prevAuthRef.current = isAuthenticated;
-  }, [isAuthenticated, isIntroFlow, navigation]);
+  // Navigation after successful sign-in is handled declaratively by
+  // AppNavigator (via `isAuthenticated` + `setupComplete` + `hasSeenIntro`).
+  // The old imperative `navigation.replace('CoachSetup')` here raced against
+  // AppNavigator's re-render to RestoringSessionView, which was unmounting
+  // this screen and swallowing the navigation call.
 
   const handleGoogleSignIn = async () => {
     try {
@@ -59,8 +55,8 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleGuestMode = () => {
     enterGuestMode();
-    // For intro flow, the useEffect above handles navigation to CoachSetup
-    // For standalone, AppNavigator reactively shows the right screen
+    // Navigation is handled declaratively by AppNavigator — it watches
+    // `isAuthenticated` + `setupComplete` and renders the correct stack.
   };
 
   return (

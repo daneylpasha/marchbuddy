@@ -308,18 +308,29 @@ export default function CoachSetupScreen() {
     switch (currentStep) {
       case "name": {
         // First step — exit back to the login screen.
-        // Guest re-entry flow (LoginScreen standalone): exitGuestMode() causes
-        // AppNavigator to re-render to LoginScreen via !isAuthenticated.
-        // First-time intro flow (IntroStack): also navigate to the 'Auth'
-        // screen, since LoginScreen was replaced in the stack when guest mode
-        // was entered.
+        //
+        // Auth flow is purely declarative now: AppNavigator watches
+        // isAuthenticated/isGuest/setupComplete and renders the right stack.
+        // For a guest user, exitGuestMode() flips isAuthenticated -> false,
+        // which causes AppNavigator to re-render to the standalone LoginScreen.
+        // No imperative navigation needed.
+        //
+        // The previous code called navigation.navigate("Auth"), but since
+        // CoachSetupScreen is hosted inside OnboardingNavigator (which only
+        // contains a single "OnboardingChat" screen), that dispatch produced
+        // a "screen 'Auth' not handled by any navigator" warning every time
+        // the user pressed back from the name step. The try/catch did not
+        // suppress it because React Navigation logs the warning rather than
+        // throwing.
         const { isGuest: inGuest, exitGuestMode } = useAuthStore.getState();
-        if (inGuest) exitGuestMode();
-        try {
-          navigation?.navigate?.("Auth");
-        } catch {
-          // Screen not in this navigator — AppNavigator handles re-render
+        if (inGuest) {
+          exitGuestMode();
         }
+        // For a real (non-guest) authenticated user on the first setup step,
+        // back is a no-op — they need to finish onboarding before they can
+        // use the app. Showing the back button on this step for non-guest
+        // users is mostly a UX legacy; safer to do nothing than to silently
+        // sign them out.
         break;
       }
       case "activity":
@@ -435,8 +446,28 @@ export default function CoachSetupScreen() {
   };
 
   const handleReady = () => {
-    transitionTo(() => {
+    transitionTo(async () => {
       markSetupComplete();
+      // Persist onboarding to the server immediately for real authenticated
+      // users (not guests). Without this, users who sign in with Google or
+      // email/password and complete setup only have the data locally — the
+      // moment they sign out, all setup data is lost, and the next sign-in
+      // doesn't find anything on the server (server-wins path can't fire),
+      // so they're sent through CoachSetup AGAIN with empty fields.
+      // Guest users skip this branch; their data is migrated later by
+      // setSession's resolver when they actually sign up.
+      const { user, isGuest, session } = useAuthStore.getState();
+      if (session && user && !isGuest) {
+        try {
+          const { authService } = require('../../services/authService');
+          await authService.syncLocalDataToSupabase(user.id);
+        } catch (err) {
+          console.warn('Failed to sync onboarding to server:', err);
+          // Non-fatal — local state is already saved. The user can still
+          // use the app; their data will just not persist across re-signin
+          // until the next sync opportunity.
+        }
+      }
     });
   };
 

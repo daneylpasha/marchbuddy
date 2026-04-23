@@ -318,11 +318,17 @@ function toWeeklySummary(row: WeeklySummaryRow): WeeklySummary {
 
 export async function getProfile(userId: string): Promise<UserProfile | null> {
   try {
+    // Use maybeSingle() — returns { data: null, error: null } when no row
+    // exists. The previous .single() throws PGRST116 ("0 rows / cannot coerce
+    // to single JSON object") for new users (no profile created yet) and
+    // for users whose profile row was deleted from the DB. That noise
+    // showed up as a red console error every sign-in even though the
+    // missing profile is a perfectly normal state.
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
     if (error) throw error;
     return data ? toProfile(data as ProfileRow) : null;
   } catch (e) {

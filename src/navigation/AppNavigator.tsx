@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Alert, Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../store/coachSetupStore';
@@ -99,6 +99,38 @@ export default function AppNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isRestoringSession = useAuthStore((s) => s.isRestoringSession);
   const hasSeenIntro = useSettingsStore((s) => s.hasSeenIntro);
+  const pendingSignInConflict = useAuthStore((s) => s.pendingSignInConflict);
+
+  // Surface sign-in conflict (guest data exists + the email being signed
+  // into already has an account on the server) as a top-level confirmation.
+  // The user picks one of two paths:
+  //   • Use Existing Account → restore previous data, abandon guest progress
+  //   • Keep Guest           → cancel sign-in, stay in guest session
+  // Both paths land on a coherent state via the dedicated store actions.
+  useEffect(() => {
+    if (!pendingSignInConflict) return;
+    Alert.alert(
+      'Account Already Registered',
+      'This email already has an account. What would you like to do?\n\n' +
+        '• Use Existing Account — your previous progress will be restored. ' +
+        'Your current guest session will be discarded.\n\n' +
+        '• Keep Guest — cancel this sign-in and stay in guest mode with ' +
+        'your current progress.',
+      [
+        {
+          text: 'Keep Guest',
+          style: 'cancel',
+          onPress: () => useAuthStore.getState().resolveConflictKeepGuest(),
+        },
+        {
+          text: 'Use Existing Account',
+          style: 'destructive',
+          onPress: () => useAuthStore.getState().resolveConflictUseExistingAccount(),
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [pendingSignInConflict]);
 
   // Minimum splash display time
   useEffect(() => {
