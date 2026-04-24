@@ -587,6 +587,7 @@ const styles = StyleSheet.create({
   },
   timerSection: {
     paddingTop: 8,
+    paddingBottom: 24,
     alignItems: "center",
   },
   segmentSection: {

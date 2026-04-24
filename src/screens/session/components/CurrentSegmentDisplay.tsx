@@ -38,16 +38,18 @@ export const CurrentSegmentDisplay: React.FC<CurrentSegmentDisplayProps> = ({
       <Text style={styles.guidance}>"{segment.label}"</Text>
 
       {/* Segment progress bar */}
-      <View style={styles.progressTrack}>
-        <View
-          style={[
-            styles.progressFill,
-            {
-              width: `${Math.round(progress * 100)}%`,
-              backgroundColor: segmentColor,
-            },
-          ]}
-        />
+      <View style={styles.progressTrackWrapper}>
+        <View style={styles.progressTrack}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.round(progress * 100)}%`,
+                backgroundColor: segmentColor,
+              },
+            ]}
+          />
+        </View>
       </View>
     </View>
   );
@@ -89,6 +91,10 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     textAlign: 'center',
     paddingHorizontal: 20,
+  },
+  progressTrackWrapper: {
+    width: '100%',
+    paddingHorizontal: 16,
   },
   progressTrack: {
     width: '100%',

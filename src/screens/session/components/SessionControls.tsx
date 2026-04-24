@@ -92,9 +92,9 @@ export const SessionControls: React.FC<SessionControlsProps> = ({
             ]}
           />
         )}
-        <Ionicons name="stop" size={18} color={colors.danger} />
-        <Text style={styles.endButtonText}>
-          {isHoldingEnd ? 'Hold...' : 'Hold to End'}
+        <Ionicons name="stop" size={16} color={colors.danger} />
+        <Text style={styles.endButtonText} numberOfLines={1}>
+          {isHoldingEnd ? 'Hold...' : 'End'}
         </Text>
       </Pressable>
     </View>
@@ -113,6 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     paddingVertical: 18,
+    paddingHorizontal: 20,
     borderRadius: 30,
     gap: 10,
   },
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 17,
     color: '#fff',
+    letterSpacing: 0.3,
   },
   endButton: {
     flex: 1,
@@ -134,8 +136,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(244,63,94,0.08)',
     paddingVertical: 18,
+    paddingHorizontal: 18,
     borderRadius: 30,
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(244,63,94,0.3)',
     overflow: 'hidden',
@@ -143,19 +146,21 @@ const styles = StyleSheet.create({
   },
   endButtonHolding: {
     borderColor: colors.danger,
+    backgroundColor: 'rgba(244,63,94,0.14)',
   },
   endButtonFill: {
     position: 'absolute',
     top: 0,
     left: 0,
     bottom: 0,
-    backgroundColor: 'rgba(244,63,94,0.15)',
+    backgroundColor: 'rgba(244,63,94,0.18)',
     borderRadius: 30,
   },
   endButtonText: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
     color: colors.danger,
+    letterSpacing: 0.3,
     zIndex: 1,
   },
 });
