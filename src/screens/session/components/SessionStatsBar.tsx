@@ -18,7 +18,9 @@ export const SessionStatsBar: React.FC<SessionStatsBarProps> = ({
   totalSegments,
   locationPermissionDenied,
 }) => {
-  const pace = calculatePace(distanceKm, totalElapsedSeconds / 60);
+  // Suppress pace until enough distance is covered — at sub-100m the
+  // formula (time/distance) swings wildly with normal GPS jitter.
+  const pace = distanceKm < 0.1 ? null : calculatePace(distanceKm, totalElapsedSeconds / 60);
 
   return (
     <View style={styles.container}>

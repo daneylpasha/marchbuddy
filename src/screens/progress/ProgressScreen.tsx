@@ -481,7 +481,9 @@ export default function ProgressScreen() {
             <View style={styles.milestoneTeaser}>
               <View style={styles.milestoneTeaserContent}>
                 <Text style={styles.milestoneTeaserText}>
-                  {upcomingMilestone.remaining} more {
+                  {upcomingMilestone.type === 'distance'
+                    ? upcomingMilestone.remaining.toFixed(2)
+                    : upcomingMilestone.remaining} more {
                     upcomingMilestone.type === 'sessions' ? 'sessions' :
                     upcomingMilestone.type === 'distance' ? 'km' :
                     'days'

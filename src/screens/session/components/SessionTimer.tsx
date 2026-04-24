@@ -38,6 +38,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.5,
     color: colors.textTertiary,
-    marginTop: 4,
+    marginTop: 6,
   },
 });

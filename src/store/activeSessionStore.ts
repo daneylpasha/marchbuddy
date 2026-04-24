@@ -145,7 +145,10 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
       plannedSegments: state.plan.segments,
       actualDurationMinutes: Math.round(state.totalElapsedSeconds / 60),
       actualDistanceKm: state.distanceKm,
-      completedSegments: state.currentSegmentIndex + 1,
+      completedSegments: Math.min(
+        state.currentSegmentIndex + 1,
+        state.plan.segments.length,
+      ),
       endedEarly: state.currentSegmentIndex < state.plan.segments.length - 1,
       pacePerKm:
         state.distanceKm > 0
