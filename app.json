@@ -21,13 +21,12 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route, even when the app is in the background.",
-        "UIBackgroundModes": [
-          "location",
-          "audio"
-        ]
+        "NSMotionUsageDescription": "MarchBuddy uses motion data to count your steps during walks and runs — works even indoors and on treadmills.",
+        "UIBackgroundModes": ["location", "audio"]
       }
     },
     "android": {
+      "versionCode": 31,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1a1a"
@@ -42,6 +41,7 @@
         "ACCESS_BACKGROUND_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACTIVITY_RECOGNITION",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",

@@ -84,6 +84,7 @@ export interface CompletedSession {
   // Actual performance
   actualDurationMinutes: number;
   actualDistanceKm: number;
+  actualSteps: number;            // From pedometer; 0 if pedometer unavailable
   completedSegments: number;      // How many segments they finished
   endedEarly: boolean;
   pacePerKm: number | null;       // Minutes per km

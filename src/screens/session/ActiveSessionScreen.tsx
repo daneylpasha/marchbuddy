@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,6 +18,7 @@ import { useActiveSessionStore } from "../../store/activeSessionStore";
 import { useSessionStore } from "../../store/sessionStore";
 import { useSessionTimer } from "../../hooks/useSessionTimer";
 import { locationService } from "../../services/locationService";
+import { pedometerService } from "../../services/pedometerService";
 import { sessionCueService } from "../../services/sessionCueService";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -186,6 +188,12 @@ const SEGMENT_MESSAGES: Record<string, string[]> = {
 export default function ActiveSessionScreen({ navigation }: Props) {
   useKeepAwake();
 
+  const { height: screenHeight } = useWindowDimensions();
+  // Widened threshold: many "medium" Android phones (~720–800 logical px)
+  // still couldn't fit the default sizing without the progress bar
+  // touching the NEXT UP card.
+  const isShort = screenHeight < 800;
+
   const { selectedPlan } = useSessionStore();
   const {
     plan,
@@ -193,10 +201,12 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     isPaused,
     currentSegmentIndex,
     distanceKm,
+    stepCount,
     startSession,
     pauseSession,
     resumeSession,
     addRoutePoint,
+    setStepCount,
     endSession,
     resetSession,
   } = useActiveSessionStore();
@@ -212,6 +222,12 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   // Tracking state for halfway celebration
   const halfwayShownRef = useRef(false);
 
+  // GPS warm-up state — chip stays visible until we get a usable fix
+  // (≤25m accuracy) or 30s pass, whichever comes first.
+  const [gpsAcquired, setGpsAcquired] = useState(false);
+  const gpsAcquiredRef = useRef(false);
+  const gpsDotPulse = useRef(new Animated.Value(0.4)).current;
+
   useEffect(() => {
     isActiveRef.current = isActive;
   }, [isActive]);
@@ -220,6 +236,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     if (sessionCompletedRef.current) return;
     sessionCompletedRef.current = true;
     locationService.stopTracking();
+    pedometerService.stopTracking();
     const completed = endSession();
     isActiveRef.current = false; // stop beforeRemove from blocking auto-complete nav
     if (completed) {
@@ -239,6 +256,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
 
   const [locationPermissionDenied, setLocationPermissionDenied] =
     useState(false);
+  const [pedometerAvailable, setPedometerAvailable] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [endEarlyModalVisible, setEndEarlyModalVisible] = useState(false);
@@ -263,7 +281,27 @@ export default function ActiveSessionScreen({ navigation }: Props) {
       } else {
         await locationService.startTracking((point) => {
           addRoutePoint(point);
+          // First usable fix dismisses the warm-up chip. Use a ref so we
+          // don't keep re-firing setState on every subsequent point.
+          if (
+            !gpsAcquiredRef.current &&
+            point.accuracy != null &&
+            point.accuracy <= 25
+          ) {
+            gpsAcquiredRef.current = true;
+            setGpsAcquired(true);
+          }
         });
+      }
+
+      // Pedometer is independent of GPS — works indoors / treadmill / phone
+      // in pocket. Failure is silent: stepCount stays 0 and the UI hides.
+      const pedoPermission = await pedometerService.requestPermissions();
+      if (mounted && pedoPermission) {
+        const started = await pedometerService.startTracking((steps) => {
+          setStepCount(steps);
+        });
+        if (started) setPedometerAvailable(true);
       }
 
       startSession(selectedPlan);
@@ -274,6 +312,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     return () => {
       mounted = false;
       locationService.stopTracking();
+      pedometerService.stopTracking();
       sessionCueService.reset();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -287,6 +326,40 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSegmentIndex, plan, isActive]);
+
+  // ── GPS warm-up: force-dismiss after 30s + pulse the indicator dot ──────────
+  useEffect(() => {
+    if (gpsAcquired || locationPermissionDenied || !isActive) return;
+
+    const fallback = setTimeout(() => {
+      gpsAcquiredRef.current = true;
+      setGpsAcquired(true);
+    }, 30000);
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(gpsDotPulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(gpsDotPulse, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+
+    return () => {
+      clearTimeout(fallback);
+      loop.stop();
+    };
+  }, [gpsAcquired, locationPermissionDenied, isActive, gpsDotPulse]);
+
+  const showGpsChip =
+    isActive && !locationPermissionDenied && !gpsAcquired;
 
   // ── Handle segment transitions (message + background color animation) ────────
   useEffect(() => {
@@ -374,6 +447,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const confirmLeave = useCallback(() => {
     setLeaveModalVisible(false);
     locationService.stopTracking();
+    pedometerService.stopTracking();
     isActiveRef.current = false;
     resetSession();
     if (pendingBackAction.current) {
@@ -384,6 +458,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const confirmEndEarly = useCallback(() => {
     setEndEarlyModalVisible(false);
     locationService.stopTracking();
+    pedometerService.stopTracking();
     isActiveRef.current = false;
     if (totalElapsedSeconds < 30) {
       resetSession();
@@ -463,9 +538,18 @@ export default function ActiveSessionScreen({ navigation }: Props) {
           >
             <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
           </Pressable>
+
+          {showGpsChip && (
+            <View style={styles.gpsChip} pointerEvents="none">
+              <Animated.View
+                style={[styles.gpsDot, { opacity: gpsDotPulse }]}
+              />
+              <Text style={styles.gpsChipText}>Acquiring GPS…</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.timerSection}>
+        <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
           <SessionTimer
             totalElapsedSeconds={totalElapsedSeconds}
             isPaused={isPaused}
@@ -476,24 +560,29 @@ export default function ActiveSessionScreen({ navigation }: Props) {
           <CurrentSegmentDisplay
             segment={currentSegment}
             remainingSeconds={segmentRemainingSeconds}
-            progress={progress}
             isPaused={isPaused}
           />
         </View>
 
-        {nextSegment && (
-          <View style={styles.nextSection}>
-            <NextSegmentPreview segment={nextSegment} />
-          </View>
-        )}
+        <View style={[styles.nextSection, isShort && styles.tightSection]}>
+          <NextSegmentPreview
+            progress={progress}
+            progressColor={
+              currentSegment.type === "run" ? colors.primary : "#fff"
+            }
+            segment={nextSegment ?? null}
+          />
+        </View>
 
-        <View style={styles.statsSection}>
+        <View style={[styles.statsSection, isShort && styles.tightSection]}>
           <SessionStatsBar
             distanceKm={distanceKm}
             totalElapsedSeconds={totalElapsedSeconds}
             currentSegmentIndex={currentSegmentIndex}
             totalSegments={plan.segments.length}
             locationPermissionDenied={locationPermissionDenied}
+            stepCount={stepCount}
+            pedometerAvailable={pedometerAvailable}
           />
         </View>
 
@@ -531,21 +620,28 @@ export default function ActiveSessionScreen({ navigation }: Props) {
       {segmentTransitionMessage && (
         <Animated.View
           style={[
-            styles.transitionMessageOverlay,
-            {
-              opacity: transitionOpacityAnim,
-            },
+            styles.cueOverlay,
+            { opacity: transitionOpacityAnim },
           ]}
           pointerEvents="none"
         >
-          <Text style={styles.transitionMessageText}>{segmentTransitionMessage}</Text>
+          <Animated.View style={styles.cueBackdrop} />
+          <View style={styles.cueCard}>
+            <Text style={styles.cueText} numberOfLines={2}>
+              {segmentTransitionMessage}
+            </Text>
+          </View>
         </Animated.View>
       )}
 
       {/* Halfway celebration message overlay */}
       {showHalfwayMessage && (
-        <View style={styles.halfwayOverlay} pointerEvents="none">
-          <Text style={styles.halfwayText}>Halfway! 💪</Text>
+        <View style={styles.cueOverlay} pointerEvents="none">
+          <View style={styles.cueBackdrop} />
+          <View style={[styles.cueCard, styles.cueCardAccent]}>
+            <Text style={styles.cueLabel}>HALFWAY THERE</Text>
+            <Text style={styles.cueText}>Keep pushing 💪</Text>
+          </View>
         </View>
       )}
     </Animated.View>
@@ -575,7 +671,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 4,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
   },
   backBtn: {
     width: 40,
@@ -585,16 +682,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  gpsChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  gpsDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#FFB020",
+    marginRight: 8,
+  },
+  gpsChipText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    color: colors.textSecondary,
+    letterSpacing: 0.4,
+  },
   timerSection: {
     paddingTop: 8,
     paddingBottom: 24,
     alignItems: "center",
+  },
+  timerSectionShort: {
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   segmentSection: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
+    // 14px gap between progress card and NEXT UP card — matches the
+    // 14px gap between NEXT UP and stats card for visual rhythm.
+    paddingBottom: 14,
   },
   nextSection: {
     paddingHorizontal: 24,
@@ -604,34 +732,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 14,
   },
+  tightSection: {
+    paddingBottom: 8,
+  },
   controlsSection: {
     paddingHorizontal: 24,
     paddingBottom: 8,
   },
-  transitionMessageOverlay: {
+  // ── Cue overlay (segment transition + halfway) ──
+  // Backdrop dims the screen so the message reads cleanly without
+  // colliding with the timer/segment text underneath.
+  cueOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 100,
-    pointerEvents: "none",
+    paddingHorizontal: 32,
   },
-  transitionMessageText: {
-    fontSize: 32,
+  cueBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  cueCard: {
+    backgroundColor: "rgba(20,20,20,0.92)",
+    paddingVertical: 22,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    minWidth: 200,
+    maxWidth: 340,
+  },
+  cueCardAccent: {
+    borderColor: colors.primary,
+    backgroundColor: "rgba(20,20,20,0.95)",
+  },
+  cueText: {
+    fontSize: 26,
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: "#fff",
     letterSpacing: 0.5,
+    textAlign: "center",
   },
-  halfwayOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 100,
-    pointerEvents: "none",
-  },
-  halfwayText: {
-    fontSize: 48,
-    fontFamily: fonts.bold,
+  cueLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    letterSpacing: 1.6,
     color: colors.primary,
-    letterSpacing: 0.5,
+    marginBottom: 8,
   },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { formatDuration } from '../../../utils/sessionUtils';
 import { colors, fonts } from '../../../theme';
 
@@ -11,14 +11,22 @@ interface SessionTimerProps {
 export const SessionTimer: React.FC<SessionTimerProps> = ({
   totalElapsedSeconds,
   isPaused,
-}) => (
-  <View style={styles.container}>
-    <Text style={[styles.time, isPaused && styles.timePaused]}>
-      {formatDuration(totalElapsedSeconds)}
-    </Text>
-    <Text style={styles.label}>ELAPSED TIME</Text>
-  </View>
-);
+}) => {
+  const { height } = useWindowDimensions();
+  const timeSize = height < 700 ? 46 : height < 800 ? 54 : 64;
+
+  return (
+    <View style={styles.container}>
+      <Text
+        style={[styles.time, { fontSize: timeSize }, isPaused && styles.timePaused]}
+        numberOfLines={1}
+      >
+        {formatDuration(totalElapsedSeconds)}
+      </Text>
+      <Text style={styles.label}>ELAPSED TIME</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -26,7 +34,6 @@ const styles = StyleSheet.create({
   },
   time: {
     fontFamily: fonts.bold,
-    fontSize: 64,
     color: '#fff',
     letterSpacing: 2,
   },
