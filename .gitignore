@@ -46,3 +46,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Android release signing (NEVER commit — contains private keystore + passwords)
+android/app/release.keystore
+android/gradle.properties

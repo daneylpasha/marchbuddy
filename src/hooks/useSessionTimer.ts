@@ -69,20 +69,22 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
 
     // Segment completion
     if (segmentSeconds >= currentSegment.durationSeconds) {
+      // Cue fires at most once per index. Advance is idempotent in the store,
+      // so we call it unconditionally — even if the ref somehow got set
+      // without state actually advancing (e.g. a prior tick's advance was
+      // skipped by a stale guard), the tick will keep retrying until the
+      // index moves forward.
       if (!hasAnnouncedRef.current.has(currentSegmentIndex)) {
         hasAnnouncedRef.current.add(currentSegmentIndex);
-
-        // Advance first so it always happens even if cue service throws
-        advanceSegment();
-
         if (nextSegment) {
           sessionCueService.playSegmentChange(nextSegment.type);
         } else {
-          // Last segment done — fire cue then notify the screen directly.
-          // This bypasses any useEffect timing issues.
           sessionCueService.playSessionComplete();
-          onCompleteRef.current?.();
         }
+      }
+      advanceSegment();
+      if (!nextSegment) {
+        onCompleteRef.current?.();
       }
       return;
     }

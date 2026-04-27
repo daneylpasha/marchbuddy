@@ -18,6 +18,9 @@ interface ActiveSessionState {
   route: GeoPoint[];
   distanceKm: number;
 
+  // Pedometer (session-relative — already baselined by pedometerService)
+  stepCount: number;
+
   // Calculated (updated by timer hook every 100ms)
   totalElapsedSeconds: number;
   segmentElapsedSeconds: number;
@@ -28,6 +31,7 @@ interface ActiveSessionState {
   resumeSession: () => void;
   advanceSegment: () => void;
   addRoutePoint: (point: GeoPoint) => void;
+  setStepCount: (steps: number) => void;
   updateElapsedTime: (totalSeconds: number, segmentSeconds: number) => void;
   endSession: () => CompletedSession | null;
   resetSession: () => void;
@@ -43,6 +47,7 @@ const initialState = {
   segmentStartedAt: null,
   route: [],
   distanceKm: 0,
+  stepCount: 0,
   totalElapsedSeconds: 0,
   segmentElapsedSeconds: 0,
 };
@@ -62,6 +67,7 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
       segmentStartedAt: now,
       route: [],
       distanceKm: 0,
+      stepCount: 0,
       totalElapsedSeconds: 0,
       segmentElapsedSeconds: 0,
     });
@@ -95,8 +101,17 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
   },
 
   advanceSegment: () => {
-    const { plan, currentSegmentIndex } = get();
+    const { plan, currentSegmentIndex, segmentStartedAt } = get();
     if (!plan) return;
+
+    // Idempotency guard: only advance if the current segment actually finished.
+    // This lets callers invoke advanceSegment() every tick safely — if the
+    // segment has already advanced, elapsed will be < duration and we bail out.
+    const current = plan.segments[currentSegmentIndex];
+    if (current && segmentStartedAt) {
+      const elapsed = (Date.now() - segmentStartedAt.getTime()) / 1000;
+      if (elapsed < current.durationSeconds) return;
+    }
 
     const nextIndex = currentSegmentIndex + 1;
 
@@ -123,6 +138,15 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
     });
   },
 
+  setStepCount: (steps: number) => {
+    // pedometerService already enforces monotonicity, but guard here too —
+    // we never want the displayed count to go backward.
+    const { stepCount } = get();
+    if (steps > stepCount) {
+      set({ stepCount: steps });
+    }
+  },
+
   updateElapsedTime: (totalSeconds: number, segmentSeconds: number) => {
     set({
       totalElapsedSeconds: totalSeconds,
@@ -145,6 +169,7 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
       plannedSegments: state.plan.segments,
       actualDurationMinutes: Math.round(state.totalElapsedSeconds / 60),
       actualDistanceKm: state.distanceKm,
+      actualSteps: state.stepCount,
       completedSegments: Math.min(
         state.currentSegmentIndex + 1,
         state.plan.segments.length,
