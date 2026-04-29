@@ -12,6 +12,7 @@ import CelebrationScreen from '../screens/celebration/CelebrationScreen';
 import { WelcomeBackScreen } from '../screens/comeback/WelcomeBackScreen';
 import FeedbackScreen from '../screens/settings/FeedbackScreen';
 import { useRunProgressStore } from '../store/runProgressStore';
+import { useActiveSessionStore } from '../store/activeSessionStore';
 import type { CompletedSession } from '../types/session';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -69,8 +70,20 @@ const TodayScreenWithComebackGuard: React.FC<TodayScreenProps> = (props) => {
 };
 
 export default function RunNavigator() {
+  // Cold-start resume: if a session was in progress (paused or running) when
+  // the app was last killed, the persisted store will rehydrate with isActive=true
+  // and a non-null plan. Drop the user straight into ActiveSessionScreen so they
+  // see "Resume" instead of starting a fresh session from Today. AppNavigator
+  // already gates rendering on activeSessionStore hydration, so this read is safe.
+  const persistedActive = useActiveSessionStore.getState();
+  const initialRouteName: keyof RunStackParamList =
+    persistedActive.isActive && persistedActive.plan ? 'ActiveSession' : 'Today';
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName={initialRouteName}
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="Today" component={TodayScreenWithComebackGuard} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
       <Stack.Screen

@@ -24,15 +24,16 @@ export const CurrentSegmentDisplay: React.FC<CurrentSegmentDisplayProps> = ({
   const isShort = height < 800;
   const isVeryShort = height < 700;
 
-  const segmentTypeSize = isVeryShort ? 34 : isShort ? 42 : 52;
+  const segmentTypeSize = isVeryShort ? 30 : isShort ? 38 : 52;
   // Tighter letter-spacing on smaller phones so words like "WARMUP"
   // (6 wide chars × 4px tracking = 24px extra width) don't clip.
   const segmentTypeSpacing = isShort ? 2 : 4;
-  const remainingTimeSize = isVeryShort ? 56 : isShort ? 66 : 80;
+  const remainingTimeSize = isVeryShort ? 50 : isShort ? 58 : 80;
   // Symmetric gap above and below "remaining" — the countdown uses
   // lineHeight === fontSize so its glyph has no built-in bottom padding.
-  const labelGap = isVeryShort ? 10 : isShort ? 14 : 18;
-  const guidanceSize = isShort ? 15 : 17;
+  const labelGap = isVeryShort ? 6 : isShort ? 10 : 18;
+  const guidanceSize = isVeryShort ? 13 : isShort ? 14 : 17;
+  const guidanceLines = isShort ? 1 : 2;
 
   return (
     <View style={styles.container}>
@@ -77,7 +78,9 @@ export const CurrentSegmentDisplay: React.FC<CurrentSegmentDisplayProps> = ({
       {/* Pace guidance */}
       <Text
         style={[styles.guidance, { fontSize: guidanceSize }]}
-        numberOfLines={2}
+        numberOfLines={guidanceLines}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
       >
         "{segment.label}"
       </Text>

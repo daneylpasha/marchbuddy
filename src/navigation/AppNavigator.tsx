@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../store/coachSetupStore';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useActiveSessionStore, isSessionStale } from '../store/activeSessionStore';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import FeatureOnboardingScreen from '../screens/onboarding/FeatureOnboardingScreen';
 import CoachSetupScreen from '../screens/onboarding/CoachSetupScreen';
@@ -90,6 +91,7 @@ const SPLASH_MIN_MS = 3000;
 export default function AppNavigator() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSettingsHydrated, setIsSettingsHydrated] = useState(false);
+  const [isActiveSessionHydrated, setIsActiveSessionHydrated] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [splashGone, setSplashGone] = useState(false);
@@ -164,6 +166,30 @@ export default function AppNavigator() {
     return unsub;
   }, []);
 
+  // Wait for activeSessionStore to hydrate before mounting RunNavigator —
+  // its initialRouteName decision depends on the persisted isActive flag.
+  // Also drop sessions that have been sitting stale beyond the threshold
+  // BEFORE we mark hydration complete, so the navigator never sees them.
+  useEffect(() => {
+    const dropIfStale = () => {
+      const state = useActiveSessionStore.getState();
+      if (state.isActive && isSessionStale(state)) {
+        state.resetSession();
+      }
+    };
+
+    if (useActiveSessionStore.persist.hasHydrated()) {
+      dropIfStale();
+      setIsActiveSessionHydrated(true);
+      return;
+    }
+    const unsub = useActiveSessionStore.persist.onFinishHydration(() => {
+      dropIfStale();
+      setIsActiveSessionHydrated(true);
+    });
+    return unsub;
+  }, []);
+
   // Initialize auth — restores Supabase session and sets up auth state listener
   useEffect(() => {
     useAuthStore.getState().initialize().finally(() => {
@@ -175,7 +201,12 @@ export default function AppNavigator() {
   // + server state restored. Blocks dismissal during the restore window at
   // cold-start so we never flash the name screen before setupComplete rehydrates.
   const splashHiding =
-    isHydrated && isSettingsHydrated && isAuthReady && minTimeElapsed && !isRestoringSession;
+    isHydrated &&
+    isSettingsHydrated &&
+    isActiveSessionHydrated &&
+    isAuthReady &&
+    minTimeElapsed &&
+    !isRestoringSession;
 
   if (!splashGone) {
     return (

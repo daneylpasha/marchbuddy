@@ -14,10 +14,12 @@ type StepListener = (totalSteps: number) => void;
 class PedometerService {
   private subscription: { remove: () => void } | null = null;
   private isTracking = false;
-  // Steps observed at the moment tracking started — we subtract this from
-  // every event so the listener receives a session-relative count rather
-  // than the platform's cumulative-since-device-boot count.
-  private baselineSteps = 0;
+  // Added to every emitted count so a resumed session continues from where
+  // it left off instead of restarting at 0. Fresh sessions pass 0.
+  // (The native module already returns session-relative counts — see
+  // expo-sensors PedometerModule for both iOS and Android — so no extra
+  // baseline subtraction is needed here.)
+  private externalBaseline = 0;
   private currentSessionSteps = 0;
 
   async isAvailable(): Promise<boolean> {
@@ -41,28 +43,33 @@ class PedometerService {
     }
   }
 
-  async startTracking(onSteps: StepListener): Promise<boolean> {
+  async startTracking(
+    onSteps: StepListener,
+    initialBaseline = 0,
+  ): Promise<boolean> {
     if (this.isTracking) return true;
     if (!Pedometer?.watchStepCount) return false;
 
     const available = await this.isAvailable();
     if (!available) return false;
 
-    this.baselineSteps = 0;
-    this.currentSessionSteps = 0;
+    this.externalBaseline = initialBaseline;
+    this.currentSessionSteps = initialBaseline;
 
     try {
       this.subscription = Pedometer.watchStepCount((result: { steps: number }) => {
-        // Some platforms emit cumulative counts; first event sets the baseline.
-        if (this.baselineSteps === 0 && result.steps > 0) {
-          this.baselineSteps = result.steps;
-        }
-        const sessionSteps = Math.max(0, result.steps - this.baselineSteps);
+        // result.steps is already session-relative (count since the
+        // subscription started — verified in expo-sensors native code for
+        // both iOS CMPedometer.startUpdates(from:) and Android's
+        // PedometerModule which subtracts stepsAtTheBeginning). We only
+        // add the externalBaseline so resumed sessions keep their
+        // pre-resume count.
+        const total = this.externalBaseline + (result.steps ?? 0);
         // Step count must be monotonic — guard against any platform quirks
         // that might emit a lower value than a previous event.
-        if (sessionSteps >= this.currentSessionSteps) {
-          this.currentSessionSteps = sessionSteps;
-          onSteps(sessionSteps);
+        if (total >= this.currentSessionSteps) {
+          this.currentSessionSteps = total;
+          onSteps(total);
         }
       });
     } catch {
@@ -84,7 +91,7 @@ class PedometerService {
       this.subscription = null;
     }
     this.isTracking = false;
-    this.baselineSteps = 0;
+    this.externalBaseline = 0;
     this.currentSessionSteps = 0;
   }
 

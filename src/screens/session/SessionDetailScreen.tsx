@@ -50,7 +50,8 @@ export default function SessionDetailScreen({ navigation }: Props) {
   const difficultyLabel =
     selectedPlan.difficulty.charAt(0).toUpperCase() + selectedPlan.difficulty.slice(1);
 
-  const bottomBarHeight = 56 + 16 + 16 + insets.bottom;
+  // paddingTop(16) + beginButton(56) + gap(10) + scheduleButton(44) + paddingBottom(16) + safe area
+  const bottomBarHeight = 16 + 56 + 10 + 44 + 16 + insets.bottom;
 
   return (
     <View style={styles.container}>

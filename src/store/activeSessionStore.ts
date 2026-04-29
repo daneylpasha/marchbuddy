@@ -1,6 +1,34 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SessionPlan, GeoPoint, CompletedSession } from '../types/session';
 import { calculateRouteDistance } from '../utils/sessionUtils';
+
+// A persisted session that hasn't been touched for this long is considered
+// abandoned and silently discarded on cold-start. 6h is generous enough for
+// "I paused at lunch and came back after dinner" but short enough that a
+// session paused yesterday or 3 days ago doesn't hijack today's flow.
+export const STALE_SESSION_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+
+// Reference time used for both staleness checks and the resume-prompt
+// "X ago" string. pausedAt is preferred — it represents the user's last
+// active interaction; startedAt is only a fallback when somehow the
+// session was killed without going through pause (e.g. hard crash).
+export function getSessionReferenceTime(state: {
+  startedAt: Date | null;
+  pausedAt: Date | null;
+}): Date | null {
+  return state.pausedAt ?? state.startedAt;
+}
+
+export function isSessionStale(state: {
+  startedAt: Date | null;
+  pausedAt: Date | null;
+}): boolean {
+  const ref = getSessionReferenceTime(state);
+  if (!(ref instanceof Date)) return false;
+  return Date.now() - ref.getTime() > STALE_SESSION_THRESHOLD_MS;
+}
 
 interface ActiveSessionState {
   // Session data
@@ -52,7 +80,9 @@ const initialState = {
   segmentElapsedSeconds: 0,
 };
 
-export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
+export const useActiveSessionStore = create<ActiveSessionState>()(
+  persist(
+    (set, get) => ({
   ...initialState,
 
   startSession: (plan: SessionPlan) => {
@@ -193,4 +223,39 @@ export const useActiveSessionStore = create<ActiveSessionState>((set, get) => ({
   resetSession: () => {
     set(initialState);
   },
-}));
+    }),
+    {
+      name: 'march-buddy-active-session',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Only persist what's needed to resume — the timer hook recomputes
+      // totalElapsedSeconds/segmentElapsedSeconds from startedAt every tick,
+      // so persisting them would just create stale-vs-recomputed flicker on rehydration.
+      partialize: (state) => ({
+        plan: state.plan,
+        isActive: state.isActive,
+        isPaused: state.isPaused,
+        startedAt: state.startedAt,
+        pausedAt: state.pausedAt,
+        currentSegmentIndex: state.currentSegmentIndex,
+        segmentStartedAt: state.segmentStartedAt,
+        route: state.route,
+        distanceKm: state.distanceKm,
+        stepCount: state.stepCount,
+      }),
+      // Dates round-trip through JSON as ISO strings — revive them so
+      // pausedAt.getTime() / startedAt.getTime() in the resume math don't crash.
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (typeof state.startedAt === 'string') {
+          state.startedAt = new Date(state.startedAt);
+        }
+        if (typeof state.pausedAt === 'string') {
+          state.pausedAt = new Date(state.pausedAt);
+        }
+        if (typeof state.segmentStartedAt === 'string') {
+          state.segmentStartedAt = new Date(state.segmentStartedAt);
+        }
+      },
+    },
+  ),
+);
