@@ -53,6 +53,10 @@ interface ConfirmOverlayProps {
   cancelLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
+  // 'neutral' (default) — gray cancel button.
+  // 'primary' — green cancel button, used when the cancel action is the
+  // recommended path (e.g. "Resume" on the cold-start prompt).
+  cancelTone?: "neutral" | "primary";
 }
 
 function ConfirmOverlay({
@@ -63,6 +67,7 @@ function ConfirmOverlay({
   cancelLabel,
   onConfirm,
   onCancel,
+  cancelTone = "neutral",
 }: ConfirmOverlayProps) {
   if (!visible) return null;
   return (
@@ -75,12 +80,22 @@ function ConfirmOverlay({
           <Pressable
             style={({ pressed }) => [
               overlayStyles.btn,
-              overlayStyles.cancelBtn,
-              pressed && { opacity: 0.7 },
+              cancelTone === "primary"
+                ? overlayStyles.cancelBtnPrimary
+                : overlayStyles.cancelBtn,
+              pressed && { opacity: 0.8 },
             ]}
             onPress={onCancel}
           >
-            <Text style={overlayStyles.cancelLabel}>{cancelLabel}</Text>
+            <Text
+              style={
+                cancelTone === "primary"
+                  ? overlayStyles.cancelLabelPrimary
+                  : overlayStyles.cancelLabel
+              }
+            >
+              {cancelLabel}
+            </Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -153,6 +168,9 @@ const overlayStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
+  cancelBtnPrimary: {
+    backgroundColor: colors.primary,
+  },
   confirmBtn: {
     backgroundColor: colors.danger,
   },
@@ -160,6 +178,12 @@ const overlayStyles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 15,
     color: colors.textSecondary,
+    letterSpacing: 0.3,
+  },
+  cancelLabelPrimary: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: "#fff",
     letterSpacing: 0.3,
   },
   confirmLabel: {
@@ -630,7 +654,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
               styles.backBtn,
               pressed && { opacity: 0.6 },
             ]}
-            onPress={() => navigation.goBack()}
+            onPress={() => setLeaveModalVisible(true)}
             hitSlop={12}
           >
             <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
@@ -719,6 +743,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         message={`We saved your session from ${resumePromptAge}. You can pick up where you left off, or start fresh.`}
         cancelLabel="Resume"
         confirmLabel="Start Over"
+        cancelTone="primary"
         onCancel={dismissResumePrompt}
         onConfirm={confirmStartOver}
       />
