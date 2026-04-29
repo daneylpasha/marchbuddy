@@ -245,6 +245,19 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     isActiveRef.current = isActive;
   }, [isActive]);
 
+  // On cold-start resume the navigator's stack root IS this screen, so
+  // navigation.goBack() finds nothing above and React Navigation logs a
+  // "GO_BACK was not handled" warning (and on production silently does
+  // nothing — leaving the user stuck). Fall through to Today when there's
+  // no parent to pop back to.
+  const exitToToday = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace("Today");
+    }
+  }, [navigation]);
+
   const handleSessionComplete = useCallback(() => {
     if (sessionCompletedRef.current) return;
     sessionCompletedRef.current = true;
@@ -255,9 +268,9 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     if (completed) {
       navigation.replace("PostSession", { session: completed });
     } else {
-      navigation.goBack();
+      exitToToday();
     }
-  }, [endSession, navigation]);
+  }, [endSession, navigation, exitToToday]);
 
   const {
     totalElapsedSeconds,
@@ -529,8 +542,13 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     pedometerService.stopTracking();
     isActiveRef.current = false;
     resetSession();
-    if (pendingBackAction.current) {
+    // Replay the original back action if there's still a parent to go back
+    // to. On cold-start resume there's no parent, so dispatching the saved
+    // GO_BACK would silently fail — fall through to Today instead.
+    if (pendingBackAction.current && navigation.canGoBack()) {
       navigation.dispatch(pendingBackAction.current);
+    } else {
+      navigation.replace("Today");
     }
   }, [navigation, resetSession]);
 
@@ -541,16 +559,16 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     isActiveRef.current = false;
     if (totalElapsedSeconds < 30) {
       resetSession();
-      navigation.goBack();
+      exitToToday();
       return;
     }
     const completed = endSession();
     if (completed) {
       navigation.replace("PostSession", { session: completed });
     } else {
-      navigation.goBack();
+      exitToToday();
     }
-  }, [endSession, resetSession, navigation, totalElapsedSeconds]);
+  }, [endSession, resetSession, navigation, totalElapsedSeconds, exitToToday]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isInitializing || !plan || !currentSegment) {

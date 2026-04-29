@@ -117,7 +117,7 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.skipRow}>
-        <Pressable onPress={() => navigation.popToTop()}>
+        <Pressable onPress={() => navigation.replace('Today')}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </View>
