@@ -54,7 +54,12 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
   }, [fadeAnim, scaleAnim, checkScaleAnim]);
 
   const handleDone = () => {
-    navigation.popToTop();
+    // Use explicit replace instead of popToTop — when the user lands here
+    // via the cold-start resume flow, the navigator started at ActiveSession
+    // (not Today) and every subsequent step was a replace, so popToTop has
+    // nothing above it to pop and React Navigation logs a "POP_TO_TOP not
+    // handled" warning. Replacing to Today works in both flows.
+    navigation.replace('Today');
   };
 
   const handleShare = async () => {
