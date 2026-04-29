@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import {
-  AppState,
   View,
   Text,
   StyleSheet,
@@ -462,24 +461,6 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     return unsubscribe;
   }, [navigation]);
 
-  // ── Auto-pause when the app leaves the foreground ──────────────────────────
-  // Without this, an unpaused session that gets killed by the OS during
-  // background would resume with the kill-time included in elapsed. Pausing
-  // proactively means the resume math (which subtracts pausedAt) cleanly
-  // discounts background time. We don't auto-resume on foreground — the user
-  // explicitly taps Resume so they're aware the session was halted.
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (next) => {
-      if (next !== "background" && next !== "inactive") return;
-      const state = useActiveSessionStore.getState();
-      if (state.isActive && !state.isPaused) {
-        state.pauseSession();
-        sessionCueService.playPause();
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
   // ── Cold-start resume prompt ───────────────────────────────────────────────
   // When the user lands here directly because a persisted session
   // re-hydrated (vs reaching this screen via in-app navigation), explicitly
@@ -516,12 +497,19 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     setEndEarlyModalVisible(true);
   }, []);
 
-  // Resume from cold-start prompt — just dismiss; the session is already
-  // in the store in its paused/running state and the timer hook will pick
-  // it up. No additional store mutation needed.
+  // Resume from cold-start prompt — close the modal AND actually unpause
+  // the session. Without the resumeSession() call the user lands on a
+  // frozen paused state and has to tap the Pause/Resume button separately,
+  // which is confusing because they already chose "Resume" once.
+  // resumeSession() bails out on its own if not paused, so calling it
+  // unconditionally is safe even in the rare crash-mid-run cold-start case.
   const dismissResumePrompt = useCallback(() => {
     setResumePromptVisible(false);
-  }, []);
+    if (useActiveSessionStore.getState().isPaused) {
+      resumeSession();
+      sessionCueService.playResume();
+    }
+  }, [resumeSession]);
 
   // Discard from cold-start prompt — wipe persisted state and route to
   // Today. Use replace so the back-stack doesn't keep a dead ActiveSession
