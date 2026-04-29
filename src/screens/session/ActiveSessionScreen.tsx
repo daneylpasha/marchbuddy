@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
 import {
+  AppState,
   View,
   Text,
   StyleSheet,
@@ -14,7 +15,10 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
-import { useActiveSessionStore } from "../../store/activeSessionStore";
+import {
+  useActiveSessionStore,
+  getSessionReferenceTime,
+} from "../../store/activeSessionStore";
 import { useSessionStore } from "../../store/sessionStore";
 import { useSessionTimer } from "../../hooks/useSessionTimer";
 import { locationService } from "../../services/locationService";
@@ -183,6 +187,16 @@ const SEGMENT_MESSAGES: Record<string, string[]> = {
   cooldown: ["Almost done!", "Great work!", "Cool it down"],
 };
 
+// Used in the cold-start "Resume your session?" prompt so the user has a
+// concrete sense of how recent the saved session is before deciding.
+function formatSessionAge(ageMs: number): string {
+  if (ageMs < 60_000) return "moments ago";
+  const minutes = Math.floor(ageMs / 60_000);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ActiveSessionScreen({ navigation }: Props) {
@@ -262,10 +276,20 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const [endEarlyModalVisible, setEndEarlyModalVisible] = useState(false);
   const [segmentTransitionMessage, setSegmentTransitionMessage] = useState<string | null>(null);
   const [showHalfwayMessage, setShowHalfwayMessage] = useState(false);
+  const [resumePromptVisible, setResumePromptVisible] = useState(false);
+  const [resumePromptAge, setResumePromptAge] = useState('');
 
   // ── Initialize ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedPlan) {
+    // Cold-start resume path: if the persisted store already has an active
+    // session (paused or running), we re-hook tracking but must NOT call
+    // startSession — that would reset the timestamps and wipe progress.
+    // selectedPlan from useSessionStore is in-memory only and won't survive
+    // a process kill, so for the resume case we rely entirely on `plan` from
+    // the persisted activeSessionStore.
+    const isResuming = isActive && plan != null;
+
+    if (!isResuming && !selectedPlan) {
       navigation.goBack();
       return;
     }
@@ -296,16 +320,25 @@ export default function ActiveSessionScreen({ navigation }: Props) {
 
       // Pedometer is independent of GPS — works indoors / treadmill / phone
       // in pocket. Failure is silent: stepCount stays 0 and the UI hides.
+      // On resume we hand the persisted stepCount in as a baseline so the
+      // newly-restarted native subscription (which counts from 0) is added
+      // to the previous total instead of replacing it.
+      const stepBaseline = isResuming ? stepCount : 0;
       const pedoPermission = await pedometerService.requestPermissions();
       if (mounted && pedoPermission) {
         const started = await pedometerService.startTracking((steps) => {
           setStepCount(steps);
-        });
+        }, stepBaseline);
         if (started) setPedometerAvailable(true);
       }
 
-      startSession(selectedPlan);
-      sessionCueService.playSegmentChange(selectedPlan.segments[0].type);
+      if (!isResuming) {
+        startSession(selectedPlan!);
+        sessionCueService.playSegmentChange(selectedPlan!.segments[0].type);
+      }
+      // On resume the session is already in the correct state (paused or
+      // running) — we just unblock the loading screen and let the existing
+      // pause/resume controls take over from here.
       setIsInitializing(false);
     })();
 
@@ -429,6 +462,45 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     return unsubscribe;
   }, [navigation]);
 
+  // ── Auto-pause when the app leaves the foreground ──────────────────────────
+  // Without this, an unpaused session that gets killed by the OS during
+  // background would resume with the kill-time included in elapsed. Pausing
+  // proactively means the resume math (which subtracts pausedAt) cleanly
+  // discounts background time. We don't auto-resume on foreground — the user
+  // explicitly taps Resume so they're aware the session was halted.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "background" && next !== "inactive") return;
+      const state = useActiveSessionStore.getState();
+      if (state.isActive && !state.isPaused) {
+        state.pauseSession();
+        sessionCueService.playPause();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  // ── Cold-start resume prompt ───────────────────────────────────────────────
+  // When the user lands here directly because a persisted session
+  // re-hydrated (vs reaching this screen via in-app navigation), explicitly
+  // confirm whether they want to continue or scrap it. We detect the case
+  // by checking that useSessionStore.selectedPlan is empty — that store
+  // is in-memory only, so its emptiness is a reliable cold-start signal.
+  const promptShownRef = useRef(false);
+  useEffect(() => {
+    if (promptShownRef.current) return;
+    if (!isActive || !plan) return;
+    if (selectedPlan) return; // came here via normal in-app navigation
+    promptShownRef.current = true;
+
+    const state = useActiveSessionStore.getState();
+    const ref = getSessionReferenceTime(state);
+    const ageMs = ref ? Date.now() - ref.getTime() : 0;
+    setResumePromptAge(formatSessionAge(ageMs));
+    setResumePromptVisible(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handlePauseResume = useCallback(() => {
     if (isPaused) {
@@ -443,6 +515,25 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const handleEndEarly = useCallback(() => {
     setEndEarlyModalVisible(true);
   }, []);
+
+  // Resume from cold-start prompt — just dismiss; the session is already
+  // in the store in its paused/running state and the timer hook will pick
+  // it up. No additional store mutation needed.
+  const dismissResumePrompt = useCallback(() => {
+    setResumePromptVisible(false);
+  }, []);
+
+  // Discard from cold-start prompt — wipe persisted state and route to
+  // Today. Use replace so the back-stack doesn't keep a dead ActiveSession
+  // entry to navigate back into.
+  const confirmStartOver = useCallback(() => {
+    setResumePromptVisible(false);
+    locationService.stopTracking();
+    pedometerService.stopTracking();
+    isActiveRef.current = false;
+    resetSession();
+    navigation.replace("Today");
+  }, [navigation, resetSession]);
 
   const confirmLeave = useCallback(() => {
     setLeaveModalVisible(false);
@@ -586,7 +677,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
           />
         </View>
 
-        <View style={styles.controlsSection}>
+        <View style={[styles.controlsSection, isShort && styles.controlsSectionShort]}>
           <SessionControls
             isPaused={isPaused}
             onPauseResume={handlePauseResume}
@@ -614,6 +705,16 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         confirmLabel="End Session"
         onCancel={() => setEndEarlyModalVisible(false)}
         onConfirm={confirmEndEarly}
+      />
+
+      <ConfirmOverlay
+        visible={resumePromptVisible}
+        title="Resume Your Session?"
+        message={`We saved your session from ${resumePromptAge}. You can pick up where you left off, or start fresh.`}
+        cancelLabel="Resume"
+        confirmLabel="Start Over"
+        onCancel={dismissResumePrompt}
+        onConfirm={confirmStartOver}
       />
 
       {/* Segment transition message overlay */}
@@ -712,8 +813,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   timerSectionShort: {
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 2,
+    paddingBottom: 8,
   },
   segmentSection: {
     flex: 1,
@@ -723,6 +824,10 @@ const styles = StyleSheet.create({
     // 14px gap between progress card and NEXT UP card — matches the
     // 14px gap between NEXT UP and stats card for visual rhythm.
     paddingBottom: 14,
+    // Defensive: on very small phones the inner content can be taller
+    // than the available flex slot, which causes the guidance text to
+    // bleed onto the NEXT UP progress bar. Clip it.
+    overflow: "hidden",
   },
   nextSection: {
     paddingHorizontal: 24,
@@ -738,6 +843,9 @@ const styles = StyleSheet.create({
   controlsSection: {
     paddingHorizontal: 24,
     paddingBottom: 8,
+  },
+  controlsSectionShort: {
+    paddingBottom: 4,
   },
   // ── Cue overlay (segment transition + halfway) ──
   // Backdrop dims the screen so the message reads cleanly without
