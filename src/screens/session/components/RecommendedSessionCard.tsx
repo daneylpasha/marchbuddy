@@ -10,6 +10,9 @@ interface RecommendedSessionCardProps {
   onPress: () => void;
   onSchedule?: () => void;
   isScheduled?: boolean;
+  // Low-emphasis variant — used when today's session is already done
+  // and we don't want to push the user into another workout.
+  subdued?: boolean;
 }
 
 export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
@@ -17,6 +20,7 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
   onPress,
   onSchedule,
   isScheduled,
+  subdued = false,
 }) => {
   const getDifficultyColor = () => {
     switch (plan.difficulty) {
@@ -33,9 +37,17 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.container, pressed && styles.containerPressed]}
+      style={({ pressed }) => [
+        styles.container,
+        subdued && styles.containerSubdued,
+        pressed && styles.containerPressed,
+      ]}
       onPress={onPress}
     >
+      {subdued && (
+        <Text style={styles.subduedLabel}>NEXT SESSION</Text>
+      )}
+
       {/* Title row with schedule icon */}
       <View style={styles.titleRow}>
         <Text style={styles.title}>{plan.title}</Text>
@@ -69,14 +81,25 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       {/* Summary */}
       <Text style={styles.summary}>{plan.summary}</Text>
 
-      {/* CTA — prominent, action-oriented */}
-      <Pressable
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-        onPress={onPress}
-      >
-        <Text style={styles.buttonText}>Let's Go</Text>
-        <Ionicons name="arrow-forward" size={18} color="#fff" />
-      </Pressable>
+      {/* CTA — prominent normally; quiet text-link when subdued */}
+      {subdued ? (
+        <Pressable
+          style={({ pressed }) => [styles.ghostCta, pressed && styles.ghostCtaPressed]}
+          onPress={onPress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.ghostCtaText}>Start it now</Text>
+          <Ionicons name="arrow-forward" size={14} color={colors.textTertiary} />
+        </Pressable>
+      ) : (
+        <Pressable
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          onPress={onPress}
+        >
+          <Text style={styles.buttonText}>Let's Go</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
+        </Pressable>
+      )}
     </Pressable>
   );
 };
@@ -89,7 +112,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
+  containerSubdued: {
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
   containerPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  subduedLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -158,5 +193,21 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#fff',
     letterSpacing: 0.5,
+  },
+  ghostCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  ghostCtaPressed: {
+    opacity: 0.6,
+  },
+  ghostCtaText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.textTertiary,
+    letterSpacing: 0.2,
   },
 });

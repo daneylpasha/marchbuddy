@@ -210,6 +210,15 @@ const SEGMENT_MESSAGES: Record<string, string[]> = {
   cooldown: ["Almost done!", "Great work!", "Cool it down"],
 };
 
+// Solid accent colors for the cue pill dot — vibrant siblings of the
+// faint segment background colors so the dot reads at a glance.
+const CUE_DOT_COLORS = {
+  warmup: '#F59E0B',
+  walk: '#38BDF8',
+  run: '#10B981',
+  cooldown: '#A78BFA',
+} as const;
+
 // Used in the cold-start "Resume your session?" prompt so the user has a
 // concrete sense of how recent the saved session is before deciding.
 function formatSessionAge(ageMs: number): string {
@@ -255,6 +264,10 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   // Animation refs for background color transition
   const bgColorAnim = useRef(new Animated.Value(0)).current;
   const transitionOpacityAnim = useRef(new Animated.Value(0)).current;
+  // Slide ref for the top-pill cue (shared by segment + halfway messages)
+  const transitionSlideAnim = useRef(new Animated.Value(-40)).current;
+  const halfwayOpacityAnim = useRef(new Animated.Value(0)).current;
+  const halfwaySlideAnim = useRef(new Animated.Value(-40)).current;
 
   // Tracking state for halfway celebration
   const halfwayShownRef = useRef(false);
@@ -311,6 +324,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [endEarlyModalVisible, setEndEarlyModalVisible] = useState(false);
   const [segmentTransitionMessage, setSegmentTransitionMessage] = useState<string | null>(null);
+  const [transitionSegmentType, setTransitionSegmentType] = useState<keyof typeof CUE_DOT_COLORS>('warmup');
   const [showHalfwayMessage, setShowHalfwayMessage] = useState(false);
   const [resumePromptVisible, setResumePromptVisible] = useState(false);
   const [resumePromptAge, setResumePromptAge] = useState('');
@@ -437,27 +451,42 @@ export default function ActiveSessionScreen({ navigation }: Props) {
     const currentSeg = plan.segments[currentSegmentIndex];
     const segmentType = currentSeg.type as keyof typeof SEGMENT_MESSAGES;
 
-    // Show transition message
+    // Show transition message — slim top pill that slides in/out
     const messages = SEGMENT_MESSAGES[segmentType];
     if (messages && messages.length > 0) {
       const randomMsg = messages[Math.floor(Math.random() * messages.length)];
       setSegmentTransitionMessage(randomMsg);
+      setTransitionSegmentType(segmentType as keyof typeof CUE_DOT_COLORS);
 
-      // Fade in the message
+      transitionSlideAnim.setValue(-40);
+      transitionOpacityAnim.setValue(0);
+
       Animated.sequence([
-        Animated.timing(transitionOpacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        // Hold for 1.4 seconds
-        Animated.delay(1400),
-        // Fade out
-        Animated.timing(transitionOpacityAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-        }),
+        Animated.parallel([
+          Animated.timing(transitionSlideAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.timing(transitionOpacityAnim, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(1500),
+        Animated.parallel([
+          Animated.timing(transitionSlideAnim, {
+            toValue: -40,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.timing(transitionOpacityAnim, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+        ]),
       ]).start(() => {
         setSegmentTransitionMessage(null);
       });
@@ -470,7 +499,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
       useNativeDriver: false,
     }).start();
 
-    // Check for halfway celebration
+    // Check for halfway celebration — also a top pill, primary accent
     if (plan.segments.length > 0) {
       const halfway = Math.floor(plan.segments.length / 2);
       if (currentSegmentIndex >= halfway && !halfwayShownRef.current) {
@@ -478,10 +507,38 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         setShowHalfwayMessage(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-        // Fade out the halfway message after 2 seconds
-        setTimeout(() => {
+        halfwaySlideAnim.setValue(-40);
+        halfwayOpacityAnim.setValue(0);
+
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(halfwaySlideAnim, {
+              toValue: 0,
+              duration: 240,
+              useNativeDriver: true,
+            }),
+            Animated.timing(halfwayOpacityAnim, {
+              toValue: 1,
+              duration: 240,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.delay(1800),
+          Animated.parallel([
+            Animated.timing(halfwaySlideAnim, {
+              toValue: -40,
+              duration: 240,
+              useNativeDriver: true,
+            }),
+            Animated.timing(halfwayOpacityAnim, {
+              toValue: 0,
+              duration: 240,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start(() => {
           setShowHalfwayMessage(false);
-        }, 2000);
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -748,33 +805,51 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         onConfirm={confirmStartOver}
       />
 
-      {/* Segment transition message overlay */}
+      {/* Segment transition pill — slides in from top, no backdrop */}
       {segmentTransitionMessage && (
         <Animated.View
           style={[
-            styles.cueOverlay,
-            { opacity: transitionOpacityAnim },
+            styles.cueTopWrap,
+            {
+              opacity: transitionOpacityAnim,
+              transform: [{ translateY: transitionSlideAnim }],
+            },
           ]}
           pointerEvents="none"
         >
-          <Animated.View style={styles.cueBackdrop} />
-          <View style={styles.cueCard}>
-            <Text style={styles.cueText} numberOfLines={2}>
+          <View style={styles.cuePill}>
+            <View
+              style={[
+                styles.cueDot,
+                { backgroundColor: CUE_DOT_COLORS[transitionSegmentType] },
+              ]}
+            />
+            <Text style={styles.cuePillText} numberOfLines={1}>
               {segmentTransitionMessage}
             </Text>
           </View>
         </Animated.View>
       )}
 
-      {/* Halfway celebration message overlay */}
+      {/* Halfway celebration pill — same shape, primary accent */}
       {showHalfwayMessage && (
-        <View style={styles.cueOverlay} pointerEvents="none">
-          <View style={styles.cueBackdrop} />
-          <View style={[styles.cueCard, styles.cueCardAccent]}>
-            <Text style={styles.cueLabel}>HALFWAY THERE</Text>
-            <Text style={styles.cueText}>Keep pushing 💪</Text>
+        <Animated.View
+          style={[
+            styles.cueTopWrap,
+            {
+              opacity: halfwayOpacityAnim,
+              transform: [{ translateY: halfwaySlideAnim }],
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <View style={[styles.cuePill, styles.cuePillAccent]}>
+            <View style={[styles.cueDot, { backgroundColor: colors.primary }]} />
+            <Text style={styles.cuePillText} numberOfLines={1}>
+              Halfway there — keep pushing
+            </Text>
           </View>
-        </View>
+        </Animated.View>
       )}
     </Animated.View>
   );
@@ -878,47 +953,49 @@ const styles = StyleSheet.create({
   controlsSectionShort: {
     paddingBottom: 4,
   },
-  // ── Cue overlay (segment transition + halfway) ──
-  // Backdrop dims the screen so the message reads cleanly without
-  // colliding with the timer/segment text underneath.
-  cueOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
+  // ── Cue pill (segment transition + halfway) ──
+  // Slim top notification — slides down from the safe area, no backdrop
+  // dim. Replaces the previous full-screen modal-style overlay so the
+  // workout content stays visible during transitions.
+  cueTopWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingTop: 64,
     zIndex: 100,
-    paddingHorizontal: 32,
   },
-  cueBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  cueCard: {
-    backgroundColor: "rgba(20,20,20,0.92)",
-    paddingVertical: 22,
-    paddingHorizontal: 32,
-    borderRadius: 20,
+  cuePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(20,20,20,0.94)',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    minWidth: 200,
-    maxWidth: 340,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    maxWidth: '85%',
   },
-  cueCardAccent: {
-    borderColor: colors.primary,
-    backgroundColor: "rgba(20,20,20,0.95)",
+  cuePillAccent: {
+    borderColor: 'rgba(16,185,129,0.45)',
   },
-  cueText: {
-    fontSize: 26,
-    fontFamily: fonts.bold,
-    color: "#fff",
-    letterSpacing: 0.5,
-    textAlign: "center",
+  cueDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  cueLabel: {
+  cuePillText: {
     fontFamily: fonts.semiBold,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    color: colors.primary,
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#fff',
+    letterSpacing: 0.2,
+    flexShrink: 1,
   },
 });

@@ -188,6 +188,17 @@ export default function TodayScreen({ navigation }: Props) {
       : null;
   const effectiveRecommended = adjustedPlan ?? todayOptions?.recommended ?? null;
 
+  // Soften the CTA when the user is "done for now" — either they
+  // already logged a session today, or they've already hit the weekly
+  // target. In both cases, pushing another workout is bad UX.
+  const todayStr = new Date().toISOString().split('T')[0];
+  const completedToday =
+    !!progress?.lastSessionDate &&
+    progress.lastSessionDate === todayStr &&
+    restDayDeclaredDate !== todayStr;
+  const weekTargetHit = sessionsThisWeek >= TARGET_SESSIONS_PER_WEEK;
+  const alreadyDoneToday = completedToday || weekTargetHit;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -265,61 +276,93 @@ export default function TodayScreen({ navigation }: Props) {
               </View>
             ) : (
               <>
-                {/* Hero session card — takes center stage */}
-                {effectiveRecommended && (
-                  <RecommendedSessionCard
-                    plan={effectiveRecommended}
-                    onPress={() => handleSelectPlan(effectiveRecommended)}
-                    onSchedule={() => openSchedule(effectiveRecommended)}
-                    isScheduled={!!getScheduleForSession(effectiveRecommended.id)}
-                  />
-                )}
-
-                {/* Scheduled for later badge */}
-                {effectiveRecommended && getScheduleForSession(effectiveRecommended.id) && (() => {
-                  const sched = getScheduleForSession(effectiveRecommended.id)!;
-                  const dt = new Date(sched.scheduled_at);
-                  const isToday = dt.toDateString() === new Date().toDateString();
-                  const hours = dt.getHours();
-                  const mins = dt.getMinutes().toString().padStart(2, '0');
-                  const ampm = hours >= 12 ? 'PM' : 'AM';
-                  const displayHour = hours % 12 || 12;
-                  const timeStr = `${displayHour}:${mins} ${ampm}`;
-                  return (
-                    <View style={styles.scheduledBadge}>
-                      <Ionicons name="calendar" size={14} color={colors.primary} />
-                      <Text style={styles.scheduledBadgeText}>
-                        {isToday
-                          ? `Scheduled for today at ${timeStr}`
-                          : `Scheduled for ${timeStr}`}
+                {(() => {
+                  const coachBlock = todayOptions.coachMessage ? (
+                    <View
+                      style={alreadyDoneToday ? styles.coachHero : styles.coachInline}
+                    >
+                      <Ionicons
+                        name="chatbubble"
+                        size={alreadyDoneToday ? 16 : 14}
+                        color={colors.primary}
+                      />
+                      <Text
+                        style={alreadyDoneToday ? styles.coachHeroText : styles.coachInlineText}
+                      >
+                        {todayOptions.coachMessage.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
+                          part.startsWith('**') && part.endsWith('**')
+                            ? <Text key={i} style={{ fontFamily: fonts.bold, fontStyle: 'normal' }}>{part.slice(2, -2)}</Text>
+                            : part
+                        )}
                       </Text>
                     </View>
+                  ) : null;
+
+                  const streakBlock = streak > 0 ? (
+                    <View style={styles.streakNudge}>
+                      <Ionicons name="flame" size={16} color={colors.streak} />
+                      <Text style={styles.streakNudgeText}>
+                        {streak} day streak — keep it alive!
+                      </Text>
+                    </View>
+                  ) : null;
+
+                  const cardBlock = effectiveRecommended ? (
+                    <RecommendedSessionCard
+                      plan={effectiveRecommended}
+                      onPress={() => handleSelectPlan(effectiveRecommended)}
+                      onSchedule={() => openSchedule(effectiveRecommended)}
+                      isScheduled={!!getScheduleForSession(effectiveRecommended.id)}
+                      subdued={alreadyDoneToday}
+                    />
+                  ) : null;
+
+                  const scheduledBadgeBlock =
+                    effectiveRecommended && getScheduleForSession(effectiveRecommended.id)
+                      ? (() => {
+                          const sched = getScheduleForSession(effectiveRecommended.id)!;
+                          const dt = new Date(sched.scheduled_at);
+                          const isToday = dt.toDateString() === new Date().toDateString();
+                          const hours = dt.getHours();
+                          const mins = dt.getMinutes().toString().padStart(2, '0');
+                          const ampm = hours >= 12 ? 'PM' : 'AM';
+                          const displayHour = hours % 12 || 12;
+                          const timeStr = `${displayHour}:${mins} ${ampm}`;
+                          return (
+                            <View style={styles.scheduledBadge}>
+                              <Ionicons name="calendar" size={14} color={colors.primary} />
+                              <Text style={styles.scheduledBadgeText}>
+                                {isToday
+                                  ? `Scheduled for today at ${timeStr}`
+                                  : `Scheduled for ${timeStr}`}
+                              </Text>
+                            </View>
+                          );
+                        })()
+                      : null;
+
+                  // When today is already done, lead with rest message +
+                  // streak; the workout card drops below in subdued mode.
+                  if (alreadyDoneToday) {
+                    return (
+                      <>
+                        {coachBlock}
+                        {streakBlock}
+                        {cardBlock}
+                        {scheduledBadgeBlock}
+                      </>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {cardBlock}
+                      {scheduledBadgeBlock}
+                      {coachBlock}
+                      {streakBlock}
+                    </>
                   );
                 })()}
-
-                {/* Inline coach message — subtle, below the hero card */}
-                {todayOptions.coachMessage ? (
-                  <View style={styles.coachInline}>
-                    <Ionicons name="chatbubble" size={14} color={colors.primary} />
-                    <Text style={styles.coachInlineText}>
-                      {todayOptions.coachMessage.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
-                        part.startsWith('**') && part.endsWith('**')
-                          ? <Text key={i} style={{ fontFamily: fonts.bold, fontStyle: 'normal' }}>{part.slice(2, -2)}</Text>
-                          : part
-                      )}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {/* Streak nudge */}
-                {streak > 0 && (
-                  <View style={styles.streakNudge}>
-                    <Ionicons name="flame" size={16} color={colors.streak} />
-                    <Text style={styles.streakNudgeText}>
-                      {streak} day streak — keep it alive!
-                    </Text>
-                  </View>
-                )}
 
                 {/* Alternatives — collapsed by default behind "Not feeling it?" */}
                 {todayOptions.alternatives.filter(
@@ -614,6 +657,25 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 21,
     color: colors.textSecondary,
+  },
+  // Hero coach message — used when today's session is already done so
+  // the rest recommendation leads instead of the workout CTA.
+  coachHero: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: colors.primaryDim,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.25)',
+  },
+  coachHeroText: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textPrimary,
   },
 
   // Streak nudge
