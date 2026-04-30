@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { calculatePace, formatPace } from '../../../utils/sessionUtils';
 import { colors, fonts } from '../../../theme';
+import PaceInfoSheet, { type PaceInfoSheetRef } from './PaceInfoSheet';
 
 interface SessionStatsBarProps {
   distanceKm: number;
@@ -31,42 +33,60 @@ export const SessionStatsBar: React.FC<SessionStatsBarProps> = ({
   // formula (time/distance) swings wildly with normal GPS jitter.
   const pace = distanceKm < 0.1 ? null : calculatePace(distanceKm, totalElapsedSeconds / 60);
 
+  const paceSheetRef = useRef<PaceInfoSheetRef>(null);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.stat}>
-        <Text style={styles.value} numberOfLines={1}>
-          {locationPermissionDenied ? '--' : distanceKm.toFixed(2)}
-        </Text>
-        <Text style={styles.unit}>km</Text>
+    <>
+      <View style={styles.container}>
+        <View style={styles.stat}>
+          <Text style={styles.value} numberOfLines={1}>
+            {locationPermissionDenied ? '--' : distanceKm.toFixed(2)}
+          </Text>
+          <Text style={styles.unit}>km</Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.stat}>
+          <Text style={styles.value} numberOfLines={1}>
+            {locationPermissionDenied ? '--:--' : formatPace(pace)}
+          </Text>
+          <Pressable
+            onPress={() => paceSheetRef.current?.present()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.unitRow}
+          >
+            <Text style={styles.unit}>/km</Text>
+            <Ionicons
+              name="information-circle-outline"
+              size={12}
+              color={colors.textTertiary}
+              style={styles.unitInfoIcon}
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.stat}>
+          <Text style={styles.value} numberOfLines={1}>
+            {pedometerAvailable ? formatSteps(stepCount) : '--'}
+          </Text>
+          <Text style={styles.unit}>steps</Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.stat}>
+          <Text style={styles.value} numberOfLines={1}>
+            {currentSegmentIndex + 1}/{totalSegments}
+          </Text>
+          <Text style={styles.unit}>segs</Text>
+        </View>
       </View>
 
-      <View style={styles.divider} />
-
-      <View style={styles.stat}>
-        <Text style={styles.value} numberOfLines={1}>
-          {locationPermissionDenied ? '--:--' : formatPace(pace)}
-        </Text>
-        <Text style={styles.unit}>/km</Text>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.stat}>
-        <Text style={styles.value} numberOfLines={1}>
-          {pedometerAvailable ? formatSteps(stepCount) : '--'}
-        </Text>
-        <Text style={styles.unit}>steps</Text>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.stat}>
-        <Text style={styles.value} numberOfLines={1}>
-          {currentSegmentIndex + 1}/{totalSegments}
-        </Text>
-        <Text style={styles.unit}>segs</Text>
-      </View>
-    </View>
+      <PaceInfoSheet ref={paceSheetRef} />
+    </>
   );
 };
 
@@ -100,5 +120,13 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: 2,
     letterSpacing: 0.3,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  unitInfoIcon: {
+    marginTop: 2,
   },
 });
