@@ -17,6 +17,7 @@ import { FeedbackRating, CompletedSession } from '../../types/session';
 import { sessionApi } from '../../services/sessionApi';
 import { feedbackApi } from '../../services/feedbackApi';
 import { logSessionCompletion } from '../../services/notifications/completionLogger';
+import healthService from '../../services/health';
 import { detectMilestone } from '../../constants/milestones';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
@@ -49,13 +50,14 @@ export default function PostSessionScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
 
-    const treadmillStats = isIndoor && (treadmillDistance || treadmillSteps || treadmillCalories)
-      ? {
-          distanceKm: treadmillDistance ? parseFloat(treadmillDistance) : undefined,
-          steps: treadmillSteps ? parseInt(treadmillSteps, 10) : undefined,
-          calories: treadmillCalories ? parseInt(treadmillCalories, 10) : undefined,
-        }
-      : null;
+    const treadmillStats =
+      isIndoor && (treadmillDistance || treadmillSteps || treadmillCalories)
+        ? {
+            distanceKm: treadmillDistance ? parseFloat(treadmillDistance) : undefined,
+            steps: treadmillSteps ? parseInt(treadmillSteps, 10) : undefined,
+            calories: treadmillCalories ? parseInt(treadmillCalories, 10) : undefined,
+          }
+        : null;
 
     const updatedSession: CompletedSession = {
       ...session,
@@ -116,6 +118,19 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       endedEarly: session.endedEarly,
     });
 
+    // Fire-and-forget — never block the user on platform health write.
+    // iOS: saves HKWorkout + distance to Apple Health (closes Activity ring).
+    // Android: no-op stub until Health Connect is wired up.
+    healthService
+      .saveWorkout({
+        startDate: new Date(session.startedAt),
+        endDate: new Date(session.completedAt),
+        durationMinutes: session.actualDurationMinutes,
+        distanceKm: effectiveDistanceKm,
+        workoutType: session.planLevel >= 9 ? 'running' : 'walking',
+      })
+      .catch(() => {});
+
     try {
       // Primary path: Edge Function saves session to DB, computes progress,
       // returns real AI coach feedback. Awaiting this is intentional — the
@@ -154,7 +169,10 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       // user always advances regardless of network state.
       console.warn('process-session-feedback unavailable, using local fallback:', err);
 
-      const result = sessionApi.processCompletedSession({ sessionData: updatedSession, onboardingData });
+      const result = sessionApi.processCompletedSession({
+        sessionData: updatedSession,
+        onboardingData,
+      });
 
       const freshProgress = useRunProgressStore.getState().progress;
       const leveledUp = !!(

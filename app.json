@@ -22,7 +22,10 @@
         "NSLocationWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route, even when the app is in the background.",
         "NSMotionUsageDescription": "MarchBuddy uses motion data to count your steps during walks and runs — works even indoors and on treadmills.",
-        "UIBackgroundModes": ["location", "audio"]
+        "UIBackgroundModes": [
+          "location",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -82,7 +85,14 @@
       "expo-web-browser",
       "expo-updates",
       "@react-native-community/datetimepicker",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "MarchBuddy uses your health data to provide personalised coaching.",
+          "healthUpdatePermission": "MarchBuddy saves your workout sessions to Apple Health to keep your fitness data in sync."
+        }
+      ]
     ],
     "extra": {
       "eas": {
