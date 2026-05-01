@@ -1,6 +1,13 @@
 import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { callClaude } from '../_shared/claude.ts';
 
+type EffortLevel = 'easy' | 'as_planned' | 'hard' | 'incomplete';
+
+interface SessionSignal {
+  effortLevel: EffortLevel;
+  feedbackRating: string | null;
+}
+
 interface RequestBody {
   userId: string;
   currentLevel: number;
@@ -9,7 +16,7 @@ interface RequestBody {
   lastSessionDate: string | null;
   currentStreakDays: number;
   sessionsThisWeek: number;
-  recentFeedback?: string[];
+  recentSessionSignals?: SessionSignal[];
   onboardingData: {
     userName: string;
     triggerStatement?: string;
@@ -49,7 +56,7 @@ const generatePrompt = (data: RequestBody): string => {
     lastSessionDate,
     currentStreakDays,
     sessionsThisWeek,
-    recentFeedback,
+    recentSessionSignals,
     onboardingData,
   } = data;
 
@@ -75,14 +82,14 @@ const generatePrompt = (data: RequestBody): string => {
     situation = 'Normal session day.';
   }
 
-  let feedbackNote = '';
-  if (recentFeedback && recentFeedback.length > 0) {
-    const hardCount = recentFeedback.filter((f) => f === 'too_hard' || f === 'challenging').length;
-    const easyCount = recentFeedback.filter((f) => f === 'too_easy').length;
+  let performanceNote = '';
+  if (recentSessionSignals && recentSessionSignals.length > 0) {
+    const hardCount = recentSessionSignals.filter((s) => s.effortLevel === 'hard' || s.effortLevel === 'incomplete').length;
+    const easyCount = recentSessionSignals.filter((s) => s.effortLevel === 'easy').length;
     if (hardCount >= 2) {
-      feedbackNote = 'Recent sessions have felt hard for them. Consider acknowledging their effort.';
+      performanceNote = 'Recent sessions have been a genuine struggle (based on actual performance data). Acknowledge their effort and be encouraging.';
     } else if (easyCount >= 2) {
-      feedbackNote = 'Recent sessions have felt easy. They might be ready for more challenge.';
+      performanceNote = 'Recent sessions have been comfortably easy. They may be ready for more.';
     }
   }
 
@@ -96,7 +103,7 @@ Current state:
 - Sessions this week: ${sessionsThisWeek}
 
 Situation: ${situation}
-${feedbackNote ? `Feedback pattern: ${feedbackNote}` : ''}
+${performanceNote ? `Performance pattern: ${performanceNote}` : ''}
 
 Onboarding context (use sparingly, when it adds meaning):
 - Why they started: "${onboardingData.triggerStatement || 'not provided'}"
@@ -134,17 +141,24 @@ Deno.serve(async (req: Request) => {
 
     if (daysSinceSession !== null && daysSinceSession > 3) {
       recommendedVariant = 'quick';
-      adjustmentReason = 'Suggesting an easier session to ease back in after a break.';
-    } else if (parsedBody.recentFeedback) {
-      const recentHard = parsedBody.recentFeedback.filter((f) => f === 'too_hard').length;
-      const recentEasy = parsedBody.recentFeedback.filter((f) => f === 'too_easy').length;
+      adjustmentReason = 'Easing back in after a break.';
+    } else if (parsedBody.recentSessionSignals && parsedBody.recentSessionSignals.length > 0) {
+      const signals = parsedBody.recentSessionSignals;
+      const hardOrIncomplete = signals.filter(
+        (s) => s.effortLevel === 'hard' || s.effortLevel === 'incomplete',
+      ).length;
+      const easy = signals.filter((s) => s.effortLevel === 'easy').length;
 
-      if (recentHard >= 2) {
+      if (hardOrIncomplete >= 2) {
         recommendedVariant = 'quick';
-        adjustmentReason = 'Recent sessions felt tough — offering a lighter option today.';
-      } else if (recentEasy >= 2 && parsedBody.sessionsAtCurrentLevel >= 2) {
+        adjustmentReason = 'Recent sessions have been a struggle — a lighter session builds confidence.';
+      } else if (hardOrIncomplete === 1 && signals.length >= 2) {
+        // One hard session in recent history — stay on recommended, don't push
+        recommendedVariant = 'recommended';
+        adjustmentReason = undefined;
+      } else if (easy >= 2 && parsedBody.sessionsAtCurrentLevel >= 2) {
         recommendedVariant = 'challenge';
-        adjustmentReason = 'Recent sessions felt easy — suggesting a challenge.';
+        adjustmentReason = 'Recent sessions have been comfortable — time to push a little.';
       }
     }
 

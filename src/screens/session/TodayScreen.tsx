@@ -87,6 +87,7 @@ export default function TodayScreen({ navigation }: Props) {
       setLoadingOptions(true);
       setLoadError(null);
       try {
+        const recentSessionSignals = await sessionApi.getRecentSessionSignals();
         const options = await sessionApi.generateTodayOptions({
           progress: currentProgress,
           onboardingData: {
@@ -96,6 +97,7 @@ export default function TodayScreen({ navigation }: Props) {
             primaryFear: setupData.primaryFear,
             successVision: setupData.successVision,
           },
+          recentSessionSignals,
         });
         setTodayOptions(options);
         setLoadError(null);

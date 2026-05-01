@@ -2,6 +2,12 @@ import { corsHeaders, handleCors } from '../_shared/cors.ts';
 import { callClaude } from '../_shared/claude.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+interface TreadmillStats {
+  distanceKm?: number;
+  steps?: number;
+  calories?: number;
+}
+
 interface SessionData {
   planId: string;
   planLevel: number;
@@ -15,6 +21,8 @@ interface SessionData {
   endedEarly: boolean;
   pacePerKm: number | null;
   routeData: unknown[];
+  environment: 'indoor' | 'outdoor';
+  treadmillStats: TreadmillStats | null;
   feedbackRating: string;
   feedbackNotes: string | null;
   startedAt: string;
@@ -66,14 +74,27 @@ const buildCoachPrompt = (
   session: SessionData,
   onboarding: OnboardingData,
   progress: ProgressContext,
-): string =>
-  `Generate post-session feedback for ${onboarding.userName}.
+): string => {
+  const distanceKm = session.environment === 'indoor' && session.treadmillStats?.distanceKm != null
+    ? session.treadmillStats.distanceKm
+    : session.actualDistanceKm;
+
+  const distanceNote = session.environment === 'indoor'
+    ? session.treadmillStats?.distanceKm != null
+      ? `${distanceKm.toFixed(2)} km (from treadmill)`
+      : 'Not recorded (indoor session)'
+    : `${distanceKm.toFixed(2)} km`;
+
+  return `Generate post-session feedback for ${onboarding.userName}.
 
 Session completed:
 - Plan: ${session.planTitle} (Level ${session.planLevel})
+- Environment: ${session.environment === 'indoor' ? 'Indoor / treadmill' : 'Outdoor'}
 - Planned: ${session.plannedDurationMinutes} min
 - Actual: ${session.actualDurationMinutes} min
-- Distance: ${session.actualDistanceKm.toFixed(2)} km
+- Distance: ${distanceNote}
+${session.treadmillStats?.steps != null ? `- Steps (treadmill): ${session.treadmillStats.steps}` : ''}
+${session.treadmillStats?.calories != null ? `- Calories (treadmill): ${session.treadmillStats.calories}` : ''}
 - Ended early: ${session.endedEarly ? 'Yes' : 'No'}
 - Their rating: ${session.feedbackRating}
 ${session.feedbackNotes ? `- Their notes: "${session.feedbackNotes}"` : ''}
@@ -89,6 +110,7 @@ Onboarding context (use sparingly):
 - Who they do this for: "${onboarding.anchorPerson || 'not provided'}"
 
 Write 3-4 sentences of coach feedback.`;
+};
 
 const MILESTONE_THRESHOLDS: Record<number, string> = {
   1: 'first_session',
@@ -149,6 +171,8 @@ Deno.serve(async (req: Request) => {
         ended_early: sessionData.endedEarly,
         pace_per_km: sessionData.pacePerKm,
         route_data: sessionData.routeData,
+        environment: sessionData.environment ?? 'outdoor',
+        treadmill_stats: sessionData.treadmillStats ?? null,
         feedback_rating: sessionData.feedbackRating,
         feedback_notes: sessionData.feedbackNotes,
         started_at: sessionData.startedAt,
@@ -192,8 +216,15 @@ Deno.serve(async (req: Request) => {
     const newTotalSessions = prevTotalSessions + 1;
     const prevSessionsAtLevel = currentProgress?.sessions_at_current_level ?? 0;
     const newSessionsAtLevel = prevSessionsAtLevel + 1;
+
+    // For indoor sessions prefer treadmill-reported distance; GPS is 0 indoors.
+    const effectiveDistanceKm =
+      sessionData.environment === 'indoor' && sessionData.treadmillStats?.distanceKm != null
+        ? sessionData.treadmillStats.distanceKm
+        : sessionData.actualDistanceKm;
+
     const newTotalDistanceKm =
-      (currentProgress?.total_distance_km ?? 0) + sessionData.actualDistanceKm;
+      (currentProgress?.total_distance_km ?? 0) + effectiveDistanceKm;
     const newTotalDuration =
       (currentProgress?.total_duration_minutes ?? 0) + sessionData.actualDurationMinutes;
 
@@ -209,16 +240,24 @@ Deno.serve(async (req: Request) => {
       longestRunThisSession,
     );
 
-    // Level-up: 3 sessions at this level and not "too_hard"
+    // Level-up: 3 sessions at this level and the session wasn't a struggle.
+    // Use objective signals first (completion ratio, early exit), self-report as tie-breaker.
     const currentLevel = currentProgress?.current_level ?? 1;
     let leveledUp = false;
     let newLevel = currentLevel;
 
-    if (
-      newSessionsAtLevel >= 3 &&
-      sessionData.feedbackRating !== 'too_hard' &&
-      currentLevel < 16
-    ) {
+    const plannedCount = Array.isArray(sessionData.plannedSegments)
+      ? sessionData.plannedSegments.length
+      : 0;
+    const completionRatio = plannedCount > 0
+      ? sessionData.completedSegments / plannedCount
+      : 1;
+    const sessionWasHard =
+      sessionData.endedEarly ||
+      completionRatio < 0.8 ||
+      sessionData.feedbackRating === 'too_hard';
+
+    if (newSessionsAtLevel >= 3 && !sessionWasHard && currentLevel < 16) {
       leveledUp = true;
       newLevel = currentLevel + 1;
     }

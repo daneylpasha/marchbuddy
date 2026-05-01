@@ -35,105 +35,142 @@ export default function PostSessionScreen({ navigation, route }: Props) {
   const { updateAfterSession, incrementLevel, addToHistory } = useRunProgressStore();
   const { clearTodayOptions } = useSessionStore();
 
+  const isIndoor = session.environment === 'indoor';
+
   const [feedbackRating, setFeedbackRating] = useState<FeedbackRating | null>(null);
   const [feedbackNotes, setFeedbackNotes] = useState('');
+  const [treadmillDistance, setTreadmillDistance] = useState('');
+  const [treadmillSteps, setTreadmillSteps] = useState('');
+  const [treadmillCalories, setTreadmillCalories] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const submit = async (shareAfter: boolean) => {
     if (!feedbackRating) return;
 
     setIsSubmitting(true);
-    setError(null);
+
+    const treadmillStats = isIndoor && (treadmillDistance || treadmillSteps || treadmillCalories)
+      ? {
+          distanceKm: treadmillDistance ? parseFloat(treadmillDistance) : undefined,
+          steps: treadmillSteps ? parseInt(treadmillSteps, 10) : undefined,
+          calories: treadmillCalories ? parseInt(treadmillCalories, 10) : undefined,
+        }
+      : null;
 
     const updatedSession: CompletedSession = {
       ...session,
       feedbackRating,
       feedbackNotes: feedbackNotes.trim() || null,
+      treadmillStats,
     };
 
+    const onboardingData = {
+      userName: setupData.userName || 'there',
+      triggerStatement: setupData.triggerStatement,
+      anchorPerson: setupData.anchorPerson,
+      primaryFear: setupData.primaryFear,
+      successVision: setupData.successVision,
+    };
+
+    // Snapshot distance BEFORE updating so detectMilestone can check crossings
+    const prevDistanceKm = useRunProgressStore.getState().progress?.totalDistanceKm ?? 0;
+
+    // Fire-and-forget side effects — never block the user
+    if (guestId && feedbackRating) {
+      feedbackApi
+        .submitSessionFeedback({
+          userId: guestId,
+          sessionId: session.id,
+          difficultyRating: feedbackRating,
+          comment: feedbackNotes.trim() || null,
+          currentLevel: session.planLevel,
+          sessionType: session.planVariant,
+        })
+        .catch(() => {});
+    }
+    void logSessionCompletion({
+      sessionKey: session.planId,
+      sessionTitle: session.planTitle,
+      completedAt: new Date(session.completedAt),
+    });
+
+    // Prefer treadmill-reported distance for indoor sessions; fall back to GPS.
+    const effectiveDistanceKm =
+      isIndoor && treadmillStats?.distanceKm != null
+        ? treadmillStats.distanceKm
+        : session.actualDistanceKm;
+
+    // Always update local store so the UI stays responsive
+    updateAfterSession({
+      durationMinutes: session.actualDurationMinutes,
+      distanceKm: effectiveDistanceKm,
+    });
+    addToHistory({
+      id: session.id,
+      date: session.completedAt.split('T')[0],
+      durationMinutes: session.actualDurationMinutes,
+      distanceKm: effectiveDistanceKm,
+      planTitle: session.planTitle,
+      planLevel: session.planLevel,
+    });
+
     try {
-      const result = sessionApi.processCompletedSession({
+      // Primary path: Edge Function saves session to DB, computes progress,
+      // returns real AI coach feedback. Awaiting this is intentional — the
+      // loading state covers the wait and the user gets genuine feedback.
+      const result = await sessionApi.processCompletedSessionOnServer({
         sessionData: updatedSession,
-        onboardingData: {
-          userName: setupData.userName || 'there',
-          triggerStatement: setupData.triggerStatement,
-          anchorPerson: setupData.anchorPerson,
-          primaryFear: setupData.primaryFear,
-          successVision: setupData.successVision,
-        },
+        onboardingData,
       });
 
-      // Snapshot distance BEFORE updating so detectMilestone can check threshold crossings
-      const prevDistanceKm = useRunProgressStore.getState().progress?.totalDistanceKm ?? 0;
+      // Sync local level from server result
+      if (result.progressUpdate.leveledUp) incrementLevel();
 
-      // Persist session feedback to DB (fire-and-forget — never blocks the user)
-      if (guestId && feedbackRating) {
-        feedbackApi
-          .submitSessionFeedback({
-            userId: guestId,
-            sessionId: session.id,
-            difficultyRating: feedbackRating,
-            comment: feedbackNotes.trim() || null,
-            currentLevel: session.planLevel,
-            sessionType: session.planVariant,
-          })
-          .catch(() => {});
+      clearTodayOptions();
+      // Edge Function already persisted progress to DB — no pushRunProgress needed
+
+      const milestoneId = result.progressUpdate.milestoneReached;
+
+      if (milestoneId) {
+        navigation.replace('Celebration', {
+          milestoneId,
+          coachFeedback: result.coachFeedback,
+          progressUpdate: result.progressUpdate,
+          session: updatedSession,
+          shareAfter,
+        });
+      } else {
+        navigation.replace('CoachFeedback', {
+          coachFeedback: result.coachFeedback,
+          progressUpdate: result.progressUpdate,
+          session: updatedSession,
+          shareAfter,
+        });
       }
+    } catch (err) {
+      // Fallback: Edge Function unavailable — use local processing so the
+      // user always advances regardless of network state.
+      console.warn('process-session-feedback unavailable, using local fallback:', err);
 
-      // Log a real completion so the re-engagement Edge Function can
-      // base activity on "did they run" instead of "did they schedule"
-      // (P3 fix for Phase-1 audit bug #2). Fire-and-forget.
-      void logSessionCompletion({
-        sessionKey: session.planId,
-        sessionTitle: session.planTitle,
-        completedAt: new Date(session.completedAt),
-      });
+      const result = sessionApi.processCompletedSession({ sessionData: updatedSession, onboardingData });
 
-      // Keep local progress store in sync
-      updateAfterSession({
-        durationMinutes: session.actualDurationMinutes,
-        distanceKm: session.actualDistanceKm,
-      });
-      addToHistory({
-        id: session.id,
-        date: session.completedAt.split('T')[0],
-        durationMinutes: session.actualDurationMinutes,
-        distanceKm: session.actualDistanceKm,
-        planTitle: session.planTitle,
-        planLevel: session.planLevel,
-      });
-
-      // Local level-up check — doesn't depend on edge function
       const freshProgress = useRunProgressStore.getState().progress;
       const leveledUp = !!(
         freshProgress &&
         freshProgress.sessionsAtCurrentLevel >= 3 &&
         freshProgress.currentLevel < 16
       );
-      if (leveledUp) {
-        incrementLevel();
-      }
+      if (leveledUp) incrementLevel();
 
-      // Force Today screen to refresh options next visit
       clearTodayOptions();
 
-      // Push the updated progress (level, streak, totals) to the server so
-      // it survives sign-out → sign-in cycles. Without this, completed runs
-      // only live in AsyncStorage; the next sign-in restores the user_name
-      // from the server but their level/streak/total-sessions reset to
-      // defaults, making it look like all their work was lost.
-      // Fire-and-forget — never blocks the user from advancing.
       const { authService } = require('../../services/authService');
-      authService.pushRunProgress().catch((err: unknown) => {
-        console.warn('Failed to push run progress to server:', err);
+      authService.pushRunProgress().catch((pushErr: unknown) => {
+        console.warn('Failed to push run progress to server:', pushErr);
       });
 
-      // Read state again after potential incrementLevel()
       const finalProgress = useRunProgressStore.getState().progress;
       const newLevel = finalProgress?.currentLevel ?? session.planLevel;
-
-      // Detect milestone locally (independent of edge function result)
       const milestoneId = freshProgress
         ? detectMilestone(prevDistanceKm, freshProgress, leveledUp, newLevel)
         : null;
@@ -162,10 +199,6 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           shareAfter,
         });
       }
-    } catch (err) {
-      console.error('Error submitting feedback:', err);
-      setError('Something went wrong. Please try again.');
-      setIsSubmitting(false);
     }
   };
 
@@ -197,6 +230,53 @@ export default function PostSessionScreen({ navigation, route }: Props) {
             <FeedbackSelector selected={feedbackRating} onSelect={setFeedbackRating} />
           </View>
 
+          {/* Treadmill stats — only shown for indoor sessions */}
+          {isIndoor && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>TREADMILL STATS</Text>
+              <View style={styles.treadmillCard}>
+                <Text style={styles.treadmillHint}>
+                  Enter your machine's stats for better coaching (all optional)
+                </Text>
+                <View style={styles.treadmillFields}>
+                  <View style={styles.treadmillField}>
+                    <Text style={styles.treadmillFieldLabel}>Distance (km)</Text>
+                    <TextInput
+                      style={styles.treadmillInput}
+                      placeholder="0.00"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="decimal-pad"
+                      value={treadmillDistance}
+                      onChangeText={setTreadmillDistance}
+                    />
+                  </View>
+                  <View style={styles.treadmillField}>
+                    <Text style={styles.treadmillFieldLabel}>Steps</Text>
+                    <TextInput
+                      style={styles.treadmillInput}
+                      placeholder="0"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="number-pad"
+                      value={treadmillSteps}
+                      onChangeText={setTreadmillSteps}
+                    />
+                  </View>
+                  <View style={styles.treadmillField}>
+                    <Text style={styles.treadmillFieldLabel}>Calories</Text>
+                    <TextInput
+                      style={styles.treadmillInput}
+                      placeholder="0"
+                      placeholderTextColor={colors.textTertiary}
+                      keyboardType="number-pad"
+                      value={treadmillCalories}
+                      onChangeText={setTreadmillCalories}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Notes */}
           <View style={styles.section}>
             <Text style={styles.notesLabel}>Anything else? (optional)</Text>
@@ -212,7 +292,6 @@ export default function PostSessionScreen({ navigation, route }: Props) {
             />
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
@@ -296,12 +375,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     minHeight: 90,
   },
-  errorText: {
+  treadmillCard: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 14,
+    padding: 16,
+    gap: 14,
+  },
+  treadmillHint: {
     fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.danger,
+    fontSize: 13,
+    color: colors.textTertiary,
+    lineHeight: 18,
+  },
+  treadmillFields: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  treadmillField: {
+    flex: 1,
+    gap: 6,
+  },
+  treadmillFieldLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
+  treadmillInput: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginTop: 16,
   },
   bottomSpacer: { height: 24 },
   footer: {

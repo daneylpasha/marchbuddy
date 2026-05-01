@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
@@ -34,14 +34,7 @@ import { SessionControls } from "./components/SessionControls";
 import { colors, fonts } from "../../theme";
 import type { RunStackParamList } from "../../navigation/RunNavigator";
 
-type ActiveSessionNavProp = NativeStackNavigationProp<
-  RunStackParamList,
-  "ActiveSession"
->;
-
-interface Props {
-  navigation: ActiveSessionNavProp;
-}
+type Props = NativeStackScreenProps<RunStackParamList, "ActiveSession">;
 
 // ─── Confirm overlay (absolute — works on native stack) ───────────────────────
 
@@ -231,7 +224,7 @@ function formatSessionAge(ageMs: number): string {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function ActiveSessionScreen({ navigation }: Props) {
+export default function ActiveSessionScreen({ navigation, route }: Props) {
   useKeepAwake();
 
   const { height: screenHeight } = useWindowDimensions();
@@ -346,27 +339,42 @@ export default function ActiveSessionScreen({ navigation }: Props) {
 
     let mounted = true;
 
-    (async () => {
-      const hasPermission = await locationService.requestPermissions();
-      if (!mounted) return;
+    // For resume, the environment is already persisted in the store.
+    // For a fresh start, it comes from the route param.
+    const environment = isResuming
+      ? (useActiveSessionStore.getState().environment ?? 'outdoor')
+      : route.params.environment;
+    const isOutdoor = environment === 'outdoor';
 
-      if (!hasPermission) {
-        setLocationPermissionDenied(true);
+    (async () => {
+      if (isOutdoor) {
+        const hasPermission = await locationService.requestPermissions();
+        if (!mounted) return;
+
+        if (!hasPermission) {
+          setLocationPermissionDenied(true);
+        } else {
+          await locationService.startTracking((point) => {
+            addRoutePoint(point);
+            // First usable fix dismisses the warm-up chip. Use a ref so we
+            // don't keep re-firing setState on every subsequent point.
+            if (
+              !gpsAcquiredRef.current &&
+              point.accuracy != null &&
+              point.accuracy <= 25
+            ) {
+              gpsAcquiredRef.current = true;
+              setGpsAcquired(true);
+            }
+          });
+        }
       } else {
-        await locationService.startTracking((point) => {
-          addRoutePoint(point);
-          // First usable fix dismisses the warm-up chip. Use a ref so we
-          // don't keep re-firing setState on every subsequent point.
-          if (
-            !gpsAcquiredRef.current &&
-            point.accuracy != null &&
-            point.accuracy <= 25
-          ) {
-            gpsAcquiredRef.current = true;
-            setGpsAcquired(true);
-          }
-        });
+        // Indoor session — GPS not needed, mark as acquired so the chip never shows.
+        gpsAcquiredRef.current = true;
+        setGpsAcquired(true);
       }
+
+      if (!mounted) return;
 
       // Pedometer is independent of GPS — works indoors / treadmill / phone
       // in pocket. Failure is silent: stepCount stays 0 and the UI hides.
@@ -383,7 +391,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
       }
 
       if (!isResuming) {
-        startSession(selectedPlan!);
+        startSession(selectedPlan!, environment);
         sessionCueService.playSegmentChange(selectedPlan!.segments[0].type);
       }
       // On resume the session is already in the correct state (paused or

@@ -19,7 +19,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RunStackParamList = {
   Today: undefined;
   SessionDetail: undefined;
-  ActiveSession: undefined;
+  ActiveSession: { environment: 'indoor' | 'outdoor' };
   PostSession: { session: CompletedSession };
   CoachFeedback: {
     coachFeedback: string;
