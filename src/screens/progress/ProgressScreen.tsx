@@ -16,6 +16,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useFeedbackStore } from '../../store/feedbackStore';
+import { useProgressStore } from '../../store/progressStore';
+import { useAuthStore } from '../../store/authStore';
+import { getWeekStart } from '../../utils/dateUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 import { getWeekStartDate } from '../../utils/sessionUtils';
@@ -194,8 +197,10 @@ function getSessionBadge(
 export default function ProgressScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProgressStackParamList, 'ProgressMain'>>();
   const { progress, sessionHistory } = useRunProgressStore();
-  const { setupData } = useCoachSetupStore();
+  const { setupData, guestId } = useCoachSetupStore();
   const shouldShowRatingNudge = useFeedbackStore((s) => s.shouldShowRatingNudge);
+  const { weeklySummaries, generateAndSaveWeeklySummary } = useProgressStore();
+  const authUser = useAuthStore((s) => s.user);
 
   // Data filter period
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('this_week');
@@ -222,6 +227,18 @@ export default function ProgressScreen() {
         easing: Easing.out(Easing.cubic),
       }),
     ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Generate the weekly AI summary on first visit each week — fire and forget.
+  useEffect(() => {
+    const userId = authUser?.id ?? guestId;
+    if (!userId) return;
+    const thisWeek = getWeekStart();
+    const alreadyGenerated = weeklySummaries.some((s) => s.weekStartDate === thisWeek);
+    if (!alreadyGenerated) {
+      generateAndSaveWeeklySummary(userId).catch(() => {});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

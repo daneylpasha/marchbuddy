@@ -232,13 +232,22 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
             </Pressable>
           </>
         ) : (
-          <Pressable
-            style={({ pressed }) => [styles.doneButton, pressed && styles.doneButtonPressed]}
-            onPress={handleDone}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={styles.btnIcon} />
-            <Text style={styles.doneButtonText}>Done</Text>
-          </Pressable>
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.doneButton, pressed && styles.doneButtonPressed]}
+              onPress={handleDone}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={styles.btnIcon} />
+              <Text style={styles.doneButtonText}>Done</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.nextSessionBtn, pressed && { opacity: 0.6 }]}
+              onPress={handleDone}
+            >
+              <Text style={styles.nextSessionBtnText}>See What's Next</Text>
+              <Ionicons name="arrow-forward" size={15} color={colors.primary} />
+            </Pressable>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -527,6 +536,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 15,
     color: colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+  nextSessionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 6,
+  },
+  nextSessionBtnText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: colors.primary,
     letterSpacing: 0.3,
   },
 });
