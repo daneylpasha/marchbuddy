@@ -142,6 +142,8 @@ export interface SessionRecord {
   distanceKm: number;
   planTitle: string;
   planLevel: number;
+  feedbackRating: string | null;
+  endedEarly: boolean;
 }
 
 // ============================================

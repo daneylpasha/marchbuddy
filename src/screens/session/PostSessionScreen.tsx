@@ -112,6 +112,8 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       distanceKm: effectiveDistanceKm,
       planTitle: session.planTitle,
       planLevel: session.planLevel,
+      feedbackRating: feedbackRating,
+      endedEarly: session.endedEarly,
     });
 
     try {

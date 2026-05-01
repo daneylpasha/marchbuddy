@@ -144,6 +144,22 @@ function evaluateRequest(
     };
   }
 
+  // Genuine struggle signal: 2+ recent sessions rated too_hard or ended early.
+  // This takes priority over streak/consistency checks — pushing a user who
+  // is genuinely struggling causes harm, not progress.
+  const strugglingSessionCount = context.recentSessions.filter(
+    (s) => s.feedback.includes('too_hard') || s.feedback.includes('ended early'),
+  ).length;
+  if (strugglingSessionCount >= 2) {
+    return {
+      shouldAccommodate: true,
+      shouldPush: true,
+      pushIntensity: 'gentle',
+      reason: `Recent sessions show genuine struggle (${strugglingSessionCount} hard/incomplete) — validate and offer lighter option`,
+      isHealthConcern: false,
+    };
+  }
+
   // Calculate consistency signals
   const daysSinceLastSession = context.lastSessionDate
     ? Math.floor((Date.now() - new Date(context.lastSessionDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -258,6 +274,11 @@ THEIR VISION: "${context.successVision}"`;
       guidance = `This is a health or injury situation. Take it seriously and confirm they should rest.
 If they should skip today entirely, say exactly: "I've taken today off the schedule"
 Don't push them to exercise through illness or injury.`;
+    } else if (decision.shouldAccommodate && decision.pushIntensity === 'gentle' && decision.reason.includes('struggle')) {
+      // Genuine recent struggle from session data
+      guidance = `Their recent sessions confirm genuine difficulty — this is not an excuse. Validate their experience directly.
+Proactively switch them to the quick session: say "I've switched you to the quick session"
+Do NOT push them to do the full session. If it keeps feeling this hard after the quick session, suggest we reconsider the level.`;
     } else if (decision.shouldAccommodate && decision.pushIntensity === 'gentle') {
       // Consistent user
       guidance = `They've earned some flexibility. If they want lighter, offer the quick session and say: "I've switched you to the quick session"

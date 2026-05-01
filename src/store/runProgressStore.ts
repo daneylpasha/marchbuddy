@@ -26,6 +26,7 @@ interface RunProgressState {
     longestRunMinutes?: number;
   }) => void;
   addToHistory: (record: SessionRecord) => void;
+  setSessionHistory: (records: SessionRecord[]) => void;
   incrementLevel: () => void;
   resetWeeklyStats: () => void;
   resetProgress: () => void;
@@ -70,6 +71,10 @@ export const useRunProgressStore = create<RunProgressState>()(
           // Keep last 100 sessions only
           return { sessionHistory: updated.slice(-100) };
         });
+      },
+
+      setSessionHistory: (records: SessionRecord[]) => {
+        set({ sessionHistory: records.slice(-100) });
       },
 
       initializeProgress: (userId: string) => {
