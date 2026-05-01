@@ -43,8 +43,10 @@ export default function SettingsScreen() {
   const {
     distanceUnit,
     hapticFeedbackEnabled,
+    voiceCuesEnabled,
     setDistanceUnit,
     setHapticFeedbackEnabled,
+    setVoiceCuesEnabled,
     resetSettings,
   } = useSettingsStore();
 
@@ -287,6 +289,17 @@ export default function SettingsScreen() {
                 onValueChange={handleNotificationToggle}
                 trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
                 thumbColor={notificationPermission === 'granted' ? colors.primary : colors.textTertiary}
+              />
+            }
+          />
+          <SettingsRow
+            label="Voice Cues"
+            rightElement={
+              <Switch
+                value={voiceCuesEnabled}
+                onValueChange={setVoiceCuesEnabled}
+                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                thumbColor={voiceCuesEnabled ? colors.primary : colors.textTertiary}
               />
             }
           />

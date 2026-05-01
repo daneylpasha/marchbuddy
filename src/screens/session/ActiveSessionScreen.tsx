@@ -347,6 +347,9 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     const isOutdoor = environment === 'outdoor';
 
     (async () => {
+      // Configure audio session for background speech + music ducking
+      await sessionCueService.initialize();
+
       if (isOutdoor) {
         const hasPermission = await locationService.requestPermissions();
         if (!mounted) return;
@@ -514,6 +517,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
         halfwayShownRef.current = true;
         setShowHalfwayMessage(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        sessionCueService.playHalfway();
 
         halfwaySlideAnim.setValue(-40);
         halfwayOpacityAnim.setValue(0);

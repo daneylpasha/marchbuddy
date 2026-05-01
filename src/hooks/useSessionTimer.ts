@@ -20,6 +20,7 @@ interface UseSessionTimerReturn {
 export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): UseSessionTimerReturn => {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasAnnouncedRef = useRef<Set<number>>(new Set());
+  const hasAnnouncedAdvanceRef = useRef<Set<number>>(new Set());
   // Use a ref so the tick callback doesn't need onComplete in its dep array
   const onCompleteRef = useRef<(() => void) | undefined>(onComplete);
   useEffect(() => {
@@ -93,6 +94,20 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
     const remaining = currentSegment.durationSeconds - segmentSeconds;
     if (remaining <= 3 && remaining > 0) {
       sessionCueService.playCountdown(remaining);
+    }
+
+    // 30-second advance warning before an upcoming run segment — fires once
+    // per segment. Guard on durationSeconds > 30 so short walk segments
+    // (< 30s) don't immediately fire a misleading "30 seconds" warning.
+    if (
+      nextSegment?.type === 'run' &&
+      currentSegment.durationSeconds > 30 &&
+      remaining <= 30 &&
+      remaining > 0 &&
+      !hasAnnouncedAdvanceRef.current.has(currentSegmentIndex)
+    ) {
+      hasAnnouncedAdvanceRef.current.add(currentSegmentIndex);
+      sessionCueService.playUpcomingRun();
     }
   }, [
     startedAt,
