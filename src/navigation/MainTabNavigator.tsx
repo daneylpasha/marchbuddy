@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import RunNavigator from './RunNavigator';
@@ -9,6 +10,15 @@ import ProgressNavigator from './ProgressNavigator';
 import CoachChatScreen from '../screens/chat/CoachChatScreen';
 import { useChatStore } from '../store/chatStore';
 import { colors, fonts } from '../theme';
+
+// Screens inside RunNavigator that should hide the tab bar entirely.
+const IMMERSIVE_SCREENS = new Set([
+  'ActiveSession',
+  'PostSession',
+  'CoachFeedback',
+  'Celebration',
+  'ShareSession',
+]);
 
 // ─── Tab param list ──────────────────────────────────────────────────────────
 
@@ -76,7 +86,20 @@ export default function MainTabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Run" component={RunNavigator} options={{ tabBarLabel: 'Today' }} />
+      <Tab.Screen
+        name="Run"
+        component={RunNavigator}
+        options={({ route }) => {
+          const focused = getFocusedRouteNameFromRoute(route) ?? 'Today';
+          const hidden = IMMERSIVE_SCREENS.has(focused);
+          return {
+            tabBarLabel: 'Today',
+            tabBarStyle: hidden
+              ? { display: 'none' }
+              : [styles.tabBar, { paddingBottom: bottomPadding, height: 74 + bottomPadding }],
+          };
+        }}
+      />
       <Tab.Screen name="Progress" component={ProgressNavigator} />
       <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
     </Tab.Navigator>

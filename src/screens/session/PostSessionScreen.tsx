@@ -245,8 +245,9 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           <SessionSummaryCard session={session} />
 
           {/* Feedback */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>HOW DID THAT FEEL?</Text>
+          <View style={styles.feedbackCard}>
+            <Text style={styles.feedbackCardLabel}>How did that feel?</Text>
+            <Text style={styles.feedbackCardHint}>Required to continue</Text>
             <FeedbackSelector selected={feedbackRating} onSelect={setFeedbackRating} />
           </View>
 
@@ -394,6 +395,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
     minHeight: 90,
+  },
+  feedbackCard: {
+    marginTop: 24,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(6,138,21,0.25)',
+    gap: 16,
+    shadowColor: '#068A15',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  feedbackCardLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  feedbackCardHint: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.primary,
+    textAlign: 'center',
+    letterSpacing: 0.4,
+    marginTop: -8,
   },
   treadmillCard: {
     backgroundColor: colors.surfaceElevated,
