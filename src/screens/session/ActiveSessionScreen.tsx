@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  ScrollView,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -739,43 +740,54 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
           )}
         </View>
 
-        <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
-          <SessionTimer
-            totalElapsedSeconds={totalElapsedSeconds}
-            isPaused={isPaused}
-          />
-        </View>
+        {/* Scrollable content — timer, segment, next, stats */}
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          alwaysBounceVertical={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
+            <SessionTimer
+              totalElapsedSeconds={totalElapsedSeconds}
+              isPaused={isPaused}
+            />
+          </View>
 
-        <View style={styles.segmentSection}>
-          <CurrentSegmentDisplay
-            segment={currentSegment}
-            remainingSeconds={segmentRemainingSeconds}
-            isPaused={isPaused}
-          />
-        </View>
+          <View style={[styles.segmentSection, isShort && styles.segmentSectionShort]}>
+            <CurrentSegmentDisplay
+              segment={currentSegment}
+              remainingSeconds={segmentRemainingSeconds}
+              isPaused={isPaused}
+            />
+          </View>
 
-        <View style={[styles.nextSection, isShort && styles.tightSection]}>
-          <NextSegmentPreview
-            progress={progress}
-            progressColor={
-              currentSegment.type === "run" ? colors.primary : "#fff"
-            }
-            segment={nextSegment ?? null}
-          />
-        </View>
+          <View style={[styles.nextSection, isShort && styles.tightSection]}>
+            <NextSegmentPreview
+              progress={progress}
+              progressColor={
+                currentSegment.type === "run" ? colors.primary : "#fff"
+              }
+              segment={nextSegment ?? null}
+            />
+          </View>
 
-        <View style={[styles.statsSection, isShort && styles.tightSection]}>
-          <SessionStatsBar
-            distanceKm={distanceKm}
-            totalElapsedSeconds={totalElapsedSeconds}
-            currentSegmentIndex={currentSegmentIndex}
-            totalSegments={plan.segments.length}
-            locationPermissionDenied={locationPermissionDenied}
-            stepCount={stepCount}
-            pedometerAvailable={pedometerAvailable}
-          />
-        </View>
+          <View style={[styles.statsSection, isShort && styles.tightSection]}>
+            <SessionStatsBar
+              distanceKm={distanceKm}
+              totalElapsedSeconds={totalElapsedSeconds}
+              currentSegmentIndex={currentSegmentIndex}
+              totalSegments={plan.segments.length}
+              locationPermissionDenied={locationPermissionDenied}
+              stepCount={stepCount}
+              pedometerAvailable={pedometerAvailable}
+            />
+          </View>
+        </ScrollView>
 
+        {/* Sticky controls — always visible at the bottom */}
         <View style={[styles.controlsSection, isShort && styles.controlsSectionShort]}>
           <SessionControls
             isPaused={isPaused}
@@ -925,6 +937,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.4,
   },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "space-between",
+    paddingBottom: 8,
+  },
   timerSection: {
     paddingTop: 8,
     paddingBottom: 24,
@@ -935,17 +955,13 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   segmentSection: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
-    // 14px gap between progress card and NEXT UP card — matches the
-    // 14px gap between NEXT UP and stats card for visual rhythm.
-    paddingBottom: 14,
-    // Defensive: on very small phones the inner content can be taller
-    // than the available flex slot, which causes the guidance text to
-    // bleed onto the NEXT UP progress bar. Clip it.
-    overflow: "hidden",
+    paddingVertical: 28,
+  },
+  segmentSectionShort: {
+    paddingVertical: 12,
   },
   nextSection: {
     paddingHorizontal: 24,
@@ -961,6 +977,7 @@ const styles = StyleSheet.create({
   controlsSection: {
     paddingHorizontal: 24,
     paddingBottom: 8,
+    paddingTop: 4,
   },
   controlsSectionShort: {
     paddingBottom: 4,
