@@ -396,7 +396,10 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
 
       if (!isResuming) {
         startSession(selectedPlan!, environment);
-        sessionCueService.playSegmentChange(selectedPlan!.segments[0].type);
+        sessionCueService.playSegmentChange(
+          selectedPlan!.segments[0].type,
+          selectedPlan!.segments[0].label,
+        );
       }
       // On resume the session is already in the correct state (paused or
       // running) — we just unblock the loading screen and let the existing

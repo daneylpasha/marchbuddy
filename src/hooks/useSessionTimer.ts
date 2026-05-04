@@ -78,7 +78,7 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
       if (!hasAnnouncedRef.current.has(currentSegmentIndex)) {
         hasAnnouncedRef.current.add(currentSegmentIndex);
         if (nextSegment) {
-          sessionCueService.playSegmentChange(nextSegment.type);
+          sessionCueService.playSegmentChange(nextSegment.type, nextSegment.label);
         } else {
           sessionCueService.playSessionComplete();
         }
@@ -90,9 +90,9 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
       return;
     }
 
-    // 3-2-1 countdown cues before segment ends
+    // Last-10-seconds countdown cues before segment ends (voice + haptic).
     const remaining = currentSegment.durationSeconds - segmentSeconds;
-    if (remaining <= 3 && remaining > 0) {
+    if (remaining <= 10 && remaining > 0) {
       sessionCueService.playCountdown(remaining);
     }
 
