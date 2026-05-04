@@ -21,22 +21,17 @@ end;
 $$;
 
 -- ─── 1. profiles ─────────────────────────────────────────────────────────────
--- Public-facing user identity. Synced from local runProgressStore on each
--- session completion. is_visible flips to true when level reaches 2.
+-- The profiles table already exists (fitness profile with id PK).
+-- Add community columns needed for the social graph.
+-- is_visible flips to true when level reaches 2.
 
-create table if not exists public.profiles (
-  user_id           uuid        primary key references auth.users(id) on delete cascade,
-  display_name      text        not null,
-  avatar_url        text,
-  level             smallint    not null default 1 check (level between 1 and 16),
-  current_streak    integer     not null default 0,
-  total_sessions    integer     not null default 0,
-  total_distance_km numeric     not null default 0,
-  win_points        integer     not null default 0,
-  is_visible        boolean     not null default false,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
-);
+alter table public.profiles
+  add column if not exists level             smallint not null default 1,
+  add column if not exists current_streak    integer  not null default 0,
+  add column if not exists total_sessions    integer  not null default 0,
+  add column if not exists total_distance_km numeric  not null default 0,
+  add column if not exists win_points        integer  not null default 0,
+  add column if not exists is_visible        boolean  not null default false;
 
 alter table public.profiles enable row level security;
 
@@ -49,17 +44,17 @@ do $$ begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='profiles' and policyname='Visible profiles are readable by all') then
     create policy "Visible profiles are readable by all"
       on public.profiles for select
-      using (is_visible = true or auth.uid() = user_id);
+      using (is_visible = true or auth.uid() = id);
   end if;
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='profiles' and policyname='Users can insert own profile') then
     create policy "Users can insert own profile"
       on public.profiles for insert
-      with check (auth.uid() = user_id);
+      with check (auth.uid() = id);
   end if;
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='profiles' and policyname='Users can update own profile') then
     create policy "Users can update own profile"
       on public.profiles for update
-      using (auth.uid() = user_id);
+      using (auth.uid() = id);
   end if;
 end $$;
 
