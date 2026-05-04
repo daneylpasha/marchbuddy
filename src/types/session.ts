@@ -92,6 +92,14 @@ export interface CompletedSession {
   // GPS data
   route: GeoPoint[];
 
+  // Environment
+  environment: 'indoor' | 'outdoor';
+  treadmillStats: {
+    distanceKm?: number;
+    steps?: number;
+    calories?: number;
+  } | null;
+
   // Feedback
   feedbackRating: FeedbackRating | null;
   feedbackNotes: string | null;
@@ -134,6 +142,8 @@ export interface SessionRecord {
   distanceKm: number;
   planTitle: string;
   planLevel: number;
+  feedbackRating: string | null;
+  endedEarly: boolean;
 }
 
 // ============================================

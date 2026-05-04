@@ -7,10 +7,11 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  ScrollView,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 
@@ -34,14 +35,7 @@ import { SessionControls } from "./components/SessionControls";
 import { colors, fonts } from "../../theme";
 import type { RunStackParamList } from "../../navigation/RunNavigator";
 
-type ActiveSessionNavProp = NativeStackNavigationProp<
-  RunStackParamList,
-  "ActiveSession"
->;
-
-interface Props {
-  navigation: ActiveSessionNavProp;
-}
+type Props = NativeStackScreenProps<RunStackParamList, "ActiveSession">;
 
 // ─── Confirm overlay (absolute — works on native stack) ───────────────────────
 
@@ -231,7 +225,7 @@ function formatSessionAge(ageMs: number): string {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function ActiveSessionScreen({ navigation }: Props) {
+export default function ActiveSessionScreen({ navigation, route }: Props) {
   useKeepAwake();
 
   const { height: screenHeight } = useWindowDimensions();
@@ -346,27 +340,45 @@ export default function ActiveSessionScreen({ navigation }: Props) {
 
     let mounted = true;
 
-    (async () => {
-      const hasPermission = await locationService.requestPermissions();
-      if (!mounted) return;
+    // For resume, the environment is already persisted in the store.
+    // For a fresh start, it comes from the route param.
+    const environment = isResuming
+      ? (useActiveSessionStore.getState().environment ?? 'outdoor')
+      : route.params.environment;
+    const isOutdoor = environment === 'outdoor';
 
-      if (!hasPermission) {
-        setLocationPermissionDenied(true);
+    (async () => {
+      // Configure audio session for background speech + music ducking
+      await sessionCueService.initialize();
+
+      if (isOutdoor) {
+        const hasPermission = await locationService.requestPermissions();
+        if (!mounted) return;
+
+        if (!hasPermission) {
+          setLocationPermissionDenied(true);
+        } else {
+          await locationService.startTracking((point) => {
+            addRoutePoint(point);
+            // First usable fix dismisses the warm-up chip. Use a ref so we
+            // don't keep re-firing setState on every subsequent point.
+            if (
+              !gpsAcquiredRef.current &&
+              point.accuracy != null &&
+              point.accuracy <= 25
+            ) {
+              gpsAcquiredRef.current = true;
+              setGpsAcquired(true);
+            }
+          });
+        }
       } else {
-        await locationService.startTracking((point) => {
-          addRoutePoint(point);
-          // First usable fix dismisses the warm-up chip. Use a ref so we
-          // don't keep re-firing setState on every subsequent point.
-          if (
-            !gpsAcquiredRef.current &&
-            point.accuracy != null &&
-            point.accuracy <= 25
-          ) {
-            gpsAcquiredRef.current = true;
-            setGpsAcquired(true);
-          }
-        });
+        // Indoor session — GPS not needed, mark as acquired so the chip never shows.
+        gpsAcquiredRef.current = true;
+        setGpsAcquired(true);
       }
+
+      if (!mounted) return;
 
       // Pedometer is independent of GPS — works indoors / treadmill / phone
       // in pocket. Failure is silent: stepCount stays 0 and the UI hides.
@@ -383,7 +395,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
       }
 
       if (!isResuming) {
-        startSession(selectedPlan!);
+        startSession(selectedPlan!, environment);
         sessionCueService.playSegmentChange(selectedPlan!.segments[0].type);
       }
       // On resume the session is already in the correct state (paused or
@@ -506,6 +518,7 @@ export default function ActiveSessionScreen({ navigation }: Props) {
         halfwayShownRef.current = true;
         setShowHalfwayMessage(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        sessionCueService.playHalfway();
 
         halfwaySlideAnim.setValue(-40);
         halfwayOpacityAnim.setValue(0);
@@ -727,43 +740,54 @@ export default function ActiveSessionScreen({ navigation }: Props) {
           )}
         </View>
 
-        <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
-          <SessionTimer
-            totalElapsedSeconds={totalElapsedSeconds}
-            isPaused={isPaused}
-          />
-        </View>
+        {/* Scrollable content — timer, segment, next, stats */}
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          alwaysBounceVertical={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
+            <SessionTimer
+              totalElapsedSeconds={totalElapsedSeconds}
+              isPaused={isPaused}
+            />
+          </View>
 
-        <View style={styles.segmentSection}>
-          <CurrentSegmentDisplay
-            segment={currentSegment}
-            remainingSeconds={segmentRemainingSeconds}
-            isPaused={isPaused}
-          />
-        </View>
+          <View style={[styles.segmentSection, isShort && styles.segmentSectionShort]}>
+            <CurrentSegmentDisplay
+              segment={currentSegment}
+              remainingSeconds={segmentRemainingSeconds}
+              isPaused={isPaused}
+            />
+          </View>
 
-        <View style={[styles.nextSection, isShort && styles.tightSection]}>
-          <NextSegmentPreview
-            progress={progress}
-            progressColor={
-              currentSegment.type === "run" ? colors.primary : "#fff"
-            }
-            segment={nextSegment ?? null}
-          />
-        </View>
+          <View style={[styles.nextSection, isShort && styles.tightSection]}>
+            <NextSegmentPreview
+              progress={progress}
+              progressColor={
+                currentSegment.type === "run" ? colors.primary : "#fff"
+              }
+              segment={nextSegment ?? null}
+            />
+          </View>
 
-        <View style={[styles.statsSection, isShort && styles.tightSection]}>
-          <SessionStatsBar
-            distanceKm={distanceKm}
-            totalElapsedSeconds={totalElapsedSeconds}
-            currentSegmentIndex={currentSegmentIndex}
-            totalSegments={plan.segments.length}
-            locationPermissionDenied={locationPermissionDenied}
-            stepCount={stepCount}
-            pedometerAvailable={pedometerAvailable}
-          />
-        </View>
+          <View style={[styles.statsSection, isShort && styles.tightSection]}>
+            <SessionStatsBar
+              distanceKm={distanceKm}
+              totalElapsedSeconds={totalElapsedSeconds}
+              currentSegmentIndex={currentSegmentIndex}
+              totalSegments={plan.segments.length}
+              locationPermissionDenied={locationPermissionDenied}
+              stepCount={stepCount}
+              pedometerAvailable={pedometerAvailable}
+            />
+          </View>
+        </ScrollView>
 
+        {/* Sticky controls — always visible at the bottom */}
         <View style={[styles.controlsSection, isShort && styles.controlsSectionShort]}>
           <SessionControls
             isPaused={isPaused}
@@ -913,6 +937,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.4,
   },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "space-between",
+    paddingBottom: 8,
+  },
   timerSection: {
     paddingTop: 8,
     paddingBottom: 24,
@@ -923,17 +955,13 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   segmentSection: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
-    // 14px gap between progress card and NEXT UP card — matches the
-    // 14px gap between NEXT UP and stats card for visual rhythm.
-    paddingBottom: 14,
-    // Defensive: on very small phones the inner content can be taller
-    // than the available flex slot, which causes the guidance text to
-    // bleed onto the NEXT UP progress bar. Clip it.
-    overflow: "hidden",
+    paddingVertical: 28,
+  },
+  segmentSectionShort: {
+    paddingVertical: 12,
   },
   nextSection: {
     paddingHorizontal: 24,
@@ -949,6 +977,7 @@ const styles = StyleSheet.create({
   controlsSection: {
     paddingHorizontal: 24,
     paddingBottom: 8,
+    paddingTop: 4,
   },
   controlsSectionShort: {
     paddingBottom: 4,

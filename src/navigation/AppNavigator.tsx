@@ -171,22 +171,27 @@ export default function AppNavigator() {
   // Also drop sessions that have been sitting stale beyond the threshold
   // BEFORE we mark hydration complete, so the navigator never sees them.
   useEffect(() => {
-    const dropIfStale = () => {
+    const handleHydrated = () => {
       const state = useActiveSessionStore.getState();
       if (state.isActive && isSessionStale(state)) {
         state.resetSession();
       }
+      setIsActiveSessionHydrated(true);
+
+      // If there's a live session in progress, skip the minimum splash wait —
+      // the user needs to get back to their session immediately, not sit
+      // through 3 seconds of branding after a background process kill.
+      if (state.isActive && state.plan) {
+        if (minTimerRef.current) clearTimeout(minTimerRef.current);
+        setMinTimeElapsed(true);
+      }
     };
 
     if (useActiveSessionStore.persist.hasHydrated()) {
-      dropIfStale();
-      setIsActiveSessionHydrated(true);
+      handleHydrated();
       return;
     }
-    const unsub = useActiveSessionStore.persist.onFinishHydration(() => {
-      dropIfStale();
-      setIsActiveSessionHydrated(true);
-    });
+    const unsub = useActiveSessionStore.persist.onFinishHydration(handleHydrated);
     return unsub;
   }, []);
 

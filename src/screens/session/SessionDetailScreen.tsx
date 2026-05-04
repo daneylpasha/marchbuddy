@@ -9,11 +9,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSessionStore } from '../../store/sessionStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { SegmentListItem } from './components/SegmentListItem';
 import { formatDurationMinutes } from '../../utils/sessionUtils';
 import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/ScheduleSheet';
+import EnvironmentPickerSheet, { type SessionEnvironment } from '../../components/session/EnvironmentPickerSheet';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -27,7 +29,17 @@ export default function SessionDetailScreen({ navigation }: Props) {
   const { selectedPlan } = useSessionStore();
   const getScheduleForSession = useScheduleStore((s) => s.getScheduleForSession);
   const scheduleSheetRef = useRef<ScheduleSheetRef>(null);
+  const envSheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
+
+  const handleBeginSession = () => {
+    envSheetRef.current?.present();
+  };
+
+  const handleEnvironmentSelect = (env: SessionEnvironment) => {
+    envSheetRef.current?.dismiss();
+    navigation.navigate('ActiveSession', { environment: env });
+  };
 
   useEffect(() => {
     if (!selectedPlan && navigation.isFocused()) {
@@ -114,7 +126,7 @@ export default function SessionDetailScreen({ navigation }: Props) {
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
           style={({ pressed }) => [styles.beginButton, pressed && styles.beginButtonPressed]}
-          onPress={() => navigation.navigate('ActiveSession')}
+          onPress={handleBeginSession}
         >
           <Text style={styles.beginButtonText}>Begin Session</Text>
         </Pressable>
@@ -146,6 +158,7 @@ export default function SessionDetailScreen({ navigation }: Props) {
       </View>
 
       <ScheduleSheet ref={scheduleSheetRef} />
+      <EnvironmentPickerSheet ref={envSheetRef} onSelect={handleEnvironmentSelect} />
     </View>
   );
 }

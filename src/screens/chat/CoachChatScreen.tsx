@@ -82,11 +82,13 @@ export const CoachChatScreen: React.FC = () => {
       anchorPerson: setupData.anchorPerson ?? '',
       primaryFear: setupData.primaryFear ?? '',
       successVision: setupData.successVision ?? '',
-      recentSessions: sessionHistory.slice(-3).map((s) => ({
-        date: s.date,
-        title: s.planTitle,
-        feedback: `${s.durationMinutes}min`,
-      })),
+      recentSessions: sessionHistory.slice(-3).map((s) => {
+        const parts = [`${s.durationMinutes}min`];
+        if (s.distanceKm > 0) parts.push(`${s.distanceKm.toFixed(2)}km`);
+        if (s.feedbackRating) parts.push(`rated: ${s.feedbackRating}`);
+        if (s.endedEarly) parts.push('ended early');
+        return { date: s.date, title: s.planTitle, feedback: parts.join(', ') };
+      }),
       availableSessions: levelDef
         ? {
             recommended: {

@@ -190,12 +190,12 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     const isConnected = useNetworkStore.getState().isConnected;
     if (!isConnected) return;
 
+    const profile = useProfileStore.getState().profile;
+    if (!profile) return;
+
     set({ generatingSummary: true });
 
     try {
-      const profile = useProfileStore.getState().profile;
-      if (!profile) throw new Error('No profile');
-
       const todayWorkout = useWorkoutStore.getState().todayWorkout;
       const todayMealPlan = useNutritionStore.getState().todayMealPlan;
       const todayWaterLog = useWaterStore.getState().todayWaterLog;

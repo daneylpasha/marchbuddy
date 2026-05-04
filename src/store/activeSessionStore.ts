@@ -49,12 +49,15 @@ interface ActiveSessionState {
   // Pedometer (session-relative — already baselined by pedometerService)
   stepCount: number;
 
+  // Environment
+  environment: 'indoor' | 'outdoor' | null;
+
   // Calculated (updated by timer hook every 100ms)
   totalElapsedSeconds: number;
   segmentElapsedSeconds: number;
 
   // Actions
-  startSession: (plan: SessionPlan) => void;
+  startSession: (plan: SessionPlan, environment: 'indoor' | 'outdoor') => void;
   pauseSession: () => void;
   resumeSession: () => void;
   advanceSegment: () => void;
@@ -78,6 +81,7 @@ const initialState = {
   stepCount: 0,
   totalElapsedSeconds: 0,
   segmentElapsedSeconds: 0,
+  environment: null as 'indoor' | 'outdoor' | null,
 };
 
 export const useActiveSessionStore = create<ActiveSessionState>()(
@@ -85,7 +89,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
     (set, get) => ({
   ...initialState,
 
-  startSession: (plan: SessionPlan) => {
+  startSession: (plan: SessionPlan, environment: 'indoor' | 'outdoor') => {
     const now = new Date();
     set({
       plan,
@@ -100,6 +104,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
       stepCount: 0,
       totalElapsedSeconds: 0,
       segmentElapsedSeconds: 0,
+      environment,
     });
   },
 
@@ -210,6 +215,8 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
           ? (state.totalElapsedSeconds / 60) / state.distanceKm
           : null,
       route: state.route,
+      environment: state.environment ?? 'outdoor',
+      treadmillStats: null,
       feedbackRating: null,
       feedbackNotes: null,
       startedAt: state.startedAt.toISOString(),
@@ -241,6 +248,7 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
         route: state.route,
         distanceKm: state.distanceKm,
         stepCount: state.stepCount,
+        environment: state.environment,
       }),
       // Dates round-trip through JSON as ISO strings — revive them so
       // pausedAt.getTime() / startedAt.getTime() in the resume math don't crash.

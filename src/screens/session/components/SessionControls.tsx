@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../theme';
 
@@ -9,56 +9,11 @@ interface SessionControlsProps {
   onEndEarly: () => void;
 }
 
-const LONG_PRESS_DURATION = 800; // ms to hold before End Early triggers
-
 export const SessionControls: React.FC<SessionControlsProps> = ({
   isPaused,
   onPauseResume,
   onEndEarly,
 }) => {
-  const [isHoldingEnd, setIsHoldingEnd] = useState(false);
-  const holdProgressAnim = useRef(new Animated.Value(0)).current;
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const holdAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  const startHold = () => {
-    setIsHoldingEnd(true);
-    holdProgressAnim.setValue(0);
-
-    // Start fill animation
-    holdAnimRef.current = Animated.timing(holdProgressAnim, {
-      toValue: 1,
-      duration: LONG_PRESS_DURATION,
-      useNativeDriver: false,
-    });
-    holdAnimRef.current.start();
-
-    // Trigger end early after hold duration
-    holdTimerRef.current = setTimeout(() => {
-      setIsHoldingEnd(false);
-      holdProgressAnim.setValue(0);
-      onEndEarly();
-    }, LONG_PRESS_DURATION);
-  };
-
-  const cancelHold = () => {
-    setIsHoldingEnd(false);
-    holdProgressAnim.setValue(0);
-    if (holdTimerRef.current) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    if (holdAnimRef.current) {
-      holdAnimRef.current.stop();
-      holdAnimRef.current = null;
-    }
-  };
-
-  const holdFillWidth = holdProgressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
   return (
     <View style={styles.container}>
       {/* Pause / Resume — primary action */}
@@ -74,28 +29,16 @@ export const SessionControls: React.FC<SessionControlsProps> = ({
         <Text style={styles.mainButtonText}>{isPaused ? 'Resume' : 'Pause'}</Text>
       </Pressable>
 
-      {/* End early — requires long press */}
+      {/* End early — tap opens confirmation modal */}
       <Pressable
         style={({ pressed }) => [
           styles.endButton,
-          isHoldingEnd && styles.endButtonHolding,
+          pressed && styles.endButtonPressed,
         ]}
-        onPressIn={startHold}
-        onPressOut={cancelHold}
+        onPress={onEndEarly}
       >
-        {/* Animated fill background */}
-        {isHoldingEnd && (
-          <Animated.View
-            style={[
-              styles.endButtonFill,
-              { width: holdFillWidth as any },
-            ]}
-          />
-        )}
         <Ionicons name="stop" size={16} color={colors.danger} />
-        <Text style={styles.endButtonText} numberOfLines={1}>
-          {isHoldingEnd ? 'Hold...' : 'End'}
-        </Text>
+        <Text style={styles.endButtonText}>End</Text>
       </Pressable>
     </View>
   );
@@ -141,26 +84,15 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(244,63,94,0.3)',
-    overflow: 'hidden',
-    position: 'relative',
   },
-  endButtonHolding: {
-    borderColor: colors.danger,
-    backgroundColor: 'rgba(244,63,94,0.14)',
-  },
-  endButtonFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
+  endButtonPressed: {
     backgroundColor: 'rgba(244,63,94,0.18)',
-    borderRadius: 30,
+    borderColor: colors.danger,
   },
   endButtonText: {
     fontFamily: fonts.semiBold,
     fontSize: 13,
     color: colors.danger,
     letterSpacing: 0.3,
-    zIndex: 1,
   },
 });

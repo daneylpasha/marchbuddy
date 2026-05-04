@@ -35,10 +35,17 @@ interface OnboardingData {
   successVision?: string;
 }
 
+export type EffortLevel = 'easy' | 'as_planned' | 'hard' | 'incomplete';
+
+interface RecentSessionSignal {
+  effortLevel: EffortLevel;
+  feedbackRating: string | null;
+}
+
 interface GenerateOptionsParams {
   progress: UserProgress;
   onboardingData: OnboardingData;
-  recentFeedback?: string[];
+  recentSessionSignals?: RecentSessionSignal[];
 }
 
 interface GenerateOptionsResponse {
@@ -49,7 +56,7 @@ interface GenerateOptionsResponse {
 
 export const sessionApi = {
   async generateTodayOptions(params: GenerateOptionsParams): Promise<SessionOptions> {
-    const { progress, onboardingData, recentFeedback } = params;
+    const { progress, onboardingData, recentSessionSignals } = params;
 
     const levelDef = getLevelDefinition(progress.currentLevel);
     if (!levelDef) {
@@ -68,7 +75,7 @@ export const sessionApi = {
           lastSessionDate: progress.lastSessionDate,
           currentStreakDays: progress.currentStreakDays,
           sessionsThisWeek: progress.sessionsThisWeek,
-          recentFeedback,
+          recentSessionSignals,
           onboardingData,
         },
       });
@@ -192,6 +199,41 @@ export const sessionApi = {
     };
   },
 
+  async processCompletedSessionOnServer(
+    params: ProcessSessionParams,
+  ): Promise<ProcessSessionResponse> {
+    const { sessionData, onboardingData } = params;
+
+    const { data, error } = await supabase.functions.invoke('process-session-feedback', {
+      body: {
+        sessionData: {
+          planId: sessionData.planId,
+          planLevel: sessionData.planLevel,
+          planVariant: sessionData.planVariant,
+          planTitle: sessionData.planTitle,
+          plannedDurationMinutes: sessionData.plannedDurationMinutes,
+          plannedSegments: sessionData.plannedSegments,
+          actualDurationMinutes: sessionData.actualDurationMinutes,
+          actualDistanceKm: sessionData.actualDistanceKm,
+          completedSegments: sessionData.completedSegments,
+          endedEarly: sessionData.endedEarly,
+          pacePerKm: sessionData.pacePerKm,
+          routeData: sessionData.route,
+          environment: sessionData.environment,
+          treadmillStats: sessionData.treadmillStats,
+          feedbackRating: sessionData.feedbackRating,
+          feedbackNotes: sessionData.feedbackNotes,
+          startedAt: sessionData.startedAt,
+          completedAt: sessionData.completedAt,
+        },
+        onboardingData,
+      },
+    });
+
+    if (error) throw error;
+    return data as ProcessSessionResponse;
+  },
+
   async getRecentSessions(limit = 10): Promise<unknown[]> {
     const { data, error } = await supabase
       .from('sessions')
@@ -207,15 +249,45 @@ export const sessionApi = {
     return data ?? [];
   },
 
-  async getRecentFeedback(limit = 3): Promise<string[]> {
+  async getRecentSessionSignals(limit = 3): Promise<RecentSessionSignal[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
     const { data, error } = await supabase
       .from('sessions')
-      .select('feedback_rating')
+      .select('feedback_rating, ended_early, completed_segments, planned_segments, environment, treadmill_stats')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error || !data) return [];
 
-    return data.map((s) => s.feedback_rating).filter(Boolean);
+    return (data as unknown as RawSessionRow[]).map((s) => ({
+      effortLevel: deriveEffortLevel(s),
+      feedbackRating: s.feedback_rating ?? null,
+    }));
   },
 };
+
+interface RawSessionRow {
+  feedback_rating: string | null;
+  ended_early: boolean;
+  completed_segments: number;
+  planned_segments: unknown[];
+  environment: string | null;
+  treadmill_stats: { distanceKm?: number } | null;
+}
+
+function deriveEffortLevel(s: RawSessionRow): EffortLevel {
+  if (s.ended_early) return 'incomplete';
+
+  // Segment completion is the primary objective signal — environment-agnostic
+  // and unaffected by pauses. < 80% of segments finished = genuine struggle.
+  const plannedCount = Array.isArray(s.planned_segments) ? s.planned_segments.length : 0;
+  if (plannedCount > 0 && s.completed_segments / plannedCount < 0.8) return 'hard';
+
+  // Self-report is the only reliable signal for distinguishing easy vs as_planned
+  if (s.feedback_rating === 'too_hard') return 'hard';
+  if (s.feedback_rating === 'too_easy') return 'easy';
+  return 'as_planned';
+}

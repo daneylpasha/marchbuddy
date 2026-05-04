@@ -361,6 +361,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               minutesThisWeek: 0,
               weekStartDate: getWeekStartDate(),
             });
+            const { authService } = require('../services/authService');
+            authService.pullSessionHistory(session.user.id).catch(() => {});
           }
         } else if (hasGuestData) {
           // ── Outcome 2: MIGRATE guest data to this brand-new account ───

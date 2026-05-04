@@ -252,6 +252,39 @@ export const authService = {
     }
   },
 
+  async pullSessionHistory(userId: string): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, completed_at, actual_duration_minutes, actual_distance_km, plan_title, plan_level, feedback_rating, ended_early, environment, treadmill_stats')
+        .eq('user_id', userId)
+        .order('completed_at', { ascending: true })
+        .limit(100);
+
+      if (error || !data || data.length === 0) return;
+
+      const { useRunProgressStore } = require('../store/runProgressStore');
+      const records = (data as any[]).map((row) => {
+        const isIndoor = row.environment === 'indoor';
+        const treadmillDist = row.treadmill_stats?.distanceKm;
+        return {
+          id: row.id,
+          date: (row.completed_at as string).split('T')[0],
+          durationMinutes: row.actual_duration_minutes ?? 0,
+          distanceKm: isIndoor && treadmillDist != null ? treadmillDist : (row.actual_distance_km ?? 0),
+          planTitle: row.plan_title ?? '',
+          planLevel: row.plan_level ?? 1,
+          feedbackRating: row.feedback_rating ?? null,
+          endedEarly: row.ended_early ?? false,
+        };
+      });
+
+      useRunProgressStore.getState().setSessionHistory(records);
+    } catch (err) {
+      console.warn('pullSessionHistory failed:', err);
+    }
+  },
+
   async restoreSession(): Promise<boolean> {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
