@@ -95,7 +95,16 @@
           "healthUpdatePermission": "MarchBuddy saves your workout sessions to Apple Health to keep your fitness data in sync."
         }
       ],
-      "react-native-health-connect"
+      "react-native-health-connect",
+      "./plugins/withHealthConnectDelegate",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
