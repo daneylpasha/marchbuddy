@@ -47,6 +47,7 @@ interface SetupData {
   successVision: string;
   // Phase 5
   preferredStartDate: 'today' | 'tomorrow' | null;
+  weeklyFrequency: number | null;
   // Timestamps
   startedAt: string | null;
   completedAt: string | null;
@@ -71,6 +72,7 @@ interface CoachSetupState {
   setAnchor: (statement: string, theme: AnchorTheme) => void;
   setVision: (statement: string) => void;
   setPreferredStartDate: (date: 'today' | 'tomorrow') => void;
+  setWeeklyFrequency: (freq: number) => void;
   // Lifecycle
   markSetupStarted: () => void;
   markSetupComplete: () => void;
@@ -94,6 +96,7 @@ const emptySetupData = (): SetupData => ({
   anchorTheme: null,
   successVision: '',
   preferredStartDate: null,
+  weeklyFrequency: null,
   startedAt: null,
   completedAt: null,
 });
@@ -150,6 +153,11 @@ export const useCoachSetupStore = create<CoachSetupState>()(
   setPreferredStartDate: (date) =>
     set((s) => ({
       setupData: { ...s.setupData, preferredStartDate: date },
+    })),
+
+  setWeeklyFrequency: (freq) =>
+    set((s) => ({
+      setupData: { ...s.setupData, weeklyFrequency: freq },
     })),
 
   markSetupStarted: () =>

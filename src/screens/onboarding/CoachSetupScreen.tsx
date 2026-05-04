@@ -31,6 +31,7 @@ type ScreenStep =
   | "activity"
   | "coach-reply"
   | "time"
+  | "frequency"
   | "ready";
 
 type ReplySource = "name" | "activity" | "time";
@@ -54,6 +55,14 @@ const TIME_OPTIONS: SelectOption<TimePreference>[] = [
   { label: "Midday — lunch break or afternoon", value: "midday" },
   { label: "Evening — after work winds down", value: "evening" },
   { label: "It varies — depends on the day", value: "varies" },
+];
+
+const FREQUENCY_OPTIONS: SelectOption<number>[] = [
+  { label: "2 days a week", value: 2 },
+  { label: "3 days a week", value: 3 },
+  { label: "4 days a week", value: 4 },
+  { label: "5 days a week", value: 5 },
+  { label: "Every day", value: 7 },
 ];
 
 // ─── Thinking indicator ───────────────────────────────────────────────────────
@@ -171,6 +180,7 @@ export default function CoachSetupScreen() {
     setUserName,
     setActivityLevel,
     setTimePreference,
+    setWeeklyFrequency,
     markSetupStarted,
     markSetupComplete,
   } = useCoachSetupStore();
@@ -353,8 +363,11 @@ export default function CoachSetupScreen() {
       case "time":
         transitionTo("activity");
         break;
-      case "ready":
+      case "frequency":
         transitionTo("time");
+        break;
+      case "ready":
+        transitionTo("frequency");
         break;
     }
   };
@@ -439,10 +452,15 @@ export default function CoachSetupScreen() {
       "time",
       "time",
       option.value,
-      () => transitionTo("ready"),
+      () => transitionTo("frequency"),
       "",
       { activityLevel: setupData.activityLevel ?? undefined },
     );
+  };
+
+  const handleFrequencySelect = (option: SelectOption<number>) => {
+    setWeeklyFrequency(option.value);
+    transitionTo("ready");
   };
 
   const handleReady = () => {
@@ -649,6 +667,13 @@ export default function CoachSetupScreen() {
           "When do you prefer to move?",
           TIME_OPTIONS,
           handleTimeSelect,
+        );
+      case "frequency":
+        return renderOptionCards(
+          "Your weekly goal",
+          "How many days a week do you want to train?",
+          FREQUENCY_OPTIONS,
+          handleFrequencySelect,
         );
       case "ready":
         return renderReady();
