@@ -259,3 +259,30 @@ export const useRunProgressStore = create<RunProgressState>()(
     },
   ),
 );
+
+// Auto-sync: push to Supabase whenever the fields that matter for cross-device
+// restore change. Debounced so a session completion (updateAfterSession →
+// incrementLevel firing in the same tick) only triggers one network call.
+// pushRunProgress guards against guests and unauthenticated users internally.
+let _syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+useRunProgressStore.subscribe((state, prevState) => {
+  const p = state.progress;
+  const prev = prevState.progress;
+  if (!p || !prev) return;
+
+  const changed =
+    p.currentLevel !== prev.currentLevel ||
+    p.totalSessionsCompleted !== prev.totalSessionsCompleted ||
+    p.currentStreakDays !== prev.currentStreakDays ||
+    p.bestStreakDays !== prev.bestStreakDays ||
+    p.lastSessionDate !== prev.lastSessionDate;
+
+  if (!changed) return;
+
+  if (_syncDebounceTimer) clearTimeout(_syncDebounceTimer);
+  _syncDebounceTimer = setTimeout(() => {
+    const { authService } = require('../services/authService');
+    authService.pushRunProgress().catch(() => {});
+  }, 2000);
+});

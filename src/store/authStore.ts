@@ -371,6 +371,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           await authService.syncLocalDataToSupabase(session.user.id);
           // Clear guestId so we don't re-migrate on subsequent auth events.
           useCoachSetupStore.setState({ guestId: null });
+        } else if (isReturningAuthUser) {
+          // ── Outcome 4: LEGACY RETURNING USER — account exists but no
+          //    user_onboarding row (account predates the migration). No guest
+          //    data to migrate. Without this branch, AppNavigator routes to
+          //    CoachSetup and the user re-does onboarding from scratch every
+          //    time they sign in on a new device.
+          //
+          //    We can't restore their original answers (they were never on the
+          //    server), but we can skip the CoachSetup screen so they reach
+          //    the main app. Their name/preferences will be blank until they
+          //    next update them, but that's a one-time inconvenience vs.
+          //    repeating the full onboarding on every new-device login.
+          useCoachSetupStore.setState({ setupComplete: true, guestId: null });
+          useSettingsStore.getState().setHasSeenIntro(true);
         }
         // ── Outcome 3: brand new user, no guest data — no-op.
 
@@ -391,6 +405,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             progress: { ...currentProgress, userId: session.user.id },
           });
         }
+
+        // Fire-and-forget: push local progress to server on every login so the
+        // server row stays current and any new-device sign-in restores the
+        // correct level. Skips automatically if the user is a guest or if
+        // progress is at default (no meaningful data to push).
+        const { authService } = require('../services/authService');
+        authService.pushRunProgress().catch(() => {});
       } catch (err) {
         console.error('Error resolving user state:', err);
       } finally {

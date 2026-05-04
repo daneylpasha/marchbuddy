@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import RunNavigator from './RunNavigator';
 import ProgressNavigator from './ProgressNavigator';
+import CommunityNavigator from './CommunityNavigator';
 import CoachChatScreen from '../screens/chat/CoachChatScreen';
 import { useChatStore } from '../store/chatStore';
 import { colors, fonts } from '../theme';
@@ -25,6 +26,7 @@ const IMMERSIVE_SCREENS = new Set([
 export type MainTabParamList = {
   Run: undefined;
   Progress: undefined;
+  Community: undefined;
   Coach: undefined;
 };
 
@@ -39,6 +41,7 @@ const TAB_ICONS: Record<
 > = {
   Run: { focused: 'walk', unfocused: 'walk-outline' },
   Progress: { focused: 'stats-chart', unfocused: 'stats-chart-outline' },
+  Community: { focused: 'people', unfocused: 'people-outline' },
   Coach: { focused: 'chatbubble', unfocused: 'chatbubble-outline' },
 };
 
@@ -101,6 +104,11 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen name="Progress" component={ProgressNavigator} />
+      <Tab.Screen
+        name="Community"
+        component={CommunityNavigator}
+        options={{ tabBarLabel: 'Community' }}
+      />
       <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
     </Tab.Navigator>
   );

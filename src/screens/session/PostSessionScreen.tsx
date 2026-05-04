@@ -17,6 +17,7 @@ import { FeedbackRating, CompletedSession } from '../../types/session';
 import { sessionApi } from '../../services/sessionApi';
 import { feedbackApi } from '../../services/feedbackApi';
 import { logSessionCompletion } from '../../services/notifications/completionLogger';
+import { updateProgressAfterOutdoorSession } from '../../services/challengeService';
 import healthService from '../../services/health';
 import { detectMilestone } from '../../constants/milestones';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
@@ -117,6 +118,13 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       feedbackRating: feedbackRating,
       endedEarly: session.endedEarly,
     });
+
+    // Update challenge progress for outdoor sessions (fire-and-forget)
+    if (!isIndoor) {
+      updateProgressAfterOutdoorSession({
+        durationMinutes: session.actualDurationMinutes,
+      }).catch(() => {});
+    }
 
     // Fire-and-forget — never block the user on platform health write.
     // iOS: saves HKWorkout + distance to Apple Health (closes Activity ring).

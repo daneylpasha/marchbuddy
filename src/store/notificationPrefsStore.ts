@@ -21,6 +21,7 @@ import { supabase } from '../api/supabase';
 export interface NotificationPrefs {
   session_reminders: boolean;
   reengagement: boolean;
+  community_events: boolean;
   quiet_hours_start: number; // 0–23, user local time
   quiet_hours_end: number;   // 0–23, user local time
 }
@@ -28,6 +29,7 @@ export interface NotificationPrefs {
 export const DEFAULT_PREFS: NotificationPrefs = {
   session_reminders: true,
   reengagement: true,
+  community_events: true,
   quiet_hours_start: 22,
   quiet_hours_end: 7,
 };
