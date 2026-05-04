@@ -247,6 +247,15 @@ export const authService = {
         );
 
       if (error) console.error('pushRunProgress upsert error:', error);
+
+      // Sync community-visible fields to profiles table (fire-and-forget)
+      const { syncCommunityProfile } = require('./communityService');
+      syncCommunityProfile(session.user.id, {
+        currentLevel: p.currentLevel ?? 1,
+        currentStreakDays: p.currentStreakDays ?? 0,
+        totalSessionsCompleted: p.totalSessionsCompleted ?? 0,
+        totalDistanceKm: p.totalDistanceKm ?? 0,
+      }).catch(() => {});
     } catch (err) {
       console.error('pushRunProgress failed:', err);
     }

@@ -8,11 +8,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { CommunityStackParamList } from '../../navigation/CommunityNavigator';
 import { useAuthStore } from '../../store/authStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { colors, fonts, spacing } from '../../theme';
 
-export default function CommunityScreen() {
+type Props = NativeStackScreenProps<CommunityStackParamList, 'CommunityHome'>;
+
+export default function CommunityScreen({ navigation }: Props) {
   const { session, isGuest } = useAuthStore();
   const progress = useRunProgressStore((s) => s.progress);
 
@@ -22,7 +26,7 @@ export default function CommunityScreen() {
     return <GuestGate />;
   }
 
-  return <CommunityHub level={progress?.currentLevel ?? 1} />;
+  return <CommunityHub level={progress?.currentLevel ?? 1} navigation={navigation} />;
 }
 
 // ─── Guest gate ───────────────────────────────────────────────────────────────
@@ -76,7 +80,13 @@ function FeatureRow({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
 
 // ─── Community hub (authenticated) ───────────────────────────────────────────
 
-function CommunityHub({ level }: { level: number }) {
+function CommunityHub({
+  level,
+  navigation,
+}: {
+  level: number;
+  navigation: Props['navigation'];
+}) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -100,7 +110,7 @@ function CommunityHub({ level }: { level: number }) {
           title="Bench March"
           subtitle="Follow runners and get inspired by their progress"
           locked={level < 2}
-          comingSoon
+          onPress={() => navigation.navigate('Discover')}
         />
 
         <SectionCard
@@ -137,21 +147,25 @@ function SectionCard({
   subtitle,
   locked,
   comingSoon,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
   locked: boolean;
   comingSoon?: boolean;
+  onPress?: () => void;
 }) {
+  const disabled = locked || comingSoon || !onPress;
   return (
     <Pressable
       style={({ pressed }) => [
         styles.sectionCard,
         locked && styles.sectionCardLocked,
-        pressed && !locked && { opacity: 0.8 },
+        pressed && !disabled && { opacity: 0.8 },
       ]}
-      disabled={locked || comingSoon}
+      onPress={onPress}
+      disabled={disabled}
     >
       <View style={[styles.sectionIconRing, locked && styles.sectionIconRingLocked]}>
         <Ionicons
