@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  SectionList,
   FlatList,
   Pressable,
   ActivityIndicator,
@@ -15,6 +16,7 @@ import type { CommunityStackParamList } from '../../navigation/CommunityNavigato
 import {
   searchUsers,
   getFollowing,
+  getSuggestedRunners,
   followUser,
   unfollowUser,
   type CommunityProfile,
@@ -25,17 +27,23 @@ type Props = NativeStackScreenProps<CommunityStackParamList, 'Discover'>;
 
 export default function DiscoverScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<CommunityProfile[]>([]);
+  const [searchResults, setSearchResults] = useState<CommunityProfile[]>([]);
   const [following, setFollowing] = useState<CommunityProfile[]>([]);
+  const [suggested, setSuggested] = useState<CommunityProfile[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [initialLoading, setInitialLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [loadingFollowId, setLoadingFollowId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    getFollowing().then((list) => {
-      setFollowing(list);
-      setFollowingIds(new Set(list.map((p) => p.id)));
+    Promise.all([getFollowing(), getSuggestedRunners()]).then(([follows, suggestions]) => {
+      setFollowing(follows);
+      setFollowingIds(new Set(follows.map((p) => p.id)));
+      // Exclude already-followed runners from suggestions
+      const followedSet = new Set(follows.map((p) => p.id));
+      setSuggested(suggestions.filter((p) => !followedSet.has(p.id)));
+      setInitialLoading(false);
     });
   }, []);
 
@@ -43,14 +51,14 @@ export default function DiscoverScreen({ navigation }: Props) {
     setQuery(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!text.trim()) {
-      setResults([]);
+      setSearchResults([]);
       setIsSearching(false);
       return;
     }
     setIsSearching(true);
     debounceRef.current = setTimeout(async () => {
       const found = await searchUsers(text);
-      setResults(found);
+      setSearchResults(found);
       setIsSearching(false);
     }, 350);
   }, []);
@@ -62,19 +70,31 @@ export default function DiscoverScreen({ navigation }: Props) {
       await unfollowUser(profile.id);
       setFollowingIds((prev) => { const s = new Set(prev); s.delete(profile.id); return s; });
       setFollowing((prev) => prev.filter((p) => p.id !== profile.id));
+      // Move back to suggestions if still in level range
+      setSuggested((prev) => {
+        if (prev.find((p) => p.id === profile.id)) return prev;
+        return [profile, ...prev];
+      });
     } else {
       await followUser(profile.id);
       setFollowingIds((prev) => new Set([...prev, profile.id]));
       setFollowing((prev) => [...prev, profile]);
+      setSuggested((prev) => prev.filter((p) => p.id !== profile.id));
     }
     setLoadingFollowId(null);
   }, [followingIds]);
 
   const isSearchMode = query.trim().length > 0;
-  const listData = isSearchMode ? results : following;
-  const emptyText = isSearchMode
-    ? 'No runners found. Try a different name.'
-    : "You haven't Bench Marched anyone yet.\nSearch for runners above to follow them.";
+
+  // Build sections for default view
+  const sections = [
+    ...(following.length > 0
+      ? [{ title: `FOLLOWING (${following.length})`, data: following }]
+      : []),
+    ...(suggested.length > 0
+      ? [{ title: 'DISCOVER RUNNERS', data: suggested }]
+      : []),
+  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -107,21 +127,47 @@ export default function DiscoverScreen({ navigation }: Props) {
         )}
       </View>
 
-      {!isSearchMode && (
-        <Text style={styles.sectionLabel}>
-          {following.length > 0
-            ? `FOLLOWING (${following.length})`
-            : 'FIND RUNNERS TO FOLLOW'}
-        </Text>
-      )}
-
-      {isSearching ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+      {initialLoading ? (
+        <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
+      ) : isSearchMode ? (
+        /* ── Search results ── */
+        <>
+          {isSearching ? (
+            <ActivityIndicator style={{ marginTop: 48 }} color={colors.primary} />
+          ) : (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <RunnerCard
+                  profile={item}
+                  isFollowing={followingIds.has(item.id)}
+                  loading={loadingFollowId === item.id}
+                  onToggleFollow={() => toggleFollow(item)}
+                  onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
+                />
+              )}
+              ListHeaderComponent={
+                <Text style={styles.sectionLabel}>SEARCH RESULTS</Text>
+              }
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No runners found for "{query}"</Text>
+              }
+              contentContainerStyle={
+                searchResults.length === 0 ? styles.emptyContainer : styles.listContent
+              }
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </>
       ) : (
-        <FlatList
-          data={listData}
+        /* ── Default: following + suggested ── */
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={listData.length === 0 ? styles.emptyContainer : styles.listContent}
+          renderSectionHeader={({ section: { title } }) => (
+            <Text style={styles.sectionLabel}>{title}</Text>
+          )}
           renderItem={({ item }) => (
             <RunnerCard
               profile={item}
@@ -132,8 +178,18 @@ export default function DiscoverScreen({ navigation }: Props) {
             />
           )}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{emptyText}</Text>
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={36} color={colors.textSecondary} />
+              <Text style={styles.emptyTitle}>No runners yet</Text>
+              <Text style={styles.emptyText}>
+                Runners appear here once they reach Level 2.{'\n'}Try searching by name above.
+              </Text>
+            </View>
           }
+          contentContainerStyle={
+            sections.length === 0 ? styles.emptyContainerCentered : styles.listContent
+          }
+          stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -161,23 +217,28 @@ function RunnerCard({
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
       onPress={onPress}
     >
-      {/* Avatar placeholder */}
       <View style={styles.avatar}>
         <Text style={styles.avatarLetter}>
           {profile.name.charAt(0).toUpperCase()}
         </Text>
       </View>
 
-      {/* Info */}
       <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>{profile.name}</Text>
+        <View style={styles.cardNameRow}>
+          <Text style={styles.cardName} numberOfLines={1}>{profile.name}</Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>LVL {profile.level}</Text>
+          </View>
+        </View>
         <View style={styles.cardMeta}>
-          <MetaPill icon="trending-up-outline" label={`Lvl ${profile.level}`} />
           <MetaPill icon="flame-outline" label={`${profile.currentStreak}d streak`} />
+          <MetaPill icon="walk-outline" label={`${profile.totalSessions} sessions`} />
+          {profile.totalDistanceKm > 0 && (
+            <MetaPill icon="map-outline" label={`${profile.totalDistanceKm.toFixed(1)}km`} />
+          )}
         </View>
       </View>
 
-      {/* Follow button */}
       <Pressable
         style={({ pressed }) => [
           styles.followBtn,
@@ -186,6 +247,7 @@ function RunnerCard({
         ]}
         onPress={onToggleFollow}
         disabled={loading}
+        hitSlop={8}
       >
         {loading ? (
           <ActivityIndicator size="small" color={isFollowing ? colors.textSecondary : '#fff'} />
@@ -238,6 +300,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+    marginBottom: 4,
   },
   searchIcon: {
     flexShrink: 0,
@@ -255,8 +318,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     color: colors.textSecondary,
     marginHorizontal: spacing.screenPadding,
-    marginTop: 24,
-    marginBottom: 12,
+    marginTop: 20,
+    marginBottom: 10,
   },
   listContent: {
     paddingHorizontal: spacing.screenPadding,
@@ -264,9 +327,23 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyContainer: {
-    flex: 1,
     paddingHorizontal: spacing.screenPadding,
     paddingTop: 48,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyContainerCentered: {
+    flex: 1,
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: 80,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 17,
+    color: colors.textPrimary,
+    marginTop: 8,
   },
   emptyText: {
     fontFamily: fonts.regular,
@@ -275,6 +352,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
+
+  // Card
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -292,6 +371,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryDim,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   avatarLetter: {
     fontFamily: fonts.bold,
@@ -302,14 +382,34 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 5,
   },
+  cardNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardName: {
     fontFamily: fonts.semiBold,
     fontSize: 15,
     color: colors.textPrimary,
+    flexShrink: 1,
+  },
+  levelBadge: {
+    backgroundColor: colors.primaryDim,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexShrink: 0,
+  },
+  levelBadgeText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: colors.primary,
   },
   cardMeta: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    flexWrap: 'wrap',
   },
   metaPill: {
     flexDirection: 'row',
@@ -326,8 +426,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: colors.primary,
-    minWidth: 76,
+    minWidth: 82,
     alignItems: 'center',
+    flexShrink: 0,
   },
   followBtnActive: {
     backgroundColor: 'transparent',
