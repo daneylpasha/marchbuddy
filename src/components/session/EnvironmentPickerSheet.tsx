@@ -16,7 +16,7 @@ interface Props {
 }
 
 const EnvironmentPickerSheet = React.forwardRef<BottomSheetModal, Props>(
-  ({ onSelect }, ref) => {
+  function EnvironmentPickerSheet({ onSelect }, ref) {
     const snapPoints = useMemo(() => ['42%'], []);
 
     const renderBackdrop = useCallback(
