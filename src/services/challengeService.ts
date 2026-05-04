@@ -2,6 +2,22 @@ import { supabase } from '../api/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { CommunityProfile } from './communityService';
 
+// ─── Social push helper ───────────────────────────────────────────────────────
+
+function sendSocialPush(
+  event: 'challenge_invite' | 'challenge_accepted' | 'challenge_completed',
+  targetUserId: string,
+  senderId: string,
+  meta?: { senderTeamName?: string },
+): void {
+  // Fire-and-forget: never block the user on a push notification
+  supabase.functions
+    .invoke('send-social-push', {
+      body: { event, targetUserId, senderId, meta },
+    })
+    .catch(() => {});
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ChallengeStatus = 'invited' | 'active' | 'completed' | 'declined' | 'expired';
@@ -170,15 +186,37 @@ export async function sendChallenge(
   if (error) throw new Error(error.message);
 
   const teamIds = [myTeamId, opponentTeamId];
-  const { data: teams } = await supabase.from('teams').select('id, name').in('id', teamIds);
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name, captain_id')
+    .in('id', teamIds);
+
   const nameMap = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
+  const captainMap = new Map((teams ?? []).map((t) => [t.id as string, t.captain_id as string]));
+
+  // Notify the opponent captain (fire-and-forget)
+  const opponentCaptainId = captainMap.get(opponentTeamId);
+  const myTeamName = nameMap.get(myTeamId);
+  if (opponentCaptainId) {
+    sendSocialPush('challenge_invite', opponentCaptainId, session.user.id, {
+      senderTeamName: myTeamName,
+    });
+  }
 
   return toChallenge(challenge, myTeamId, nameMap);
 }
 
 export async function acceptChallenge(challengeId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
   const now = new Date();
   const endsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7-day window
+
+  // Fetch challenge to find team_a captain for notification
+  const { data: challenge } = await supabase
+    .from('challenges')
+    .select('team_a_id, team_b_id')
+    .eq('id', challengeId)
+    .maybeSingle();
 
   const { error } = await supabase
     .from('challenges')
@@ -194,6 +232,27 @@ export async function acceptChallenge(challengeId: string): Promise<void> {
 
   // Seed challenge_progress rows for all team members
   await seedProgressRows(challengeId);
+
+  // Notify the team that sent the challenge (fire-and-forget)
+  if (challenge && session?.user) {
+    const { data: challengerTeam } = await supabase
+      .from('teams')
+      .select('captain_id, name')
+      .eq('id', challenge.team_a_id)
+      .maybeSingle();
+
+    const { data: myTeam } = await supabase
+      .from('teams')
+      .select('name')
+      .eq('id', challenge.team_b_id)
+      .maybeSingle();
+
+    if (challengerTeam?.captain_id) {
+      sendSocialPush('challenge_accepted', challengerTeam.captain_id as string, session.user.id, {
+        senderTeamName: myTeam?.name as string | undefined,
+      });
+    }
+  }
 }
 
 export async function declineChallenge(challengeId: string): Promise<void> {

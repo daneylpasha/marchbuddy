@@ -1,6 +1,14 @@
 import { supabase } from '../api/supabase';
 import type { CommunityProfile } from './communityService';
 
+function sendBuddyRequestPush(targetUserId: string, senderId: string): void {
+  supabase.functions
+    .invoke('send-social-push', {
+      body: { event: 'buddy_request', targetUserId, senderId },
+    })
+    .catch(() => {});
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type BuddyStatus =
@@ -120,8 +128,13 @@ export async function sendBuddyRequest(targetUserId: string): Promise<void> {
     .from('buddy_requests')
     .insert({ requester_id: session.user.id, addressee_id: targetUserId });
 
-  if (error && error.code !== '23505') // ignore duplicate
+  if (error && error.code !== '23505') { // ignore duplicate
     console.warn('[buddy] sendBuddyRequest error:', error.message);
+    return;
+  }
+
+  // Notify the addressee (fire-and-forget)
+  sendBuddyRequestPush(targetUserId, session.user.id);
 }
 
 export async function cancelBuddyRequest(targetUserId: string): Promise<void> {
