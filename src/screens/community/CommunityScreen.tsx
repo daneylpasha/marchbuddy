@@ -126,15 +126,15 @@ function CommunityHub({
           title="My Team"
           subtitle={level >= 5 ? 'Create or manage your squad' : `Unlocks at Level 5 — you're Level ${level}`}
           locked={level < 5}
-          comingSoon
+          onPress={() => navigation.navigate('MyTeam')}
         />
 
         <SectionCard
           icon="flash-outline"
           title="Challenges"
           subtitle="Team vs team. Outdoor sessions only. Best of 3 parameters wins."
-          locked={level < 2}
-          comingSoon
+          locked={level < 5}
+          onPress={() => navigation.navigate('Challenges')}
         />
       </ScrollView>
     </SafeAreaView>
