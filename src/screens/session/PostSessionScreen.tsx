@@ -227,7 +227,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
   const disabled = !feedbackRating || treadmillDistanceMissing || isSubmitting;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
