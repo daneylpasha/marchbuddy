@@ -118,7 +118,7 @@ function CommunityHub({
           title="Buddies"
           subtitle="Connect with runners at your level for 1v1 challenges"
           locked={level < 2}
-          comingSoon
+          onPress={() => navigation.navigate('Buddies')}
         />
 
         <SectionCard

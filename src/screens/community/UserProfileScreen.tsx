@@ -18,25 +18,41 @@ import {
   unfollowUser,
   type CommunityProfile,
 } from '../../services/communityService';
+import {
+  getBuddyStatus,
+  sendBuddyRequest,
+  cancelBuddyRequest,
+  acceptBuddyRequest,
+  levelsCompatible,
+  type BuddyStatus,
+} from '../../services/buddyService';
+import { useRunProgressStore } from '../../store/runProgressStore';
 import { colors, fonts, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<CommunityStackParamList, 'UserProfile'>;
 
 export default function UserProfileScreen({ navigation, route }: Props) {
   const { userId } = route.params;
+  const myLevel = useRunProgressStore((s) => s.progress?.currentLevel ?? 1);
+
   const [profile, setProfile] = useState<CommunityProfile | null>(null);
   const [following, setFollowing] = useState(false);
+  const [buddyStatus, setBuddyStatus] = useState<BuddyStatus>('none');
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
+  const [buddyLoading, setBuddyLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([getUserProfile(userId), isFollowing(userId)]).then(
-      ([p, f]) => {
-        setProfile(p);
-        setFollowing(f);
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      getUserProfile(userId),
+      isFollowing(userId),
+      getBuddyStatus(userId),
+    ]).then(([p, f, b]) => {
+      setProfile(p);
+      setFollowing(f);
+      setBuddyStatus(b);
+      setLoading(false);
+    });
   }, [userId]);
 
   const toggleFollow = async () => {
@@ -50,6 +66,22 @@ export default function UserProfileScreen({ navigation, route }: Props) {
       setFollowing(true);
     }
     setFollowLoading(false);
+  };
+
+  const handleBuddyAction = async () => {
+    if (!profile) return;
+    setBuddyLoading(true);
+    if (buddyStatus === 'none') {
+      await sendBuddyRequest(profile.id);
+      setBuddyStatus('pending_sent');
+    } else if (buddyStatus === 'pending_sent') {
+      await cancelBuddyRequest(profile.id);
+      setBuddyStatus('none');
+    } else if (buddyStatus === 'pending_received') {
+      // Find and accept — we don't have the requestId here, so navigate to Buddies
+      navigation.navigate('Buddies');
+    }
+    setBuddyLoading(false);
   };
 
   if (loading) {
@@ -153,16 +185,84 @@ export default function UserProfileScreen({ navigation, route }: Props) {
           )}
         </Pressable>
 
-        {/* Buddy request — Phase 3 */}
-        <View style={styles.buddyBtnDisabled}>
-          <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-          <Text style={styles.buddyBtnText}>Send Buddy Request</Text>
-          <View style={styles.comingSoonPill}>
-            <Text style={styles.comingSoonText}>SOON</Text>
-          </View>
-        </View>
+        <BuddyButton
+          myLevel={myLevel}
+          theirLevel={profile.level}
+          status={buddyStatus}
+          loading={buddyLoading}
+          onPress={handleBuddyAction}
+        />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function BuddyButton({
+  myLevel,
+  theirLevel,
+  status,
+  loading,
+  onPress,
+}: {
+  myLevel: number;
+  theirLevel: number;
+  status: BuddyStatus;
+  loading: boolean;
+  onPress: () => void;
+}) {
+  const compatible = levelsCompatible(myLevel, theirLevel);
+
+  if (!compatible) {
+    return (
+      <View style={[styles.buddyBtnDisabled, { opacity: 1 }]}>
+        <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
+        <Text style={styles.buddyBtnText}>
+          Buddy up unlocks within 2 levels of each other
+        </Text>
+      </View>
+    );
+  }
+
+  if (status === 'accepted') {
+    return (
+      <View style={[styles.buddyBtnDisabled, { opacity: 1, borderColor: 'rgba(16,185,129,0.3)' }]}>
+        <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+        <Text style={[styles.buddyBtnText, { color: colors.primary }]}>MarchBuddies</Text>
+      </View>
+    );
+  }
+
+  const config = {
+    none:             { label: 'Send Buddy Request', icon: 'people-outline' as const, active: true },
+    pending_sent:     { label: 'Request Sent — Cancel?', icon: 'time-outline' as const, active: false },
+    pending_received: { label: 'Accept Buddy Request', icon: 'people-outline' as const, active: true },
+  }[status];
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.buddyBtn,
+        !config.active && styles.buddyBtnPending,
+        pressed && { opacity: 0.8 },
+      ]}
+      onPress={onPress}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color={config.active ? '#fff' : colors.textSecondary} />
+      ) : (
+        <>
+          <Ionicons
+            name={config.icon}
+            size={18}
+            color={config.active ? '#fff' : colors.textSecondary}
+          />
+          <Text style={[styles.buddyBtnActiveText, !config.active && { color: colors.textSecondary }]}>
+            {config.label}
+          </Text>
+        </>
+      )}
+    </Pressable>
   );
 }
 
@@ -309,6 +409,26 @@ const styles = StyleSheet.create({
   followBtnTextActive: {
     color: colors.textSecondary,
   },
+  buddyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 14,
+    width: '100%',
+  },
+  buddyBtnPending: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  buddyBtnActiveText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    color: '#fff',
+  },
   buddyBtnDisabled: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -320,24 +440,14 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    opacity: 0.5,
+    opacity: 0.6,
   },
   buddyBtnText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
+    fontFamily: fonts.medium,
+    fontSize: 14,
     color: colors.textSecondary,
-  },
-  comingSoonPill: {
-    backgroundColor: colors.primaryDim,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  comingSoonText: {
-    fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.8,
-    color: colors.primary,
+    textAlign: 'center',
+    flex: 1,
   },
   notFound: {
     fontFamily: fonts.regular,
