@@ -129,13 +129,13 @@ export async function getSuggestedRunners(): Promise<CommunityProfile[]> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
-  // All visible runners (Level 2+), sorted by most active first.
-  // No level filter — Bench March has no level gate.
+  // All visible runners (Level 2+), highest level first; streak/sessions tie-break.
   const { data, error } = await supabase
     .from('profiles')
     .select('id, name, level, current_streak, total_sessions, total_distance_km, win_points')
     .eq('is_visible', true)
     .neq('id', session.user.id)
+    .order('level', { ascending: false })
     .order('current_streak', { ascending: false })
     .order('total_sessions', { ascending: false })
     .limit(60);
