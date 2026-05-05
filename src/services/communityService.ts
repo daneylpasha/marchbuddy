@@ -10,6 +10,41 @@ export interface CommunityProfile {
   totalSessions: number;
   totalDistanceKm: number;
   winPoints: number;
+  // Only populated by getUserProfile (full detail page). List queries don't
+  // fetch these columns to avoid breaking before the migration is applied.
+  discoverable?: boolean;
+  longestRunMinutes?: number;
+  bestStreakDays?: number;
+  totalDurationMinutes?: number;
+  lastSessionDate?: string | null;
+}
+
+
+// ─── Discoverability (user-controlled privacy) ───────────────────────────────
+
+export async function getDiscoverable(): Promise<boolean> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return true;
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('discoverable')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  return data?.discoverable ?? true;
+}
+
+export async function setDiscoverable(discoverable: boolean): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ discoverable })
+    .eq('id', session.user.id);
+
+  if (error) console.warn('[community] setDiscoverable error:', error.message);
 }
 
 // ─── Profile sync ─────────────────────────────────────────────────────────────
@@ -21,6 +56,10 @@ export async function syncCommunityProfile(
     currentStreakDays: number;
     totalSessionsCompleted: number;
     totalDistanceKm: number;
+    longestRunMinutes?: number;
+    bestStreakDays?: number;
+    totalDurationMinutes?: number;
+    lastSessionDate?: string | null;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -30,6 +69,10 @@ export async function syncCommunityProfile(
       current_streak: progress.currentStreakDays,
       total_sessions: progress.totalSessionsCompleted,
       total_distance_km: progress.totalDistanceKm,
+      longest_run_minutes: progress.longestRunMinutes ?? 0,
+      best_streak_days: progress.bestStreakDays ?? 0,
+      total_duration_minutes: progress.totalDurationMinutes ?? 0,
+      last_session_date: progress.lastSessionDate ?? null,
       is_visible: progress.currentLevel >= 2,
     })
     .eq('id', userId);
@@ -147,13 +190,21 @@ export async function getSuggestedRunners(): Promise<CommunityProfile[]> {
 export async function getUserProfile(userId: string): Promise<CommunityProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, level, current_streak, total_sessions, total_distance_km, win_points')
+    .select('id, name, level, current_streak, total_sessions, total_distance_km, win_points, discoverable, longest_run_minutes, best_streak_days, total_duration_minutes, last_session_date')
     .eq('id', userId)
     .eq('is_visible', true)
     .maybeSingle();
 
   if (error || !data) return null;
-  return toProfile(data);
+  const row = data as Record<string, unknown>;
+  return {
+    ...toProfile(row),
+    discoverable: (row.discoverable as boolean | null) ?? true,
+    longestRunMinutes: (row.longest_run_minutes as number | null) ?? 0,
+    bestStreakDays: (row.best_streak_days as number | null) ?? 0,
+    totalDurationMinutes: (row.total_duration_minutes as number | null) ?? 0,
+    lastSessionDate: (row.last_session_date as string | null) ?? null,
+  };
 }
 
 // ─── Mapper ───────────────────────────────────────────────────────────────────

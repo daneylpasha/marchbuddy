@@ -137,26 +137,84 @@ export default function UserProfileScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <StatBox value={profile.currentStreak} label="Day Streak" icon="flame-outline" />
-          <View style={styles.statsDivider} />
-          <StatBox value={profile.totalSessions} label="Sessions" icon="walk-outline" />
-          <View style={styles.statsDivider} />
-          <StatBox
-            value={profile.totalDistanceKm.toFixed(1)}
-            label="km Total"
-            icon="map-outline"
-          />
-        </View>
-
-        {profile.winPoints > 0 && (
-          <View style={styles.winPointsCard}>
-            <Ionicons name="trophy-outline" size={18} color="#F59E0B" />
-            <Text style={styles.winPointsText}>
-              {profile.winPoints} challenge win{profile.winPoints !== 1 ? 's' : ''}
+        {profile.discoverable === false ? (
+          <View style={styles.privateCard}>
+            <Ionicons name="lock-closed-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.privateTitle}>Private Profile</Text>
+            <Text style={styles.privateSubtitle}>
+              {profile.name} has hidden their details.
             </Text>
           </View>
+        ) : (
+          <>
+            {/* Hero streak — matches Progress screen */}
+            <View style={styles.heroStreakSection}>
+              <Text style={styles.heroFlame}>🔥</Text>
+              <Text style={styles.heroStreakValue}>{profile.currentStreak}</Text>
+              <Text style={styles.heroStreakLabel}>DAY STREAK</Text>
+              {(profile.bestStreakDays ?? 0) > 0 && (
+                <Text style={styles.heroBestStreak}>
+                  Best: {profile.bestStreakDays} days
+                </Text>
+              )}
+            </View>
+
+            {/* Stats row: Sessions / Total km / Best Streak */}
+            <View style={styles.bigStatsRow}>
+              <View style={styles.bigStatItem}>
+                <Text style={styles.bigStatValue}>{profile.totalSessions}</Text>
+                <Text style={styles.bigStatLabel}>Sessions</Text>
+              </View>
+              <View style={styles.bigStatDivider} />
+              <View style={styles.bigStatItem}>
+                <Text style={styles.bigStatValue}>{profile.totalDistanceKm.toFixed(1)}</Text>
+                <Text style={styles.bigStatLabel}>Total km</Text>
+              </View>
+              <View style={styles.bigStatDivider} />
+              <View style={styles.bigStatItem}>
+                <Text style={styles.bigStatValue}>{profile.bestStreakDays ?? 0}</Text>
+                <Text style={styles.bigStatLabel}>Best Streak</Text>
+              </View>
+            </View>
+
+            {/* Secondary meta row */}
+            {((profile.longestRunMinutes ?? 0) > 0 ||
+              (profile.totalDurationMinutes ?? 0) > 0 ||
+              profile.lastSessionDate) && (
+              <View style={styles.metaRow}>
+                {(profile.longestRunMinutes ?? 0) > 0 && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="trending-up-outline" size={14} color={colors.primary} />
+                    <Text style={styles.metaValue}>{profile.longestRunMinutes}m</Text>
+                    <Text style={styles.metaLabel}>Longest</Text>
+                  </View>
+                )}
+                {(profile.totalDurationMinutes ?? 0) > 0 && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time-outline" size={14} color={colors.primary} />
+                    <Text style={styles.metaValue}>{formatDuration(profile.totalDurationMinutes!)}</Text>
+                    <Text style={styles.metaLabel}>Active Time</Text>
+                  </View>
+                )}
+                {profile.lastSessionDate && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="calendar-outline" size={14} color={colors.primary} />
+                    <Text style={styles.metaValue}>{formatRelativeDate(profile.lastSessionDate)}</Text>
+                    <Text style={styles.metaLabel}>Last Active</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {profile.winPoints > 0 && (
+              <View style={styles.winPointsCard}>
+                <Ionicons name="trophy-outline" size={18} color="#F59E0B" />
+                <Text style={styles.winPointsText}>
+                  {profile.winPoints} challenge win{profile.winPoints !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
+          </>
         )}
 
         {/* Actions */}
@@ -214,10 +272,10 @@ function BuddyButton({
 
   if (!compatible) {
     return (
-      <View style={[styles.buddyBtnDisabled, { opacity: 1 }]}>
-        <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
-        <Text style={styles.buddyBtnText}>
-          Buddy up unlocks within 2 levels of each other
+      <View style={styles.buddyLocked}>
+        <Ionicons name="lock-closed-outline" size={16} color={colors.textTertiary} />
+        <Text style={styles.buddyLockedText}>
+          Buddy up unlocks within 2 levels
         </Text>
       </View>
     );
@@ -225,9 +283,9 @@ function BuddyButton({
 
   if (status === 'accepted') {
     return (
-      <View style={[styles.buddyBtnDisabled, { opacity: 1, borderColor: 'rgba(16,185,129,0.3)' }]}>
+      <View style={styles.buddyConnected}>
         <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-        <Text style={[styles.buddyBtnText, { color: colors.primary }]}>MarchBuddies</Text>
+        <Text style={styles.buddyConnectedText}>MarchBuddies</Text>
       </View>
     );
   }
@@ -266,22 +324,23 @@ function BuddyButton({
   );
 }
 
-function StatBox({
-  value,
-  label,
-  icon,
-}: {
-  value: number | string;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}) {
-  return (
-    <View style={styles.statBox}>
-      <Ionicons name={icon} size={16} color={colors.primary} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
+  return remaining === 0 ? `${hours}h` : `${hours}h ${remaining}m`;
+}
+
+function formatRelativeDate(dateStr: string): string {
+  const then = new Date(dateStr);
+  const now = new Date();
+  const days = Math.floor((now.getTime() - then.getTime()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return then.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -340,34 +399,103 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: colors.primary,
   },
-  statsRow: {
+  heroStreakSection: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 4,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.streak + '30',
+  },
+  heroFlame: {
+    fontSize: 40,
+    marginBottom: 4,
+  },
+  heroStreakValue: {
+    fontFamily: fonts.titleRegular,
+    fontSize: 56,
+    color: colors.streak,
+    letterSpacing: 1,
+    lineHeight: 60,
+  },
+  heroStreakLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  heroBestStreak: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+    marginTop: 4,
+  },
+  bigStatsRow: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceElevated,
     borderRadius: 18,
-    paddingVertical: 20,
+    paddingVertical: 18,
     width: '100%',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
-  statBox: {
+  bigStatItem: {
     flex: 1,
     alignItems: 'center',
     gap: 4,
   },
-  statsDivider: {
-    width: 1,
-    backgroundColor: colors.surfaceBorder,
-  },
-  statValue: {
+  bigStatValue: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: 24,
     color: colors.textPrimary,
+    letterSpacing: 0.3,
   },
-  statLabel: {
+  bigStatLabel: {
     fontFamily: fonts.regular,
     fontSize: 11,
-    color: colors.textSecondary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
+  },
+  bigStatDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    justifyContent: 'space-around',
+  },
+  metaItem: {
+    alignItems: 'center',
+    gap: 3,
+    flex: 1,
+  },
+  metaValue: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+    letterSpacing: 0.2,
+    marginTop: 2,
+  },
+  metaLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 10,
+    color: colors.textTertiary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   winPointsCard: {
     flexDirection: 'row',
@@ -385,6 +513,29 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 14,
     color: '#F59E0B',
+  },
+  privateCard: {
+    width: '100%',
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 18,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  privateTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  privateSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   followBtn: {
     flexDirection: 'row',
@@ -429,25 +580,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
-  buddyBtnDisabled: {
+  buddyConnected: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.surfaceElevated,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 14,
     width: '100%',
+    backgroundColor: 'rgba(16,185,129,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.3)',
+  },
+  buddyConnectedText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: colors.primary,
+    letterSpacing: 0.3,
+  },
+  buddyLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    width: '100%',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    opacity: 0.6,
   },
-  buddyBtnText: {
-    fontFamily: fonts.medium,
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    flex: 1,
+  buddyLockedText: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textTertiary,
+    letterSpacing: 0.2,
   },
   notFound: {
     fontFamily: fonts.regular,

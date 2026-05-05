@@ -152,7 +152,11 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       if (result.progressUpdate.leveledUp) incrementLevel();
 
       clearTodayOptions();
-      // Edge Function already persisted progress to DB — no pushRunProgress needed
+      // Edge Function persists user_run_progress and sessions, but the public
+      // `profiles` table (used by Bench March / community) is not touched there.
+      // Push community-visible fields so other users see fresh stats.
+      const { authService } = require('../../services/authService');
+      authService.pushRunProgress().catch(() => {});
 
       const milestoneId = result.progressUpdate.milestoneReached;
 
