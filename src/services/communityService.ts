@@ -125,6 +125,25 @@ export async function searchUsers(query: string): Promise<CommunityProfile[]> {
   return (data ?? []).map(toProfile);
 }
 
+export async function getSuggestedRunners(): Promise<CommunityProfile[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return [];
+
+  // All visible runners (Level 2+), sorted by most active first.
+  // No level filter — Bench March has no level gate.
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, level, current_streak, total_sessions, total_distance_km, win_points')
+    .eq('is_visible', true)
+    .neq('id', session.user.id)
+    .order('current_streak', { ascending: false })
+    .order('total_sessions', { ascending: false })
+    .limit(60);
+
+  if (error) return [];
+  return (data ?? []).map(toProfile);
+}
+
 export async function getUserProfile(userId: string): Promise<CommunityProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
