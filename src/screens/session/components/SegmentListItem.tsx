@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   label: {
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     fontSize: 14,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
   },
 });

@@ -17,13 +17,27 @@ interface SegmentInput {
   label: string;
 }
 
-const createSegments = (inputs: SegmentInput[]): Omit<SessionSegment, 'id'>[] =>
-  inputs.map((input, index) => ({
+// Merges consecutive segments only when BOTH type AND label match — so identical
+// run blocks collapse into one continuous run, but intentional intensity changes
+// (e.g. "Brisk walk" → "Easy pace") stay separate to preserve coaching intent.
+const createSegments = (inputs: SegmentInput[]): Omit<SessionSegment, 'id'>[] => {
+  const merged: SegmentInput[] = [];
+  for (const input of inputs) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.type === input.type && prev.label === input.label) {
+      prev.minutes += input.minutes;
+      prev.seconds = (prev.seconds ?? 0) + (input.seconds ?? 0);
+    } else {
+      merged.push({ ...input });
+    }
+  }
+  return merged.map((input, index) => ({
     type: input.type,
     durationSeconds: input.minutes * 60 + (input.seconds ?? 0),
     label: input.label,
     order: index,
   }));
+};
 
 const repeatIntervals = (
   runMinutes: number,

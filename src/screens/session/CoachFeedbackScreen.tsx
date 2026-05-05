@@ -91,7 +91,7 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
   const segmentsStr = `${session.completedSegments}/${session.plannedSegments.length}`;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

@@ -230,10 +230,12 @@ export default function PostSessionScreen({ navigation, route }: Props) {
     }
   };
 
-  const disabled = !feedbackRating || isSubmitting;
+  const treadmillDistanceMissing =
+    isIndoor && (!treadmillDistance.trim() || parseFloat(treadmillDistance) <= 0);
+  const disabled = !feedbackRating || treadmillDistanceMissing || isSubmitting;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -265,7 +267,8 @@ export default function PostSessionScreen({ navigation, route }: Props) {
               <Text style={styles.sectionLabel}>TREADMILL STATS</Text>
               <View style={styles.treadmillCard}>
                 <Text style={styles.treadmillHint}>
-                  Enter your machine's stats for better coaching (all optional)
+                  Enter your treadmill distance to log this session. Steps &
+                  calories are optional.
                 </Text>
                 <View style={styles.treadmillFields}>
                   <View style={styles.treadmillField}>
@@ -468,7 +471,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 15,
     color: colors.textPrimary,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   bottomSpacer: { height: 24 },
   footer: {

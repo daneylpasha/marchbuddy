@@ -35,7 +35,7 @@ interface RunProgressState {
   markComebackHandled: () => void;
   shouldShowComeback: () => boolean;
   declareRestDay: () => void;
-  isPerfectWeek: () => boolean;
+  isPerfectWeek: (target?: number) => boolean;
   markPerfectWeekCelebrated: () => void;
 }
 
@@ -110,6 +110,9 @@ export const useRunProgressStore = create<RunProgressState>()(
             // Same day — no change
           } else if (diffDays === 1) {
             newStreak += 1;
+          } else if (diffDays === 2) {
+            // 1-day grace period: life happens. Streak preserved but doesn't
+            // grow — user must session today to keep building it.
           } else {
             newStreak = 1;
           }
@@ -235,17 +238,16 @@ export const useRunProgressStore = create<RunProgressState>()(
       },
 
       // ─── Perfect week detection ──────────────────────────────────────
-      isPerfectWeek: () => {
+      isPerfectWeek: (target = 3) => {
         const { progress, perfectWeekCelebrated } = get();
         if (!progress) return false;
 
-        const TARGET_SESSIONS = 3;
         const currentWeekStart = getWeekStartDate();
 
         // Already celebrated this week?
         if (perfectWeekCelebrated === currentWeekStart) return false;
 
-        return progress.sessionsThisWeek >= TARGET_SESSIONS;
+        return progress.sessionsThisWeek >= target;
       },
 
       markPerfectWeekCelebrated: () => {

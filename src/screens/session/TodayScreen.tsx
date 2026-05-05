@@ -41,8 +41,6 @@ interface Props {
   navigation: TodayScreenNavProp;
 }
 
-const TARGET_SESSIONS_PER_WEEK = 3;
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getTimeGreeting(): string {
@@ -56,6 +54,7 @@ function getTimeGreeting(): string {
 
 export default function TodayScreen({ navigation }: Props) {
   const { setupData, guestId } = useCoachSetupStore();
+  const TARGET_SESSIONS_PER_WEEK = setupData.weeklyFrequency ?? 3;
   const { progress, initializeProgress, declareRestDay, isPerfectWeek, markPerfectWeekCelebrated, restDayDeclaredDate } = useRunProgressStore();
   const {
     todayOptions,
@@ -424,7 +423,7 @@ export default function TodayScreen({ navigation }: Props) {
             )}
 
             {/* Perfect Week celebration */}
-            {isPerfectWeek() && (
+            {isPerfectWeek(TARGET_SESSIONS_PER_WEEK) && (
               <Pressable
                 style={styles.perfectWeekCard}
                 onPress={markPerfectWeekCelebrated}

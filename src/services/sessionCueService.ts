@@ -49,12 +49,17 @@ class SessionCueService {
     Speech.speak(text, { language: 'en-US', rate: 0.9, pitch: 1.05 });
   }
 
-  async playSegmentChange(nextSegmentType: SegmentType): Promise<void> {
+  async playSegmentChange(nextSegmentType: SegmentType, nextSegmentLabel?: string): Promise<void> {
     this.lastCountdownPlayed = 0;
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
-    this.speak(pickPhrase(nextSegmentType));
+    // Prefer the label (e.g. "Brisk walk", "Easy pace") so users hear the
+    // intensity, not just the generic segment type.
+    const phrase = nextSegmentLabel
+      ? `${nextSegmentLabel} now.`
+      : pickPhrase(nextSegmentType);
+    this.speak(phrase);
   }
 
   // Fires 30 seconds before an upcoming run segment.
@@ -68,6 +73,9 @@ class SessionCueService {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
+    if (secondsRemaining > 0 && secondsRemaining <= 10) {
+      this.speak(String(secondsRemaining));
+    }
   }
 
   async playSessionComplete(): Promise<void> {
