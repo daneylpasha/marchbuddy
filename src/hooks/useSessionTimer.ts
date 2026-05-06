@@ -21,6 +21,7 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasAnnouncedRef = useRef<Set<number>>(new Set());
   const hasAnnouncedAdvanceRef = useRef<Set<number>>(new Set());
+  const hasAnnouncedHalfwayRef = useRef<Set<number>>(new Set());
   // Use a ref so the tick callback doesn't need onComplete in its dep array
   const onCompleteRef = useRef<(() => void) | undefined>(onComplete);
   useEffect(() => {
@@ -94,6 +95,17 @@ export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): Us
     const remaining = currentSegment.durationSeconds - segmentSeconds;
     if (remaining <= 10 && remaining > 0) {
       sessionCueService.playCountdown(remaining);
+    }
+
+    // Per-segment halfway voice cue — only for segments longer than 2 minutes,
+    // so short walks/runs don't get a voice spam at their midpoint.
+    if (
+      currentSegment.durationSeconds > 120 &&
+      segmentSeconds >= Math.floor(currentSegment.durationSeconds / 2) &&
+      !hasAnnouncedHalfwayRef.current.has(currentSegmentIndex)
+    ) {
+      hasAnnouncedHalfwayRef.current.add(currentSegmentIndex);
+      sessionCueService.playSegmentHalfway(currentSegment.type);
     }
 
     // 30-second advance warning before an upcoming run segment — fires once

@@ -25,6 +25,8 @@ import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { SessionSummaryCard } from './components/SessionSummaryCard';
 import { FeedbackSelector } from './components/FeedbackSelector';
+import { RouteMap } from '../../components/session/RouteMap';
+import { calibrateFromFirstSession } from '../../utils/levelPlacement';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -77,6 +79,11 @@ export default function PostSessionScreen({ navigation, route }: Props) {
 
     // Snapshot distance BEFORE updating so detectMilestone can check crossings
     const prevDistanceKm = useRunProgressStore.getState().progress?.totalDistanceKm ?? 0;
+    // Snapshot whether this is the user's first completed session BEFORE
+    // updateAfterSession bumps the count. Used below to fire one-time
+    // first-session level calibration based on the user's feedback.
+    const wasFirstSession =
+      (useRunProgressStore.getState().progress?.totalSessionsCompleted ?? 0) === 0;
 
     // Fire-and-forget side effects — never block the user
     if (guestId && feedbackRating) {
@@ -108,6 +115,28 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       durationMinutes: session.actualDurationMinutes,
       distanceKm: effectiveDistanceKm,
     });
+    // Persist a downsampled route alongside summary fields so the past-
+    // session detail screen can render the map offline. Cap at ~400 points
+    // to keep AsyncStorage bounded — at 1 fix / 5s that's ~33 minutes of
+    // raw data; longer sessions get evenly-spaced subsampling, which is
+    // plenty of resolution for a static preview.
+    const MAX_ROUTE_POINTS = 400;
+    let storedRoute: typeof session.route | undefined = undefined;
+    if (!isIndoor && session.route && session.route.length >= 2) {
+      if (session.route.length <= MAX_ROUTE_POINTS) {
+        storedRoute = session.route;
+      } else {
+        const stride = session.route.length / MAX_ROUTE_POINTS;
+        const sampled: typeof session.route = [];
+        for (let i = 0; i < MAX_ROUTE_POINTS; i++) {
+          sampled.push(session.route[Math.floor(i * stride)]);
+        }
+        // Always preserve the true endpoint for accurate end marker placement.
+        sampled[sampled.length - 1] = session.route[session.route.length - 1];
+        storedRoute = sampled;
+      }
+    }
+
     addToHistory({
       id: session.id,
       date: session.completedAt.split('T')[0],
@@ -117,6 +146,8 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       planLevel: session.planLevel,
       feedbackRating: feedbackRating,
       endedEarly: session.endedEarly,
+      route: storedRoute,
+      environment: session.environment,
     });
 
     // Update challenge progress for outdoor sessions (fire-and-forget)
@@ -151,25 +182,45 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       // Sync local level from server result
       if (result.progressUpdate.leveledUp) incrementLevel();
 
-      clearTodayOptions();
-      // Edge Function already persisted progress to DB — no pushRunProgress needed
+      // First-session calibration: server doesn't know about this concept,
+      // so we apply it client-side after syncing the server's level. Only
+      // fires if it's session #1 AND feedback indicates a misplacement.
+      let calibration: { previousLevel: number; newLevel: number; reason: string } | undefined;
+      let progressUpdate = result.progressUpdate;
+      if (wasFirstSession && feedbackRating) {
+        const currentLevel = useRunProgressStore.getState().progress?.currentLevel ?? progressUpdate.newLevel;
+        const calib = calibrateFromFirstSession(currentLevel, feedbackRating);
+        if (calib.delta !== 0) {
+          useRunProgressStore.getState().setLevel(calib.newLevel);
+          calibration = { previousLevel: calib.previousLevel, newLevel: calib.newLevel, reason: calib.reason };
+          progressUpdate = { ...progressUpdate, newLevel: calib.newLevel };
+        }
+      }
 
-      const milestoneId = result.progressUpdate.milestoneReached;
+      clearTodayOptions();
+      // Edge Function persists user_run_progress and sessions, but the public
+      // `profiles` table (used by Bench March / community) is not touched there.
+      // Push community-visible fields so other users see fresh stats.
+      const { authService } = require('../../services/authService');
+      authService.pushRunProgress().catch(() => {});
+
+      const milestoneId = progressUpdate.milestoneReached;
 
       if (milestoneId) {
         navigation.replace('Celebration', {
           milestoneId,
           coachFeedback: result.coachFeedback,
-          progressUpdate: result.progressUpdate,
+          progressUpdate,
           session: updatedSession,
           shareAfter,
         });
       } else {
         navigation.replace('CoachFeedback', {
           coachFeedback: result.coachFeedback,
-          progressUpdate: result.progressUpdate,
+          progressUpdate,
           session: updatedSession,
           shareAfter,
+          calibration,
         });
       }
     } catch (err) {
@@ -198,7 +249,20 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       });
 
       const finalProgress = useRunProgressStore.getState().progress;
-      const newLevel = finalProgress?.currentLevel ?? session.planLevel;
+      let newLevel = finalProgress?.currentLevel ?? session.planLevel;
+
+      // First-session calibration in the offline path mirrors the server-path
+      // logic. Same one-shot rules apply.
+      let calibration: { previousLevel: number; newLevel: number; reason: string } | undefined;
+      if (wasFirstSession && feedbackRating) {
+        const calib = calibrateFromFirstSession(newLevel, feedbackRating);
+        if (calib.delta !== 0) {
+          useRunProgressStore.getState().setLevel(calib.newLevel);
+          calibration = { previousLevel: calib.previousLevel, newLevel: calib.newLevel, reason: calib.reason };
+          newLevel = calib.newLevel;
+        }
+      }
+
       const milestoneId = freshProgress
         ? detectMilestone(prevDistanceKm, freshProgress, leveledUp, newLevel)
         : null;
@@ -225,6 +289,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           progressUpdate,
           session: updatedSession,
           shareAfter,
+          calibration,
         });
       }
     }
@@ -250,6 +315,15 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           <View style={styles.header}>
             <Text style={styles.title}>SESSION COMPLETE</Text>
           </View>
+
+          {/* Recorded route — outdoor sessions with usable GPS only.
+              Indoor / treadmill / GPS-denied sessions skip the map entirely
+              so the layout doesn't get a blank tile. */}
+          {!isIndoor && session.route && session.route.length >= 2 && (
+            <View style={styles.mapWrapper}>
+              <RouteMap route={session.route} height={220} />
+            </View>
+          )}
 
           {/* Stats */}
           <SessionSummaryCard session={session} />
@@ -380,6 +454,9 @@ const styles = StyleSheet.create({
     fontSize: 36,
     color: '#fff',
     letterSpacing: 1.5,
+  },
+  mapWrapper: {
+    marginBottom: 20,
   },
   section: {
     marginTop: 28,

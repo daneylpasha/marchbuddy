@@ -31,7 +31,7 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session 
 
         <View style={styles.stat}>
           <Text style={styles.statValue}>{formatPace(session.pacePerKm)}</Text>
-          <Text style={styles.statLabel}>/km</Text>
+          <Text style={styles.statLabel}>Pace</Text>
         </View>
       </View>
 

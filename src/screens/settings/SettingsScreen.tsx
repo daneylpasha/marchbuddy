@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Switch,
   StyleSheet,
-  Alert,
   Linking,
+  Modal,
   Pressable,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -23,8 +23,10 @@ import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { registerForPushNotifications } from '../../services/notificationService';
+import { getDiscoverable, setDiscoverable } from '../../services/communityService';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { colors, fonts, spacing } from '../../theme';
 import { APP_CONFIG } from '../../config/appConfig';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
@@ -58,10 +60,27 @@ export default function SettingsScreen() {
   const setQuietHours = useNotificationPrefsStore((s) => s.setQuietHours);
   const hydratePrefs = useNotificationPrefsStore((s) => s.hydrateFromServer);
 
+  const [discoverable, setDiscoverableLocal] = useState(true);
+  const [signOutConfirmVisible, setSignOutConfirmVisible] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [resetOnboardingVisible, setResetOnboardingVisible] = useState(false);
+  const [clearDataVisible, setClearDataVisible] = useState(false);
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
+  const [deleteAccountFinalVisible, setDeleteAccountFinalVisible] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
+  const [quietHoursVisible, setQuietHoursVisible] = useState(false);
+
   // Hydrate prefs on mount so the toggles reflect server-side truth
   useEffect(() => {
     hydratePrefs();
+    getDiscoverable().then(setDiscoverableLocal);
   }, [hydratePrefs]);
+
+  const handleDiscoverableToggle = (value: boolean) => {
+    setDiscoverableLocal(value);
+    setDiscoverable(value).catch(() => setDiscoverableLocal(!value));
+  };
 
   const quietHoursGranted = notificationPermission === 'granted';
 
@@ -72,27 +91,11 @@ export default function SettingsScreen() {
     return `${display} ${ampm}`;
   };
 
-  const promptQuietHours = () => {
-    Alert.alert(
-      'Quiet Hours',
-      `Notifications won't be sent during quiet hours, evaluated in your local time.\n\nCurrent: ${formatHour(prefs.quiet_hours_start)} — ${formatHour(prefs.quiet_hours_end)}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Late evening (10 PM – 7 AM)',
-          onPress: () => setQuietHours(22, 7),
-        },
-        {
-          text: 'Early night (9 PM – 6 AM)',
-          onPress: () => setQuietHours(21, 6),
-        },
-        {
-          text: 'Always on (disable)',
-          onPress: () => setQuietHours(0, 0),
-          style: 'destructive',
-        },
-      ],
-    );
+  const promptQuietHours = () => setQuietHoursVisible(true);
+
+  const handleQuietHoursSelect = (start: number, end: number) => {
+    setQuietHours(start, end);
+    setQuietHoursVisible(false);
   };
 
   // Sync store with actual OS permission on mount
@@ -107,11 +110,11 @@ export default function SettingsScreen() {
     if (value) {
       await registerForPushNotifications();
     } else {
-      Alert.alert(
-        'Disable Notifications',
-        'To turn off notifications, go to your device Settings > Apps > March Buddy > Notifications.',
-        [{ text: 'OK' }],
-      );
+      setErrorDialog({
+        title: 'Disable Notifications',
+        message:
+          'To turn off notifications, go to your device Settings > Apps > March Buddy > Notifications.',
+      });
     }
   };
 
@@ -125,97 +128,65 @@ export default function SettingsScreen() {
   };
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open link'));
-  };
-
-  const handleResetOnboarding = () => {
-    Alert.alert(
-      'Reset Onboarding?',
-      'This will take you back to the welcome screen. Your progress will be kept.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => resetSetup(),
-        },
-      ],
+    Linking.openURL(url).catch(() =>
+      setErrorDialog({ title: 'Error', message: 'Could not open link.' }),
     );
   };
 
-  const handleClearAllData = () => {
-    Alert.alert(
-      'Clear All Data?',
-      'This will delete all your progress, sessions, and settings. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Everything',
-          style: 'destructive',
-          onPress: () => {
-            resetSetup();
-            resetProgress();
-            resetSettings();
-          },
-        },
-      ],
-    );
+  const handleResetOnboarding = () => setResetOnboardingVisible(true);
+  const handleClearAllData = () => setClearDataVisible(true);
+  const handleDeleteAccount = () => setDeleteAccountVisible(true);
+  const handleSignOut = () => setSignOutConfirmVisible(true);
+
+  const confirmResetOnboarding = () => {
+    resetSetup();
+    setResetOnboardingVisible(false);
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account?',
-      'This will permanently delete your account and all associated data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete My Account',
-          style: 'destructive',
-          onPress: () => {
-            // Double confirmation for safety
-            Alert.alert(
-              'Are you absolutely sure?',
-              'All your progress, sessions, and personal data will be permanently removed.',
-              [
-                { text: 'Go Back', style: 'cancel' },
-                {
-                  text: 'Yes, Delete Everything',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await useAuthStore.getState().deleteAccount();
-                    } catch (e) {
-                      Alert.alert('Error', 'Could not delete account. Please try again or contact support.');
-                    }
-                  },
-                },
-              ],
-            );
-          },
-        },
-      ],
-    );
+  const confirmClearData = () => {
+    resetSetup();
+    resetProgress();
+    resetSettings();
+    setClearDataVisible(false);
   };
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out?',
-      'You will need to sign in again. All local data will be cleared.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await useAuthStore.getState().signOut();
-            } catch (e) {
-              Alert.alert('Error', 'Could not sign out. Try again.');
-            }
-          },
-        },
-      ],
-    );
+  const confirmDeleteAccountStep1 = () => {
+    setDeleteAccountVisible(false);
+    setDeleteAccountFinalVisible(true);
+  };
+
+  const confirmDeleteAccountFinal = async () => {
+    if (deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      await useAuthStore.getState().deleteAccount();
+      setDeleteAccountFinalVisible(false);
+    } catch (e) {
+      setDeleteAccountFinalVisible(false);
+      setErrorDialog({
+        title: 'Delete Failed',
+        message: 'Could not delete account. Please try again or contact support.',
+      });
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const confirmSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await useAuthStore.getState().signOut();
+      setSignOutConfirmVisible(false);
+    } catch (e) {
+      setSignOutConfirmVisible(false);
+      setErrorDialog({
+        title: 'Sign Out Failed',
+        message: 'Could not sign out. Please try again.',
+      });
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -271,6 +242,25 @@ export default function SettingsScreen() {
             label="Started"
             value={formatStartDate()}
           />
+        </SettingsSection>
+
+        {/* Privacy */}
+        <SettingsSection title="PRIVACY">
+          <SettingsRow
+            label="Show me in Bench March"
+            value={discoverable ? 'On' : 'Off'}
+            rightElement={
+              <Switch
+                value={discoverable}
+                onValueChange={handleDiscoverableToggle}
+                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                thumbColor={discoverable ? colors.primary : colors.textTertiary}
+              />
+            }
+          />
+          <Text style={styles.privacyHelp}>
+            When off, your profile and stats are hidden from other runners.
+          </Text>
         </SettingsSection>
 
         {/* Preferences */}
@@ -431,6 +421,125 @@ export default function SettingsScreen() {
           <Text style={styles.footerText}>Made with care for runners everywhere</Text>
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={signOutConfirmVisible}
+        icon="log-out-outline"
+        title="Sign Out?"
+        message="You'll need to sign in again. All local data will be cleared."
+        confirmLabel={signingOut ? 'Signing out…' : 'Sign Out'}
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => !signingOut && setSignOutConfirmVisible(false)}
+        onConfirm={confirmSignOut}
+      />
+
+      <ConfirmDialog
+        visible={resetOnboardingVisible}
+        icon="refresh-outline"
+        title="Reset Onboarding?"
+        message="This will take you back to the welcome screen. Your progress will be kept."
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setResetOnboardingVisible(false)}
+        onConfirm={confirmResetOnboarding}
+      />
+
+      <ConfirmDialog
+        visible={clearDataVisible}
+        icon="trash-outline"
+        title="Clear All Data?"
+        message="This will delete all your progress, sessions, and settings. This cannot be undone."
+        confirmLabel="Delete Everything"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setClearDataVisible(false)}
+        onConfirm={confirmClearData}
+      />
+
+      <ConfirmDialog
+        visible={deleteAccountVisible}
+        icon="warning-outline"
+        title="Delete Account?"
+        message="This will permanently delete your account and all associated data. This action cannot be undone."
+        confirmLabel="Delete My Account"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setDeleteAccountVisible(false)}
+        onConfirm={confirmDeleteAccountStep1}
+      />
+
+      <ConfirmDialog
+        visible={deleteAccountFinalVisible}
+        icon="alert-circle-outline"
+        title="Are you absolutely sure?"
+        message="All your progress, sessions, and personal data will be permanently removed."
+        confirmLabel={deletingAccount ? 'Deleting…' : 'Yes, Delete Everything'}
+        cancelLabel="Go Back"
+        destructive
+        onCancel={() => !deletingAccount && setDeleteAccountFinalVisible(false)}
+        onConfirm={confirmDeleteAccountFinal}
+      />
+
+      {errorDialog && (
+        <ConfirmDialog
+          visible={!!errorDialog}
+          icon="alert-circle-outline"
+          title={errorDialog.title}
+          message={errorDialog.message}
+          confirmLabel="OK"
+          cancelLabel="Close"
+          onCancel={() => setErrorDialog(null)}
+          onConfirm={() => setErrorDialog(null)}
+        />
+      )}
+
+      <Modal
+        visible={quietHoursVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQuietHoursVisible(false)}
+        statusBarTranslucent
+      >
+        <Pressable style={styles.qhBackdrop} onPress={() => setQuietHoursVisible(false)}>
+          <Pressable style={styles.qhCard} onPress={() => {}}>
+            <View style={styles.qhIconWrap}>
+              <Ionicons name="moon-outline" size={26} color={colors.primary} />
+            </View>
+            <Text style={styles.qhTitle}>Quiet Hours</Text>
+            <Text style={styles.qhMessage}>
+              Notifications won't be sent during these hours.{'\n'}
+              Current: {formatHour(prefs.quiet_hours_start)} — {formatHour(prefs.quiet_hours_end)}
+            </Text>
+
+            <Pressable
+              style={({ pressed }) => [styles.qhOption, pressed && { opacity: 0.85 }]}
+              onPress={() => handleQuietHoursSelect(22, 7)}
+            >
+              <Text style={styles.qhOptionText}>Late evening (10 PM – 7 AM)</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.qhOption, pressed && { opacity: 0.85 }]}
+              onPress={() => handleQuietHoursSelect(21, 6)}
+            >
+              <Text style={styles.qhOptionText}>Early night (9 PM – 6 AM)</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.qhOption, styles.qhOptionDanger, pressed && { opacity: 0.85 }]}
+              onPress={() => handleQuietHoursSelect(0, 0)}
+            >
+              <Text style={[styles.qhOptionText, styles.qhOptionTextDanger]}>Always on (disable)</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.qhCancel, pressed && { opacity: 0.85 }]}
+              onPress={() => setQuietHoursVisible(false)}
+            >
+              <Text style={styles.qhCancelText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -507,5 +616,88 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 14,
     color: colors.textTertiary,
+  },
+  privacyHelp: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textTertiary,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    lineHeight: 16,
+  },
+  qhBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  qhCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.18)',
+    gap: 10,
+  },
+  qhIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  qhTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 19,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  qhMessage: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  qhOption: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  qhOptionDanger: {
+    borderColor: 'rgba(244,63,94,0.3)',
+  },
+  qhOptionText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  qhOptionTextDanger: {
+    color: colors.danger,
+  },
+  qhCancel: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    marginTop: 4,
+  },
+  qhCancelText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: '#fff',
   },
 });

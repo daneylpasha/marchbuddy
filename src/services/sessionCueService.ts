@@ -92,6 +92,18 @@ class SessionCueService {
     this.speak('Halfway there. Keep pushing!');
   }
 
+  playSegmentHalfway(type: SegmentType): void {
+    const phrase =
+      type === 'run'
+        ? 'Halfway through this run.'
+        : type === 'walk'
+        ? 'Halfway through this walk.'
+        : type === 'warmup'
+        ? 'Halfway through your warmup.'
+        : 'Halfway through your cooldown.';
+    this.speak(phrase);
+  }
+
   async playPause(): Promise<void> {
     try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
   }

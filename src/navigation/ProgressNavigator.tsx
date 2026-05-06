@@ -5,6 +5,8 @@ import WorkoutHistoryScreen from '../screens/workout/WorkoutHistoryScreen';
 import JourneyMapScreen from '../screens/journey/JourneyMapScreen';
 import FeedbackScreen from '../screens/settings/FeedbackScreen';
 import WeekDetailScreen from '../screens/progress/WeekDetailScreen';
+import PastSessionDetailScreen from '../screens/progress/PastSessionDetailScreen';
+import type { SessionRecord } from '../types/session';
 
 export type ProgressStackParamList = {
   ProgressMain: undefined;
@@ -12,6 +14,7 @@ export type ProgressStackParamList = {
   JourneyMap: undefined;
   Feedback: undefined;
   WeekDetail: { weekStartDate: string };
+  PastSessionDetail: { session: SessionRecord };
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -24,6 +27,7 @@ export default function ProgressNavigator() {
       <Stack.Screen name="JourneyMap" component={JourneyMapScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="WeekDetail" component={WeekDetailScreen} />
+      <Stack.Screen name="PastSessionDetail" component={PastSessionDetailScreen} />
     </Stack.Navigator>
   );
 }

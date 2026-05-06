@@ -59,12 +59,13 @@
     "react-native-health-connect": "^3.5.0",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-keyboard-aware-scrollview": "^2.1.0",
+    "react-native-maps": "1.20.1",
     "react-native-reanimated": "^4.2.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-view-shot": "4.0.3",
-    "react-native-worklets": "^0.7.3",
+    "react-native-worklets": "^0.8.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

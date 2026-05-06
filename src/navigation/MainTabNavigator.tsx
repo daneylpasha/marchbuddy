@@ -10,6 +10,8 @@ import ProgressNavigator from './ProgressNavigator';
 import CommunityNavigator from './CommunityNavigator';
 import CoachChatScreen from '../screens/chat/CoachChatScreen';
 import { useChatStore } from '../store/chatStore';
+import { useAuthStore } from '../store/authStore';
+import { featureFlags } from '../constants/featureFlags';
 import { colors, fonts } from '../theme';
 
 // Screens inside RunNavigator that should hide the tab bar entirely.
@@ -59,6 +61,8 @@ function CoachStackNavigator() {
 
 export default function MainTabNavigator() {
   const hasUnread = useChatStore((state) => state.hasUnread);
+  const userEmail = useAuthStore((state) => state.user?.email);
+  const showCommunity = featureFlags.community(userEmail);
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) : 0;
 
@@ -104,11 +108,13 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen name="Progress" component={ProgressNavigator} />
-      <Tab.Screen
-        name="Community"
-        component={CommunityNavigator}
-        options={{ tabBarLabel: 'Community' }}
-      />
+      {showCommunity && (
+        <Tab.Screen
+          name="Community"
+          component={CommunityNavigator}
+          options={{ tabBarLabel: 'Community' }}
+        />
+      )}
       <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
     </Tab.Navigator>
   );

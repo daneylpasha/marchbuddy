@@ -255,6 +255,10 @@ export const authService = {
         currentStreakDays: p.currentStreakDays ?? 0,
         totalSessionsCompleted: p.totalSessionsCompleted ?? 0,
         totalDistanceKm: p.totalDistanceKm ?? 0,
+        longestRunMinutes: p.longestRunMinutes ?? 0,
+        bestStreakDays: p.bestStreakDays ?? 0,
+        totalDurationMinutes: p.totalDurationMinutes ?? 0,
+        lastSessionDate: p.lastSessionDate ?? null,
       }).catch(() => {});
     } catch (err) {
       console.error('pushRunProgress failed:', err);
