@@ -5,6 +5,8 @@
 // To add a teammate: append their email below, lowercased, no whitespace.
 const INTERNAL_TEAM_EMAILS = new Set<string>([
   'reach.dpasha@gmail.com',
+  'tahibahmed999@gmail.com',
+  'dev@rendernext.io',
 ]);
 
 export function isInternalTeamMember(email: string | null | undefined): boolean {
@@ -18,6 +20,5 @@ export function isInternalTeamMember(email: string | null | undefined): boolean 
 // Community is ready for public release, change the implementation to
 // `() => true` here without touching call sites).
 export const featureFlags = {
-  community: (email: string | null | undefined): boolean =>
-    isInternalTeamMember(email),
+  community: (email: string | null | undefined): boolean => isInternalTeamMember(email),
 };
