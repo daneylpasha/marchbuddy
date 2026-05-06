@@ -9,6 +9,8 @@ import {
   Animated,
   ScrollView,
   useWindowDimensions,
+  AppState,
+  AppStateStatus,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -266,6 +268,11 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
   // Tracking state for halfway celebration
   const halfwayShownRef = useRef(false);
 
+  // When the app is backgrounded mid-session we record the timestamp so that,
+  // on return to foreground, we can backfill steps the JS-thread pedometer
+  // subscription missed via the historical Pedometer.getStepCountAsync API.
+  const backgroundedAtRef = useRef<Date | null>(null);
+
   // GPS warm-up state — chip stays visible until we get a usable fix
   // (≤25m accuracy) or 30s pass, whichever comes first.
   const [gpsAcquired, setGpsAcquired] = useState(false);
@@ -415,6 +422,50 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Step reconciliation across background/foreground transitions ────────────
+  // The pedometer's watchStepCount() is JS-thread driven and stops firing
+  // when the app is backgrounded. The wall-clock timer keeps working but
+  // the step counter freezes. To fix this, on every foreground transition
+  // we query historical steps for the time spent in background and restart
+  // the live subscription with the reconciled total as its new baseline,
+  // so future emissions accumulate on top instead of being silently dropped
+  // by the store's monotonic guard.
+  useEffect(() => {
+    const handleAppStateChange = async (next: AppStateStatus) => {
+      if (next === "background" || next === "inactive") {
+        if (isActiveRef.current) {
+          backgroundedAtRef.current = new Date();
+        }
+        return;
+      }
+
+      if (next !== "active") return;
+
+      const bgAt = backgroundedAtRef.current;
+      backgroundedAtRef.current = null;
+
+      const { isActive: nowActive, isPaused: nowPaused, stepCount: currentSteps } =
+        useActiveSessionStore.getState();
+      // Only reconcile when actively walking — if the user paused before
+      // backgrounding, those background "steps" shouldn't be credited.
+      if (!bgAt || !nowActive || nowPaused || !pedometerAvailable) return;
+
+      const missed = await pedometerService.queryStepsBetween(bgAt, new Date());
+      if (missed == null || missed <= 0) return;
+
+      const newTotal = currentSteps + missed;
+      setStepCount(newTotal);
+      // Re-baseline the live subscription so subsequent foreground emissions
+      // continue from newTotal rather than from the pre-background count.
+      await pedometerService.restartWithBaseline(newTotal, (steps) => {
+        setStepCount(steps);
+      });
+    };
+
+    const sub = AppState.addEventListener("change", handleAppStateChange);
+    return () => sub.remove();
+  }, [pedometerAvailable, setStepCount]);
 
   // ── Auto-complete when last segment finishes ────────────────────────────────
   useEffect(() => {
@@ -903,8 +954,8 @@ const styles = StyleSheet.create({
   },
   topBar: {
     paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingTop: 0,
+    paddingBottom: 0,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -949,8 +1000,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   timerSection: {
-    paddingTop: 8,
-    paddingBottom: 24,
+    paddingTop: 0,
+    paddingBottom: 16,
     alignItems: "center",
   },
   timerSectionShort: {
@@ -979,8 +1030,8 @@ const styles = StyleSheet.create({
   },
   controlsSection: {
     paddingHorizontal: 24,
-    paddingBottom: 8,
-    paddingTop: 4,
+    paddingBottom: 18,
+    paddingTop: 14,
   },
   controlsSectionShort: {
     paddingBottom: 4,

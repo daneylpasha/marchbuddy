@@ -540,7 +540,12 @@ export default function ProgressScreen() {
               recentSessions.map((session, i) => {
                 const badge = getSessionBadge(session, recentSessions, longestRunMinutes, currentLevel);
                 return (
-                  <View key={`${session.id}-${i}`} style={styles.historyItem}>
+                  <TouchableOpacity
+                    key={`${session.id}-${i}`}
+                    style={styles.historyItem}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('PastSessionDetail', { session })}
+                  >
                     <View style={styles.historyLevelBadge}>
                       <Text style={styles.historyLevelText}>L{session.planLevel}</Text>
                     </View>
@@ -562,7 +567,13 @@ export default function ProgressScreen() {
                         <Text style={styles.historyDistance}>{session.distanceKm.toFixed(2)} km</Text>
                       )}
                     </View>
-                  </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={colors.textTertiary}
+                      style={styles.historyChevron}
+                    />
+                  </TouchableOpacity>
                 );
               })
             )}
@@ -949,6 +960,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     gap: 12,
+  },
+  historyChevron: {
+    marginLeft: 4,
   },
   historyLevelBadge: {
     width: 38,

@@ -17,9 +17,13 @@ import { colors, fonts, spacing, touchTarget } from "../../theme";
 import {
   useCoachSetupStore,
   type ActivityLevel,
+  type WalkBaseline,
+  type RunReadiness,
   type TimePreference,
 } from "../../store/coachSetupStore";
 import { useAuthStore } from "../../store/authStore";
+import { useRunProgressStore } from "../../store/runProgressStore";
+import { computeStartingLevel } from "../../utils/levelPlacement";
 import { generateCoachReply } from "../../services/onboardingApi";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -29,6 +33,8 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 type ScreenStep =
   | "name"
   | "activity"
+  | "walk-baseline"
+  | "run-readiness"
   | "coach-reply"
   | "time"
   | "frequency"
@@ -48,6 +54,19 @@ const ACTIVITY_OPTIONS: SelectOption<ActivityLevel>[] = [
   { label: "Occasionally walk, nothing regular", value: "occasionally_walk" },
   { label: "Somewhat active but inconsistent", value: "somewhat_active" },
   { label: "Active but want to run specifically", value: "active_want_run" },
+];
+
+const WALK_BASELINE_OPTIONS: SelectOption<WalkBaseline>[] = [
+  { label: "Less than 5 minutes", value: "under_5" },
+  { label: "5–15 minutes", value: "five_to_15" },
+  { label: "15–30 minutes", value: "fifteen_to_30" },
+  { label: "30 minutes or more", value: "thirty_plus" },
+];
+
+const RUN_READINESS_OPTIONS: SelectOption<RunReadiness>[] = [
+  { label: "No, I've never tried", value: "no_never_tried" },
+  { label: "Maybe, with effort", value: "maybe_with_effort" },
+  { label: "Yes, easily", value: "yes_easily" },
 ];
 
 const TIME_OPTIONS: SelectOption<TimePreference>[] = [
@@ -179,6 +198,8 @@ export default function CoachSetupScreen() {
     setupData,
     setUserName,
     setActivityLevel,
+    setWalkBaseline,
+    setRunReadiness,
     setTimePreference,
     setWeeklyFrequency,
     markSetupStarted,
@@ -441,9 +462,31 @@ export default function CoachSetupScreen() {
 
   const handleActivitySelect = async (option: SelectOption<ActivityLevel>) => {
     setActivityLevel(option.value);
-    await fetchAndShowReply("activity", "activity", option.value, () =>
-      transitionTo("time"),
-    );
+    // Skip the coach-reply detour after activity — we ask the walk-baseline
+    // question immediately so the placement signal stays cohesive in the
+    // user's head. Coach reply still fires after the time step.
+    transitionTo("walk-baseline");
+  };
+
+  const handleWalkBaselineSelect = (option: SelectOption<WalkBaseline>) => {
+    setWalkBaseline(option.value);
+    // Run readiness is only meaningful for users who can already walk
+    // ≥15 min — below that, capacity is the binding constraint and the
+    // question would feel out of place.
+    const askRunReadiness =
+      option.value === 'fifteen_to_30' || option.value === 'thirty_plus';
+    if (askRunReadiness) {
+      transitionTo("run-readiness");
+    } else {
+      // Clear any stale runReadiness if the user backed up and changed answers.
+      setRunReadiness(null);
+      transitionTo("time");
+    }
+  };
+
+  const handleRunReadinessSelect = (option: SelectOption<RunReadiness>) => {
+    setRunReadiness(option.value);
+    transitionTo("time");
   };
 
   const handleTimeSelect = async (option: SelectOption<TimePreference>) => {
@@ -465,6 +508,18 @@ export default function CoachSetupScreen() {
 
   const handleReady = () => {
     transitionTo(async () => {
+      // Apply the computed starting level BEFORE markSetupComplete so the
+      // first session the user sees on Today reflects their placement.
+      // setLevel is idempotent and clamps to 1–16 internally.
+      const placement = computeStartingLevel(
+        setupData.activityLevel,
+        setupData.walkBaseline,
+        setupData.runReadiness,
+      );
+      if (placement.level > 1) {
+        useRunProgressStore.getState().setLevel(placement.level);
+      }
+
       markSetupComplete();
       // Persist onboarding to the server immediately for real authenticated
       // users (not guests). Without this, users who sign in with Google or
@@ -624,25 +679,36 @@ export default function CoachSetupScreen() {
     </View>
   );
 
-  const renderReady = () => (
-    <View style={[styles.screen, styles.screenNoBack]}>
-      <View style={styles.body}>
-        <Text style={styles.readyHeading}>You're all set, {setupData.userName}!</Text>
-        <Text style={styles.readyBody}>Let's start with Level 1.</Text>
+  const renderReady = () => {
+    const placement = computeStartingLevel(
+      setupData.activityLevel,
+      setupData.walkBaseline,
+      setupData.runReadiness,
+    );
+    return (
+      <View style={[styles.screen, styles.screenNoBack]}>
+        <View style={styles.body}>
+          <Text style={styles.readyHeading}>You're all set, {setupData.userName}!</Text>
+          <View style={styles.placementCard}>
+            <Text style={styles.placementBadge}>YOUR STARTING POINT</Text>
+            <Text style={styles.placementLevel}>Level {placement.level}</Text>
+            <Text style={styles.placementReason}>{placement.reason}</Text>
+          </View>
+        </View>
+        <View style={styles.footer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryBtn,
+              pressed && styles.primaryBtnPressed,
+            ]}
+            onPress={handleReady}
+          >
+            <Text style={styles.primaryBtnLabel}>Let's Go</Text>
+          </Pressable>
+        </View>
       </View>
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryBtn,
-            pressed && styles.primaryBtnPressed,
-          ]}
-          onPress={handleReady}
-        >
-          <Text style={styles.primaryBtnLabel}>Let's Go</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+    );
+  };
 
   // ─── Root render ──────────────────────────────────────────────────────────────
 
@@ -658,6 +724,20 @@ export default function CoachSetupScreen() {
           "How active are you right now?",
           ACTIVITY_OPTIONS,
           handleActivitySelect,
+        );
+      case "walk-baseline":
+        return renderOptionCards(
+          "Your walking baseline",
+          "How long can you walk comfortably without stopping?",
+          WALK_BASELINE_OPTIONS,
+          handleWalkBaselineSelect,
+        );
+      case "run-readiness":
+        return renderOptionCards(
+          "One quick check",
+          "Could you jog for at least a minute right now?",
+          RUN_READINESS_OPTIONS,
+          handleRunReadinessSelect,
         );
       case "coach-reply":
         return renderCoachReply();
@@ -862,5 +942,36 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 26,
     letterSpacing: 0.2,
+  },
+  placementCard: {
+    marginTop: 24,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 18,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(6,138,21,0.35)',
+    gap: 6,
+  },
+  placementBadge: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: colors.primary,
+    textTransform: 'uppercase',
+  },
+  placementLevel: {
+    fontFamily: fonts.bold,
+    fontSize: 36,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+    marginTop: 4,
+  },
+  placementReason: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    letterSpacing: 0.2,
+    marginTop: 4,
   },
 });

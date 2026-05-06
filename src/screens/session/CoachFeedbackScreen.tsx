@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,9 @@ import {
   StyleSheet,
   Animated,
   ScrollView,
-  ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, fonts, spacing } from '../../theme';
 import { useRunProgressStore } from '../../store/runProgressStore';
@@ -32,11 +28,9 @@ const SESSIONS_TO_LEVEL_UP = 3;
 const MAX_LEVEL = 16;
 
 export default function CoachFeedbackScreen({ navigation, route }: Props) {
-  const { coachFeedback, progressUpdate, session, shareAfter } = route.params;
+  const { coachFeedback, progressUpdate, session, shareAfter, calibration } = route.params;
   const { progress } = useRunProgressStore();
 
-  const captureViewRef = useRef<View>(null);
-  const [isSharing, setIsSharing] = useState(false);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -62,26 +56,11 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
     navigation.replace('Today');
   };
 
-  const handleShare = async () => {
-    if (!captureViewRef.current) return;
-    setIsSharing(true);
-    try {
-      const uri = await captureRef(captureViewRef, { format: 'png', quality: 1 });
-      const available = await Sharing.isAvailableAsync();
-      if (available) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Share your session',
-        });
-      } else {
-        Alert.alert('Sharing not available on this device');
-      }
-    } catch (err) {
-      console.error('Share capture error:', err);
-      Alert.alert('Error', 'Could not capture the screen.');
-    } finally {
-      setIsSharing(false);
-    }
+  const handleShare = () => {
+    // Hand off to the dedicated share-card screen so users get a properly
+    // composed, branded image (with route map) instead of a raw screenshot
+    // of this feedback view.
+    navigation.navigate('ShareSession', { session });
   };
 
   const durationStr = formatDuration(session.actualDurationMinutes);
@@ -97,8 +76,7 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          {/* Invisible wrapper that gets captured — excludes the CTA button */}
-          <View ref={captureViewRef} collapsable={false} style={styles.captureArea}>
+          <View style={styles.captureArea}>
 
           {/* ── Hero checkmark ── */}
           <View style={styles.heroSection}>
@@ -110,6 +88,24 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
             <Text style={styles.heroTitle}>Session{'\n'}Complete</Text>
             <Text style={styles.heroSubtitle}>{session.planTitle}</Text>
           </View>
+
+          {/* ── Calibration banner (one-time, first-session only) ── */}
+          {calibration && (
+            <View style={styles.calibrationCard}>
+              <View style={styles.calibrationHeader}>
+                <Ionicons
+                  name={calibration.newLevel > calibration.previousLevel ? 'trending-up' : 'pulse'}
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.calibrationLabel}>LEVEL ADJUSTED</Text>
+              </View>
+              <Text style={styles.calibrationLevels}>
+                Level {calibration.previousLevel} → Level {calibration.newLevel}
+              </Text>
+              <Text style={styles.calibrationReason}>{calibration.reason}</Text>
+            </View>
+          )}
 
           {/* ── Session stats ── */}
           <View style={styles.sessionStatsRow}>
@@ -213,16 +209,9 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
             <Pressable
               style={({ pressed }) => [styles.doneButton, pressed && styles.doneButtonPressed]}
               onPress={handleShare}
-              disabled={isSharing}
             >
-              {isSharing ? (
-                <ActivityIndicator size="small" color="#fff" style={styles.btnIcon} />
-              ) : (
-                <Ionicons name="share-social-outline" size={20} color="#fff" style={styles.btnIcon} />
-              )}
-              <Text style={styles.doneButtonText}>
-                {isSharing ? 'Capturing...' : 'Share My Session'}
-              </Text>
+              <Ionicons name="share-social-outline" size={20} color="#fff" style={styles.btnIcon} />
+              <Text style={styles.doneButtonText}>Share My Session</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
@@ -321,6 +310,42 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+
+  // ── Calibration banner ─────────────────────────────────────────────────────
+  calibrationCard: {
+    backgroundColor: 'rgba(6,138,21,0.10)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(6,138,21,0.4)',
+    gap: 6,
+  },
+  calibrationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  calibrationLabel: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: colors.primary,
+    textTransform: 'uppercase',
+  },
+  calibrationLevels: {
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  calibrationReason: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 19,
+    marginTop: 2,
   },
 
   // ── Session stats ──────────────────────────────────────────────────────────

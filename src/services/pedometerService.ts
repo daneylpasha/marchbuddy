@@ -95,6 +95,31 @@ class PedometerService {
     this.currentSessionSteps = 0;
   }
 
+  // Historical step query — works even for time ranges spent in background,
+  // since iOS CMPedometer / Android Step Counter persist counts at the OS
+  // level. Used to backfill steps missed while the JS thread was paused.
+  async queryStepsBetween(start: Date, end: Date): Promise<number | null> {
+    if (!Pedometer?.getStepCountAsync) return null;
+    try {
+      const result = await Pedometer.getStepCountAsync(start, end);
+      return result?.steps ?? 0;
+    } catch {
+      return null;
+    }
+  }
+
+  // Stop the current subscription and restart with a new baseline. Used
+  // after backfilling missed background steps, so the live subscription's
+  // future emissions accumulate on top of the reconciled total instead of
+  // being silently dropped by the store's monotonic guard.
+  async restartWithBaseline(
+    baseline: number,
+    onSteps: StepListener,
+  ): Promise<boolean> {
+    this.stopTracking();
+    return this.startTracking(onSteps, baseline);
+  }
+
   getIsTracking(): boolean {
     return this.isTracking;
   }

@@ -144,6 +144,12 @@ export interface SessionRecord {
   planLevel: number;
   feedbackRating: string | null;
   endedEarly: boolean;
+  // Optional — present only for outdoor sessions where GPS produced ≥2 fixes.
+  // Stored locally so the past-session detail screen can render the route
+  // map without a network round-trip. Capped on write (see PostSessionScreen)
+  // to keep AsyncStorage payload bounded.
+  route?: GeoPoint[];
+  environment?: 'indoor' | 'outdoor';
 }
 
 // ============================================

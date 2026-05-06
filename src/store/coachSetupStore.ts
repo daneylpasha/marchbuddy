@@ -21,6 +21,22 @@ export type ActivityLevel =
   | 'somewhat_active'
   | 'active_want_run';
 
+// Self-reported continuous walk baseline. Used together with activityLevel
+// and runReadiness to place new users at an appropriate starting level
+// instead of forcing everyone through Level 1.
+export type WalkBaseline =
+  | 'under_5'
+  | 'five_to_15'
+  | 'fifteen_to_30'
+  | 'thirty_plus';
+
+// Only asked when walkBaseline >= 15 minutes — for low-baseline walkers,
+// running readiness is moot since placement is bounded by walking capacity.
+export type RunReadiness =
+  | 'no_never_tried'
+  | 'maybe_with_effort'
+  | 'yes_easily';
+
 export type TimePreference = 'morning' | 'midday' | 'evening' | 'varies';
 
 export type PastAttempts = 'multiple' | 'once_twice' | 'never';
@@ -29,6 +45,8 @@ interface SetupData {
   // Phase 1
   userName: string;
   activityLevel: ActivityLevel | null;
+  walkBaseline: WalkBaseline | null;
+  runReadiness: RunReadiness | null;
   timePreference: TimePreference | null;
   // Phase 2
   triggerStatement: string;
@@ -60,6 +78,8 @@ interface CoachSetupState {
   // Phase 1 actions
   setUserName: (name: string) => void;
   setActivityLevel: (level: ActivityLevel) => void;
+  setWalkBaseline: (baseline: WalkBaseline) => void;
+  setRunReadiness: (readiness: RunReadiness | null) => void;
   setTimePreference: (pref: TimePreference) => void;
   // Phase 2 actions
   setTrigger: (statement: string, theme: TriggerTheme) => void;
@@ -82,6 +102,8 @@ interface CoachSetupState {
 const emptySetupData = (): SetupData => ({
   userName: '',
   activityLevel: null,
+  walkBaseline: null,
+  runReadiness: null,
   timePreference: null,
   triggerStatement: '',
   triggerTheme: null,
@@ -113,6 +135,12 @@ export const useCoachSetupStore = create<CoachSetupState>()(
 
   setActivityLevel: (level) =>
     set((s) => ({ setupData: { ...s.setupData, activityLevel: level } })),
+
+  setWalkBaseline: (baseline) =>
+    set((s) => ({ setupData: { ...s.setupData, walkBaseline: baseline } })),
+
+  setRunReadiness: (readiness) =>
+    set((s) => ({ setupData: { ...s.setupData, runReadiness: readiness } })),
 
   setTimePreference: (pref) =>
     set((s) => ({ setupData: { ...s.setupData, timePreference: pref } })),

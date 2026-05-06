@@ -186,7 +186,11 @@ export default function WeekDetailScreen() {
             </View>
           ) : (
             [...weekSessions].reverse().map((session, i) => (
-              <View key={`${session.id}-${i}`} style={styles.sessionItem}>
+              <Pressable
+                key={`${session.id}-${i}`}
+                style={({ pressed }) => [styles.sessionItem, pressed && { opacity: 0.7 }]}
+                onPress={() => navigation.navigate('PastSessionDetail', { session })}
+              >
                 <View style={styles.sessionLevelBadge}>
                   <Text style={styles.sessionLevelText}>L{session.planLevel}</Text>
                 </View>
@@ -206,7 +210,13 @@ export default function WeekDetailScreen() {
                     <Text style={styles.sessionDistance}>{session.distanceKm.toFixed(2)} km</Text>
                   )}
                 </View>
-              </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={colors.textTertiary}
+                  style={{ marginLeft: 4 }}
+                />
+              </Pressable>
             ))
           )}
         </View>

@@ -56,7 +56,7 @@ export const SessionStatsBar: React.FC<SessionStatsBarProps> = ({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={styles.unitRow}
           >
-            <Text style={styles.unit}>/km</Text>
+            <Text style={styles.unit}>Pace</Text>
             <Ionicons
               name="information-circle-outline"
               size={12}
