@@ -35,6 +35,11 @@
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",
       "package": "com.marchbuddy.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA2T6lnFCvy4ORjNPFaN5WJyY41i4170XI"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

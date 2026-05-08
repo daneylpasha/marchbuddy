@@ -37,10 +37,10 @@ function formatDate(dateStr: string): string {
 function feedbackLabel(rating: string | null): string | null {
   if (!rating) return null;
   switch (rating) {
-    case 'too-easy':    return 'Too easy';
-    case 'just-right':  return 'Just right';
+    case 'too_easy':    return 'Too easy';
+    case 'just_right':  return 'Just right';
     case 'challenging': return 'Challenging';
-    case 'too-hard':    return 'Too hard';
+    case 'too_hard':    return 'Too hard';
     default:            return rating;
   }
 }

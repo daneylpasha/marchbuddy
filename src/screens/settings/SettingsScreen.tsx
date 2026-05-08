@@ -24,6 +24,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { registerForPushNotifications } from '../../services/notificationService';
 import { getDiscoverable, setDiscoverable } from '../../services/communityService';
+import { featureFlags } from '../../constants/featureFlags';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -37,6 +38,8 @@ export default function SettingsScreen() {
   const navigation = useNavigation<NavProp>();
   const isGuest = useAuthStore((s) => s.isGuest);
   const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
+  const userEmail = useAuthStore((s) => s.user?.email);
+  const showCommunity = featureFlags.community(userEmail);
 
   const setupData = useCoachSetupStore((s) => s.setupData);
   const resetSetup = useCoachSetupStore((s) => s.resetSetup);
@@ -74,8 +77,10 @@ export default function SettingsScreen() {
   // Hydrate prefs on mount so the toggles reflect server-side truth
   useEffect(() => {
     hydratePrefs();
-    getDiscoverable().then(setDiscoverableLocal);
-  }, [hydratePrefs]);
+    if (showCommunity) {
+      getDiscoverable().then(setDiscoverableLocal);
+    }
+  }, [hydratePrefs, showCommunity]);
 
   const handleDiscoverableToggle = (value: boolean) => {
     setDiscoverableLocal(value);
@@ -244,24 +249,26 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
-        {/* Privacy */}
-        <SettingsSection title="PRIVACY">
-          <SettingsRow
-            label="Show me in Bench March"
-            value={discoverable ? 'On' : 'Off'}
-            rightElement={
-              <Switch
-                value={discoverable}
-                onValueChange={handleDiscoverableToggle}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={discoverable ? colors.primary : colors.textTertiary}
-              />
-            }
-          />
-          <Text style={styles.privacyHelp}>
-            When off, your profile and stats are hidden from other runners.
-          </Text>
-        </SettingsSection>
+        {/* Privacy — only relevant when Community is visible to this user */}
+        {showCommunity && (
+          <SettingsSection title="PRIVACY">
+            <SettingsRow
+              label="Show me in Bench March"
+              value={discoverable ? 'On' : 'Off'}
+              rightElement={
+                <Switch
+                  value={discoverable}
+                  onValueChange={handleDiscoverableToggle}
+                  trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
+                  thumbColor={discoverable ? colors.primary : colors.textTertiary}
+                />
+              }
+            />
+            <Text style={styles.privacyHelp}>
+              When off, your profile and stats are hidden from other runners.
+            </Text>
+          </SettingsSection>
+        )}
 
         {/* Preferences */}
         <SettingsSection title="PREFERENCES">
