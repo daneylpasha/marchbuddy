@@ -1,6 +1,12 @@
 import * as Location from 'expo-location';
 import { GeoPoint } from '../types/session';
 
+// GPS fixes with accuracy worse than this are dropped. Sitting still
+// indoors or near tall buildings, accuracy is often 30–100m and the
+// reported coordinates drift several meters between fixes — accepting
+// them produces the "spider web" route on otherwise-stationary sessions.
+const MIN_ACCURACY_METERS = 20;
+
 class LocationService {
   private subscription: Location.LocationSubscription | null = null;
   private isTracking = false;
@@ -75,16 +81,25 @@ class LocationService {
 
       this.subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 3000, // Every 3 seconds
-          distanceInterval: 5, // Or every 5 meters
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 3000,
+          distanceInterval: 5,
         },
         (location) => {
+          const accuracy = location.coords.accuracy ?? undefined;
+
+          // Drop low-confidence fixes before they reach the store.
+          // accuracy === undefined means the platform didn't report it
+          // (some emulators) — pass it through so dev/test still works.
+          if (accuracy !== undefined && accuracy > MIN_ACCURACY_METERS) {
+            return;
+          }
+
           onLocation({
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
             timestamp: location.timestamp,
-            accuracy: location.coords.accuracy ?? undefined,
+            accuracy,
           });
         },
       );
