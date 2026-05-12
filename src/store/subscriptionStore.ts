@@ -116,15 +116,24 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         refreshAnalyticsTraits();
       },
 
-      // Upgrade is currently client-driven (pre-RevenueCat). Once RC is wired,
-      // this should ONLY be called from the RC purchase success callback, and
-      // the server tier will be the authoritative writer via webhook.
+      // Flip local tier to 'pro'. This is optimistic — the RevenueCat
+      // webhook (supabase/functions/revenuecat-webhook) is the authoritative
+      // writer of the server-side tier. Pre-webhook propagation (usually
+      // <5 seconds) the client sees Pro locally; once the webhook fires
+      // and we pullSubscription, server agrees.
+      //
+      // Important: we deliberately do NOT push tier to the server here.
+      // The RLS policy on user_subscriptions forbids it. Attempting to
+      // do so would fail with a column-level permission error and
+      // surface as a confusing console.error.
+      //
+      // Called by purchasesService.syncCustomerInfoToStore() after a
+      // successful Purchases.purchasePackage().
       upgrade: () => {
         set({ tier: 'pro', showPaywall: false });
-        pushToServer();
-        // Important — refresh PostHog person properties immediately so cohorts
-        // and segmentation reflect the new tier without waiting for the next
-        // sign-in cycle.
+        // Note: pushToServer() is NOT called here. Tier is webhook-only.
+        // We still push starting_level / free_until_level updates separately
+        // via setStartingLevel() since those are client-owned fields.
         refreshAnalyticsTraits();
       },
 
