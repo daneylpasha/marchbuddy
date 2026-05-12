@@ -2,7 +2,17 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SessionPlan, GeoPoint, CompletedSession } from '../types/session';
-import { calculateRouteDistance } from '../utils/sessionUtils';
+import { calculateRouteDistance, haversineDistance } from '../utils/sessionUtils';
+
+// Minimum movement between accepted route points. Below this, the "movement"
+// is GPS noise from a stationary user, not real walking. Without this guard,
+// sitting still for 20 min produces a tangled zigzag instead of a single dot.
+const MIN_ROUTE_DELTA_METERS = 3;
+
+// Implied speed above which a fix is treated as a GPS teleport (signal
+// briefly jumped to a wrong location, then snapped back). 30 km/h is well
+// above any realistic walking or jogging pace.
+const MAX_PLAUSIBLE_SPEED_KMH = 30;
 
 // A persisted session that hasn't been touched for this long is considered
 // abandoned and silently discarded on cold-start. 6h is generous enough for
@@ -166,6 +176,27 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
 
   addRoutePoint: (point: GeoPoint) => {
     const { route } = get();
+    const previous = route[route.length - 1];
+
+    // First fix of the session — nothing to compare against, accept.
+    if (!previous) {
+      set({ route: [point], distanceKm: 0 });
+      return;
+    }
+
+    const deltaKm = haversineDistance(previous, point);
+    const deltaMeters = deltaKm * 1000;
+
+    // Drop sub-3m moves — stationary GPS noise, not real walking.
+    if (deltaMeters < MIN_ROUTE_DELTA_METERS) return;
+
+    // Drop fixes that imply a physically impossible speed (signal teleport).
+    const deltaSeconds = (point.timestamp - previous.timestamp) / 1000;
+    if (deltaSeconds > 0) {
+      const impliedKmh = deltaKm / (deltaSeconds / 3600);
+      if (impliedKmh > MAX_PLAUSIBLE_SPEED_KMH) return;
+    }
+
     const newRoute = [...route, point];
     set({
       route: newRoute,
