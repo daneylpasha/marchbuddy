@@ -28,10 +28,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useAuthStore } from '../../store/authStore';
-import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { analytics, EVENTS } from '../../services/analytics';
+import { purchasesService } from '../../services/purchasesService';
 import { colors, fonts, spacing } from '../../theme';
 import type { OnboardingStackParamList } from '../../navigation/AppNavigator';
 
@@ -49,9 +50,10 @@ const FEATURES = [
 export default function OnboardingPaywallScreen(_props: Props) {
   const setupData = useCoachSetupStore((s) => s.setupData);
   const markSetupComplete = useCoachSetupStore((s) => s.markSetupComplete);
-  const upgrade = useSubscriptionStore((s) => s.upgrade);
 
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const openedAtRef = useRef<number>(Date.now());
 
   // Fire paywall_shown once on mount. Source is hardcoded since this screen
@@ -63,6 +65,21 @@ export default function OnboardingPaywallScreen(_props: Props) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load RC offering for localized prices + real purchase packages.
+  useEffect(() => {
+    purchasesService.getCurrentOffering().then((o) => {
+      if (o) setOffering(o);
+    });
+  }, []);
+
+  // Resolve the active package + display strings (with fallbacks for
+  // when RC hasn't loaded yet, e.g. offline or pre-init).
+  const annualPackage: PurchasesPackage | null = offering?.annual ?? null;
+  const monthlyPackage: PurchasesPackage | null = offering?.monthly ?? null;
+  const selectedPackage = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+  const annualPriceString = annualPackage?.product.priceString ?? '$35';
+  const monthlyPriceString = monthlyPackage?.product.priceString ?? '$4.99';
 
   // Common path for both subscribe-success and skip — finalize the user
   // into the main app. Without this call, AppNavigator stays on the
@@ -89,43 +106,58 @@ export default function OnboardingPaywallScreen(_props: Props) {
     analytics.track(EVENTS.paywall_plan_selected, { plan });
   };
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     analytics.track(EVENTS.paywall_cta_tapped, {
       plan: selectedPlan,
       source: 'onboarding',
     });
 
-    // TODO: Replace with RevenueCat purchase flow (Fix #3)
+    if (!selectedPackage) {
+      Alert.alert(
+        'Cannot complete purchase',
+        'We could not load the subscription products. Please check your internet connection and try again.',
+      );
+      return;
+    }
+
+    analytics.track(EVENTS.purchase_started, {
+      plan: selectedPlan,
+      source: 'onboarding',
+    });
+
+    setIsPurchasing(true);
+    const result = await purchasesService.purchasePackage(selectedPackage);
+    setIsPurchasing(false);
+
+    if (result.ok) {
+      analytics.track(EVENTS.purchase_completed, {
+        plan: selectedPlan,
+        source: 'onboarding',
+      });
+      // purchasesService already flipped local tier to 'pro' via the
+      // CustomerInfo listener. Now finalize onboarding so the user
+      // lands in MainTab as a Pro user.
+      await finalizeOnboarding();
+      return;
+    }
+
+    if (result.userCancelled) {
+      analytics.track(EVENTS.purchase_cancelled, {
+        plan: selectedPlan,
+        source: 'onboarding',
+      });
+      // No alert — they explicitly chose to back out.
+      return;
+    }
+
+    analytics.track(EVENTS.purchase_failed, {
+      plan: selectedPlan,
+      source: 'onboarding',
+      reason: result.error ?? 'unknown',
+    });
     Alert.alert(
-      'MarchBuddy Pro',
-      `Subscribe to ${selectedPlan === 'annual' ? 'Annual Plan — $35/year' : 'Monthly Plan — $4.99/month'}?\n\nPayment integration coming soon.`,
-      [
-        {
-          text: 'Not now',
-          style: 'cancel',
-          onPress: () => {
-            analytics.track(EVENTS.purchase_cancelled, {
-              plan: selectedPlan,
-              source: 'onboarding',
-            });
-          },
-        },
-        {
-          text: 'Subscribe',
-          onPress: async () => {
-            analytics.track(EVENTS.purchase_started, {
-              plan: selectedPlan,
-              source: 'onboarding',
-            });
-            upgrade();
-            analytics.track(EVENTS.purchase_completed, {
-              plan: selectedPlan,
-              source: 'onboarding',
-            });
-            await finalizeOnboarding();
-          },
-        },
-      ],
+      'Purchase failed',
+      result.error ?? 'Something went wrong with the purchase. Please try again in a moment.',
     );
   };
 
@@ -139,9 +171,26 @@ export default function OnboardingPaywallScreen(_props: Props) {
     await finalizeOnboarding();
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     analytics.track(EVENTS.paywall_restore_tapped, { source: 'onboarding' });
-    Alert.alert('Restore Purchases', 'No previous purchases found.');
+
+    const { restored } = await purchasesService.restorePurchases();
+
+    if (restored) {
+      analytics.track(EVENTS.subscription_restored);
+      // The restore succeeded — they're already a Pro user. Finalize
+      // onboarding and let them into the app.
+      Alert.alert(
+        'Welcome back',
+        'Your MarchBuddy Pro subscription has been restored.',
+        [{ text: 'OK', onPress: () => finalizeOnboarding() }],
+      );
+    } else {
+      Alert.alert(
+        'No purchases found',
+        'We could not find any previous MarchBuddy Pro purchases on this account. If you believe this is an error, contact support.',
+      );
+    }
   };
 
   const openLink = (url: string) => {
@@ -183,7 +232,7 @@ export default function OnboardingPaywallScreen(_props: Props) {
             {/* Anchor price — $4.99 × 12 = $59.88 (honest comparison vs paying
                 monthly for a year). */}
             <Text style={styles.planAnchor}>$59.88</Text>
-            <Text style={styles.planPrice}>$35</Text>
+            <Text style={styles.planPrice}>{annualPriceString}</Text>
             <Text style={styles.planPer}>per year</Text>
             <Text style={[styles.planSub, selectedPlan === 'annual' && styles.planSubSelected]}>
               ~$2.92 / month
@@ -200,7 +249,7 @@ export default function OnboardingPaywallScreen(_props: Props) {
             >
               Monthly
             </Text>
-            <Text style={styles.planPrice}>$4.99</Text>
+            <Text style={styles.planPrice}>{monthlyPriceString}</Text>
             <Text style={styles.planPer}>per month</Text>
             <Text style={[styles.planSub, selectedPlan === 'monthly' && styles.planSubSelected]}>
               cancel anytime
@@ -223,12 +272,19 @@ export default function OnboardingPaywallScreen(_props: Props) {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.ctaButton} onPress={handlePurchase} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[styles.ctaButton, (isPurchasing || !selectedPackage) && styles.ctaButtonDisabled]}
+          onPress={handlePurchase}
+          activeOpacity={0.85}
+          disabled={isPurchasing || !selectedPackage}
+        >
           <Ionicons name="flash" size={18} color="#fff" />
           <Text style={styles.ctaText}>
-            {selectedPlan === 'annual'
-              ? 'Start with Pro — $35 / year'
-              : 'Start with Pro — $4.99 / month'}
+            {isPurchasing
+              ? 'Processing...'
+              : selectedPlan === 'annual'
+                ? `Start with Pro — ${annualPriceString} / year`
+                : `Start with Pro — ${monthlyPriceString} / month`}
           </Text>
         </TouchableOpacity>
 
@@ -464,6 +520,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
+  },
+  ctaButtonDisabled: {
+    opacity: 0.5,
   },
   ctaText: {
     fontFamily: fonts.bold,

@@ -239,6 +239,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // analytics not available — non-fatal
     }
 
+    // Associate this user with RevenueCat. RC will merge any anonymous
+    // purchases (extremely rare for our flow since we gate purchases
+    // behind auth) and surface any existing entitlements via the
+    // CustomerInfo listener registered in purchasesService.configure().
+    try {
+      const { purchasesService } = require('../services/purchasesService');
+      purchasesService.identifyUser(session.user.id).catch(() => {
+        /* non-fatal */
+      });
+    } catch {
+      // purchasesService not available — non-fatal
+    }
+
     // ─── Unified user-state resolver ─────────────────────────────────────────
     // This is the single source of truth for deciding what happens after a
     // sign-in. Four possible outcomes:
@@ -573,6 +586,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // non-fatal
     }
 
+    // Disassociate RevenueCat — same reason as analytics reset. Without
+    // this, RC would still associate any later purchases with the
+    // previous user's appUserID until a new identifyUser() is called.
+    try {
+      const { purchasesService } = require('../services/purchasesService');
+      purchasesService.resetUser().catch(() => {
+        /* non-fatal */
+      });
+    } catch {
+      // non-fatal
+    }
+
     // Clear persisted cache so a re-login starts from fresh server data
     await offlineCache.clearAll();
 
@@ -630,6 +655,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const { analytics } = require('../services/analytics');
         analytics.reset();
+      } catch {
+        // non-fatal
+      }
+
+      // Disassociate RC for deleteAccount path too.
+      try {
+        const { purchasesService } = require('../services/purchasesService');
+        purchasesService.resetUser().catch(() => {
+          /* non-fatal */
+        });
       } catch {
         // non-fatal
       }

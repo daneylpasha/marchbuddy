@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { analytics, EVENTS, type PaywallSource } from '../../services/analytics';
+import { purchasesService } from '../../services/purchasesService';
 import { colors, fonts, spacing } from '../../theme';
 
 const FEATURES = [
@@ -28,8 +30,10 @@ const FEATURES = [
 type Plan = 'monthly' | 'annual';
 
 export function PaywallModal() {
-  const { showPaywall, paywallSource, closePaywall, upgrade } = useSubscriptionStore();
+  const { showPaywall, paywallSource, closePaywall } = useSubscriptionStore();
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   // Track the open timestamp + active source for analytics. Use refs so a
   // re-render doesn't fire spurious events; the open event must fire exactly
@@ -39,6 +43,30 @@ export function PaywallModal() {
   // Set to true when the modal closes due to a successful purchase, so the
   // dismiss event doesn't fire in addition to purchase_completed.
   const dismissByPurchaseRef = useRef(false);
+
+  // Load the current RC offering when the modal opens. This gives us
+  // localized prices, trial info, and the actual PurchasesPackage objects
+  // we need to initiate purchases. Cached after first load.
+  useEffect(() => {
+    if (!showPaywall) return;
+    if (offering) return; // already loaded
+    purchasesService.getCurrentOffering().then((o) => {
+      if (o) setOffering(o);
+    });
+  }, [showPaywall, offering]);
+
+  // Resolve the selected plan into an actual RC package. Used by the
+  // purchase button to know what to charge. If RC offerings haven't
+  // loaded (network failure, not configured), this returns null and the
+  // UI shows fallback hardcoded prices + a non-functional button.
+  const annualPackage: PurchasesPackage | null = offering?.annual ?? null;
+  const monthlyPackage: PurchasesPackage | null = offering?.monthly ?? null;
+  const selectedPackage = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+
+  // Prefer prices from RC products (auto-localized to user's locale +
+  // currency). Fall back to hardcoded USD if RC isn't loaded yet.
+  const annualPriceString = annualPackage?.product.priceString ?? '$35';
+  const monthlyPriceString = monthlyPackage?.product.priceString ?? '$4.99';
 
   // Fire paywall_shown exactly once on open
   useEffect(() => {
@@ -77,57 +105,86 @@ export function PaywallModal() {
     analytics.track(EVENTS.paywall_plan_selected, { plan });
   };
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     analytics.track(EVENTS.paywall_cta_tapped, {
       plan: selectedPlan,
       source: activeSourceRef.current ?? 'manual',
     });
 
-    // TODO: Replace with RevenueCat purchase flow
-    // const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
-    // Purchases.purchasePackage(pkg).then(() => upgrade());
+    if (!selectedPackage) {
+      Alert.alert(
+        'Cannot complete purchase',
+        'We could not load the subscription products. Please check your internet connection and try again.',
+      );
+      return;
+    }
+
+    analytics.track(EVENTS.purchase_started, {
+      plan: selectedPlan,
+      source: activeSourceRef.current ?? 'manual',
+    });
+
+    setIsPurchasing(true);
+    const result = await purchasesService.purchasePackage(selectedPackage);
+    setIsPurchasing(false);
+
+    if (result.ok) {
+      // purchasesService.syncCustomerInfoToStore() has already flipped
+      // the local tier to 'pro' via the CustomerInfo listener. The
+      // RevenueCat webhook (Supabase Edge Function) will also fire and
+      // update the server-side tier — eventually consistent.
+      dismissByPurchaseRef.current = true;
+      analytics.track(EVENTS.purchase_completed, {
+        plan: selectedPlan,
+        source: activeSourceRef.current ?? 'manual',
+      });
+      // Close the modal so the user lands back on whatever screen they
+      // came from — already as a Pro user.
+      closePaywall();
+      return;
+    }
+
+    if (result.userCancelled) {
+      analytics.track(EVENTS.purchase_cancelled, {
+        plan: selectedPlan,
+        source: activeSourceRef.current ?? 'manual',
+      });
+      // No alert — user explicitly chose to back out, no need to nag.
+      return;
+    }
+
+    // Real failure (network, declined card, etc.)
+    analytics.track(EVENTS.purchase_failed, {
+      plan: selectedPlan,
+      source: activeSourceRef.current ?? 'manual',
+      reason: result.error ?? 'unknown',
+    });
     Alert.alert(
-      'MarchBuddy Pro',
-      `Subscribe to ${selectedPlan === 'annual' ? 'Annual Plan — $35/year' : 'Monthly Plan — $4.99/month'}?\n\nPayment integration coming soon.`,
-      [
-        {
-          text: 'Not now',
-          style: 'cancel',
-          onPress: () => {
-            analytics.track(EVENTS.purchase_cancelled, {
-              plan: selectedPlan,
-              source: activeSourceRef.current ?? 'manual',
-            });
-          },
-        },
-        {
-          text: 'Subscribe',
-          onPress: () => {
-            analytics.track(EVENTS.purchase_started, {
-              plan: selectedPlan,
-              source: activeSourceRef.current ?? 'manual',
-            });
-            // For now, upgrade is synchronous (dev/test). Once RC is wired
-            // this will become async and we'll only fire purchase_completed
-            // after the RC promise resolves with success.
-            upgrade();
-            dismissByPurchaseRef.current = true;
-            analytics.track(EVENTS.purchase_completed, {
-              plan: selectedPlan,
-              source: activeSourceRef.current ?? 'manual',
-            });
-          },
-        },
-      ],
+      'Purchase failed',
+      result.error ?? 'Something went wrong with the purchase. Please try again in a moment.',
     );
   };
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     analytics.track(EVENTS.paywall_restore_tapped, {
       source: activeSourceRef.current ?? 'manual',
     });
-    // TODO: RevenueCat restore purchases
-    Alert.alert('Restore Purchases', 'No previous purchases found.');
+
+    const { restored } = await purchasesService.restorePurchases();
+
+    if (restored) {
+      analytics.track(EVENTS.subscription_restored);
+      Alert.alert(
+        'Welcome back',
+        'Your MarchBuddy Pro subscription has been restored.',
+        [{ text: 'OK', onPress: () => closePaywall() }],
+      );
+    } else {
+      Alert.alert(
+        'No purchases found',
+        'We could not find any previous MarchBuddy Pro purchases on this account. If you believe this is an error, contact support.',
+      );
+    }
   };
 
   const openLink = (url: string) => {
@@ -185,7 +242,7 @@ export function PaywallModal() {
               <Text
                 style={[styles.planPrice, selectedPlan === 'annual' && styles.planPriceSelected]}
               >
-                $35
+                {annualPriceString}
               </Text>
               <Text style={[styles.planPer, selectedPlan === 'annual' && styles.planPerSelected]}>
                 per year
@@ -208,7 +265,7 @@ export function PaywallModal() {
               <Text
                 style={[styles.planPrice, selectedPlan === 'monthly' && styles.planPriceSelected]}
               >
-                $4.99
+                {monthlyPriceString}
               </Text>
               <Text style={[styles.planPer, selectedPlan === 'monthly' && styles.planPerSelected]}>
                 per month
@@ -242,10 +299,19 @@ export function PaywallModal() {
 
         {/* Footer CTA */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.ctaButton} onPress={handlePurchase} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[styles.ctaButton, (isPurchasing || !selectedPackage) && styles.ctaButtonDisabled]}
+            onPress={handlePurchase}
+            activeOpacity={0.85}
+            disabled={isPurchasing || !selectedPackage}
+          >
             <Ionicons name="flash" size={18} color="#fff" />
             <Text style={styles.ctaText}>
-              {selectedPlan === 'annual' ? 'Start for $35 / year' : 'Start for $4.99 / month'}
+              {isPurchasing
+                ? 'Processing...'
+                : selectedPlan === 'annual'
+                  ? `Start for ${annualPriceString} / year`
+                  : `Start for ${monthlyPriceString} / month`}
             </Text>
           </TouchableOpacity>
 
@@ -514,6 +580,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
+  },
+  ctaButtonDisabled: {
+    opacity: 0.5,
   },
   ctaText: {
     fontFamily: fonts.bold,
