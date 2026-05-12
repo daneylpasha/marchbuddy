@@ -27,6 +27,7 @@ import { registerOfflineActions } from './src/services/offlineActions';
 import { offlineCache } from './src/services/offlineCache';
 import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
 import { analytics, EVENTS } from './src/services/analytics';
+import { purchasesService } from './src/services/purchasesService';
 
 LogBox.ignoreLogs([
   'FunctionsHttpError',
@@ -100,6 +101,21 @@ export default function App() {
         .catch(() => {
           /* analytics never breaks the app */
         });
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Initialize RevenueCat SDK once at startup. Same defer-by-one-tick
+  // pattern as analytics — RC's internal SDK setup involves network calls
+  // (fetching offerings, customer info) that shouldn't race the splash.
+  // The SDK quietly no-ops if no API key is configured for this platform,
+  // so this is safe to run unconditionally even in dev environments
+  // without an RC key.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      purchasesService.configure().catch(() => {
+        /* purchases never breaks the app */
+      });
     }, 0);
     return () => clearTimeout(t);
   }, []);

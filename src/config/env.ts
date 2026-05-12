@@ -51,3 +51,14 @@ export const SUPABASE_ANON_KEY = required(
 // preview builds where you don't want to pollute production data.
 export const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
 export const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+
+// ─── RevenueCat ────────────────────────────────────────────────────────────
+// Public Android API key from RevenueCat — designed to be in client code
+// (it can only authenticate as the current user, not read other users' data).
+// Empty key disables RC integration; the app will gracefully fall back to
+// showing the paywall UI without being able to complete purchases.
+//
+// When iOS support is added, also wire EXPO_PUBLIC_REVENUECAT_IOS_KEY here
+// and select platform-appropriate key at runtime via Platform.OS.
+export const REVENUECAT_ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
+export const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
