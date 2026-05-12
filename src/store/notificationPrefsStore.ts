@@ -23,7 +23,7 @@ export interface NotificationPrefs {
   reengagement: boolean;
   community_events: boolean;
   quiet_hours_start: number; // 0–23, user local time
-  quiet_hours_end: number;   // 0–23, user local time
+  quiet_hours_end: number; // 0–23, user local time
 }
 
 export const DEFAULT_PREFS: NotificationPrefs = {
@@ -38,7 +38,10 @@ interface NotificationPrefsState {
   prefs: NotificationPrefs;
   syncedAt: string | null;
 
-  setPref: <K extends keyof NotificationPrefs>(key: K, value: NotificationPrefs[K]) => Promise<void>;
+  setPref: <K extends keyof NotificationPrefs>(
+    key: K,
+    value: NotificationPrefs[K],
+  ) => Promise<void>;
   setQuietHours: (start: number, end: number) => Promise<void>;
   hydrateFromServer: () => Promise<void>;
   resetPrefs: () => Promise<void>;
@@ -50,10 +53,7 @@ async function writeRemote(prefs: NotificationPrefs): Promise<void> {
     const user = data?.user;
     if (!user) return;
 
-    await supabase
-      .from('profiles')
-      .update({ notification_prefs: prefs })
-      .eq('id', user.id);
+    await supabase.from('profiles').update({ notification_prefs: prefs }).eq('id', user.id);
   } catch (err) {
     // Best-effort — local state is source of truth for the session.
     console.warn('notificationPrefs: remote write failed:', err);

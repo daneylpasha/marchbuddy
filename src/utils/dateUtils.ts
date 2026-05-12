@@ -40,9 +40,7 @@ export function getWeekNumber(createdAt: string): number {
  * (no completed/in-progress workout) counting backward from yesterday.
  * Returns 0 for new users with no history.
  */
-export function computeMissedDays(
-  recentDates: { date: string; status: string }[],
-): number {
+export function computeMissedDays(recentDates: { date: string; status: string }[]): number {
   if (recentDates.length === 0) return 0;
   const activeDates = new Set(recentDates.map((d) => d.date));
   let missed = 0;

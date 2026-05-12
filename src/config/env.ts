@@ -1,12 +1,53 @@
 // config/env.ts — Environment configuration
-// TODO: Replace placeholder values with real credentials before deploying.
+//
+// All values come from EXPO_PUBLIC_* environment variables. Set them via:
+//   • Local development:  ./.env file (see .env.example for shape)
+//   • CI:                 GitHub Secrets → written to .env in the workflow
+//   • EAS builds:         EAS Secrets (eas secret:create --scope project ...)
+//
+// Why EXPO_PUBLIC_* prefix:
+//   Expo only exposes env vars to client code when prefixed with EXPO_PUBLIC_.
+//   Values are baked into the JS bundle at build time, so changing them
+//   requires a new build (not just a JS reload).
+//
+// ─── Security boundary ──────────────────────────────────────────────────────
+// Only Tier 1 (public, write-only, RLS-protected) keys belong here.
+// Anything that can spend money, read sensitive data, or impersonate a user
+// must live ONLY on the server (Supabase Edge Function secrets).
+//
+// Examples that belong here:
+//   • Supabase URL + anon key (RLS protects data)
+//   • PostHog project token (ingest-only)
+//   • RevenueCat public Android/iOS keys (user-scoped)
+//
+// Examples that DO NOT belong here:
+//   • Anthropic API key — Edge Function only, accessed via Deno.env.get()
+//   • Supabase service role key — Edge Function only
+//   • Stripe secret key — server only
+//
 
-export const SUPABASE_URL = 'https://yhfprdyivtedzwlzafnr.supabase.co';
+const required = (name: string, value: string | undefined): string => {
+  if (!value) {
+    throw new Error(
+      `Missing required env var: ${name}. ` +
+        `Did you copy .env.example to .env and fill in the values?`,
+    );
+  }
+  return value;
+};
 
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloZnByZHlpdnRlZHp3bHphZm5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MjU0NDQsImV4cCI6MjA4NjIwMTQ0NH0.opGN9vQxQ0fXfP0k-C_L3R7FVxb61NS7tLv2jRNwNLQ';
+// ─── Supabase ──────────────────────────────────────────────────────────────
+export const SUPABASE_URL = required(
+  'EXPO_PUBLIC_SUPABASE_URL',
+  process.env.EXPO_PUBLIC_SUPABASE_URL,
+);
+export const SUPABASE_ANON_KEY = required(
+  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+);
 
-// This key is used server-side only via Supabase Edge Functions.
-// NEVER bundle this into the client app — set it as a secret in Supabase Edge Functions.
-// Stored here only as reference; the actual key must be set via:
-//   supabase secrets set ANTHROPIC_API_KEY=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
-export const ANTHROPIC_API_KEY = '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';
+// ─── PostHog Analytics ─────────────────────────────────────────────────────
+// Empty key disables analytics in this environment — useful for dev /
+// preview builds where you don't want to pollute production data.
+export const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '';
+export const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';

@@ -124,17 +124,10 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
         <View style={styles.backBtn} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ── Share card (this is what gets captured) ─────────────────────── */}
         <View style={styles.cardShadow}>
-          <View
-            ref={shareCardRef}
-            collapsable={false}
-            style={styles.shareCard}
-          >
+          <View ref={shareCardRef} collapsable={false} style={styles.shareCard}>
             {/* Top brand strip */}
             <View style={styles.cardHeader}>
               <View style={styles.brandRow}>
@@ -170,9 +163,7 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
             <View style={styles.statsRow}>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>
-                  {session.actualDistanceKm > 0
-                    ? session.actualDistanceKm.toFixed(2)
-                    : '—'}
+                  {session.actualDistanceKm > 0 ? session.actualDistanceKm.toFixed(2) : '—'}
                 </Text>
                 <Text style={styles.statLabel}>Distance · km</Text>
               </View>
@@ -225,7 +216,12 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="share-social-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Ionicons
+                name="share-social-outline"
+                size={20}
+                color="#fff"
+                style={{ marginRight: 8 }}
+              />
               <Text style={styles.shareButtonText}>Share</Text>
             </>
           )}
@@ -244,7 +240,12 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
             <ActivityIndicator color={colors.textPrimary} />
           ) : (
             <>
-              <Ionicons name="download-outline" size={18} color={colors.textPrimary} style={{ marginRight: 8 }} />
+              <Ionicons
+                name="download-outline"
+                size={18}
+                color={colors.textPrimary}
+                style={{ marginRight: 8 }}
+              />
               <Text style={styles.saveButtonText}>Save to Gallery</Text>
             </>
           )}

@@ -75,10 +75,7 @@ export const FitnessCheckForm: React.FC<FitnessCheckFormProps> = ({
             activeOpacity={0.7}
           >
             <View
-              style={[
-                styles.optionIcon,
-                selected === option.value && styles.optionIconSelected,
-              ]}
+              style={[styles.optionIcon, selected === option.value && styles.optionIconSelected]}
             >
               <Ionicons
                 name={option.icon as any}

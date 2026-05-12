@@ -1,12 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -43,8 +36,7 @@ export default function JourneyMapScreen() {
       if (scrollViewRef.current) {
         // Number of locked/future levels above current (in the reversed display, higher levels are at top)
         const levelsAboveCurrent = 16 - currentLevel;
-        const estimatedNodeTop =
-          FINISH_SECTION_HEIGHT + levelsAboveCurrent * NODE_HEIGHT_ESTIMATE;
+        const estimatedNodeTop = FINISH_SECTION_HEIGHT + levelsAboveCurrent * NODE_HEIGHT_ESTIMATE;
         const scrollY = Math.max(0, estimatedNodeTop - SCREEN_HEIGHT / 3);
         scrollViewRef.current.scrollTo({ y: scrollY, animated: true });
       }
@@ -124,11 +116,7 @@ export default function JourneyMapScreen() {
 
       {/* Fixed bottom CTA */}
       <View style={styles.bottomCta}>
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={handleContinue}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.ctaButton} onPress={handleContinue} activeOpacity={0.85}>
           <Text style={styles.ctaText}>Continue Level {currentLevel}</Text>
           <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
         </TouchableOpacity>
@@ -140,9 +128,7 @@ export default function JourneyMapScreen() {
           level={selectedLevelDef}
           isCurrentLevel={selectedLevel === currentLevel}
           isCompleted={selectedLevel !== null && selectedLevel < currentLevel}
-          sessionsCompleted={
-            selectedLevel === currentLevel ? sessionsAtLevel : 3
-          }
+          sessionsCompleted={selectedLevel === currentLevel ? sessionsAtLevel : 3}
           onClose={() => setSelectedLevel(null)}
         />
       )}

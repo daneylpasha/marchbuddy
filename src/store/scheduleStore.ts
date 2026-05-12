@@ -40,7 +40,12 @@ interface ScheduleState {
   setLocalNotificationId: (scheduleId: string, notificationId: string) => void;
 }
 
-function createLocalRow(sessionKey: string, title: string, scheduledAt: Date, id?: string): ScheduledSession {
+function createLocalRow(
+  sessionKey: string,
+  title: string,
+  scheduledAt: Date,
+  id?: string,
+): ScheduledSession {
   return {
     id: id ?? `local_${Date.now()}`,
     user_id: 'guest',
@@ -120,10 +125,7 @@ export const useScheduleStore = create<ScheduleState>()(
         const { isGuest } = useAuthStore.getState();
 
         if (!isGuest) {
-          const { error } = await supabase
-            .from('scheduled_sessions')
-            .delete()
-            .eq('id', id);
+          const { error } = await supabase.from('scheduled_sessions').delete().eq('id', id);
 
           if (error) throw new Error(error.message);
         }
@@ -135,9 +137,7 @@ export const useScheduleStore = create<ScheduleState>()(
 
       getScheduleForSession: (sessionKey) => {
         return get().scheduledSessions.find(
-          (ss) =>
-            ss.session_key === sessionKey &&
-            new Date(ss.scheduled_at) > new Date(),
+          (ss) => ss.session_key === sessionKey && new Date(ss.scheduled_at) > new Date(),
         );
       },
 
@@ -159,9 +159,7 @@ export const useScheduleStore = create<ScheduleState>()(
       setLocalNotificationId: (scheduleId, notificationId) => {
         set((s) => ({
           scheduledSessions: s.scheduledSessions.map((ss) =>
-            ss.id === scheduleId
-              ? { ...ss, local_notification_id: notificationId }
-              : ss,
+            ss.id === scheduleId ? { ...ss, local_notification_id: notificationId } : ss,
           ),
         }));
       },

@@ -1,11 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +9,9 @@ import { useScheduleStore } from '../../store/scheduleStore';
 import { SegmentListItem } from './components/SegmentListItem';
 import { formatDurationMinutes } from '../../utils/sessionUtils';
 import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/ScheduleSheet';
-import EnvironmentPickerSheet, { type SessionEnvironment } from '../../components/session/EnvironmentPickerSheet';
+import EnvironmentPickerSheet, {
+  type SessionEnvironment,
+} from '../../components/session/EnvironmentPickerSheet';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -51,11 +47,16 @@ export default function SessionDetailScreen({ navigation }: Props) {
 
   const difficultyColor = () => {
     switch (selectedPlan.difficulty) {
-      case 'easy':        return colors.success;
-      case 'moderate':    return colors.primary;
-      case 'challenging': return colors.warning;
-      case 'hard':        return colors.danger;
-      default:            return colors.primary;
+      case 'easy':
+        return colors.success;
+      case 'moderate':
+        return colors.primary;
+      case 'challenging':
+        return colors.warning;
+      case 'hard':
+        return colors.danger;
+      default:
+        return colors.primary;
     }
   };
 
@@ -91,9 +92,7 @@ export default function SessionDetailScreen({ navigation }: Props) {
               {formatDurationMinutes(selectedPlan.totalDurationMinutes)}
             </Text>
             <View style={styles.metaDot} />
-            <Text style={[styles.metaText, { color: difficultyColor() }]}>
-              {difficultyLabel}
-            </Text>
+            <Text style={[styles.metaText, { color: difficultyColor() }]}>{difficultyLabel}</Text>
             <View style={styles.metaDot} />
             <Text style={styles.metaText}>Level {selectedPlan.level}</Text>
           </View>
@@ -131,17 +130,10 @@ export default function SessionDetailScreen({ navigation }: Props) {
           <Text style={styles.beginButtonText}>Begin Session</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [
-            styles.scheduleButton,
-            pressed && styles.scheduleButtonPressed,
-          ]}
+          style={({ pressed }) => [styles.scheduleButton, pressed && styles.scheduleButtonPressed]}
           onPress={() => {
             const existing = getScheduleForSession(selectedPlan.id);
-            scheduleSheetRef.current?.present(
-              selectedPlan.id,
-              selectedPlan.title,
-              existing,
-            );
+            scheduleSheetRef.current?.present(selectedPlan.id, selectedPlan.title, existing);
           }}
         >
           <Ionicons
@@ -150,9 +142,7 @@ export default function SessionDetailScreen({ navigation }: Props) {
             color={colors.primary}
           />
           <Text style={styles.scheduleButtonText}>
-            {getScheduleForSession(selectedPlan.id)
-              ? 'Edit Schedule'
-              : 'Schedule for Later'}
+            {getScheduleForSession(selectedPlan.id) ? 'Edit Schedule' : 'Schedule for Later'}
           </Text>
         </Pressable>
       </View>

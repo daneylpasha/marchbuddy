@@ -32,7 +32,9 @@ export interface TeamSummary {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getMyTeam(): Promise<Team | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return null;
 
   const { data: memberRow } = await supabase
@@ -88,21 +90,19 @@ export async function getTeamById(teamId: string): Promise<Team | null> {
 }
 
 export async function searchTeams(query: string, myTeamId?: string): Promise<TeamSummary[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const trimmed = query.trim();
 
-  let q = supabase
-    .from('teams')
-    .select('id, name, captain_id, win_points');
+  let q = supabase.from('teams').select('id, name, captain_id, win_points');
 
   if (trimmed) q = q.ilike('name', `%${trimmed}%`);
   if (myTeamId) q = q.neq('id', myTeamId);
 
-  const { data: teams, error } = await q
-    .order('win_points', { ascending: false })
-    .limit(30);
+  const { data: teams, error } = await q.order('win_points', { ascending: false }).limit(30);
 
   if (error || !teams?.length) return [];
 
@@ -151,7 +151,9 @@ export async function searchTeams(query: string, myTeamId?: string): Promise<Tea
 }
 
 export async function getFavoriteTeams(myTeamId?: string): Promise<TeamSummary[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const { data: rows } = await supabase
@@ -189,7 +191,10 @@ async function searchTeamsById(
     supabase
       .from('profiles')
       .select('id, level')
-      .in('id', filteredTeams.map((t) => t.captain_id as string)),
+      .in(
+        'id',
+        filteredTeams.map((t) => t.captain_id as string),
+      ),
   ]);
 
   const countMap = new Map<string, number>();
@@ -216,7 +221,9 @@ async function searchTeamsById(
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 export async function createTeam(name: string): Promise<Team | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return null;
 
   const { data: team, error } = await supabase
@@ -232,9 +239,7 @@ export async function createTeam(name: string): Promise<Team | null> {
   }
 
   // Add creator as first member
-  await supabase
-    .from('team_members')
-    .insert({ team_id: team.id, user_id: session.user.id });
+  await supabase.from('team_members').insert({ team_id: team.id, user_id: session.user.id });
 
   return getTeamById(team.id as string);
 }
@@ -254,17 +259,15 @@ export async function inviteMember(teamId: string, userId: string): Promise<void
 }
 
 export async function removeMember(teamId: string, userId: string): Promise<void> {
-  await supabase
-    .from('team_members')
-    .delete()
-    .eq('team_id', teamId)
-    .eq('user_id', userId);
+  await supabase.from('team_members').delete().eq('team_id', teamId).eq('user_id', userId);
 
   await recalculateCaptain(teamId);
 }
 
 export async function favoriteTeam(teamId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   await supabase
@@ -273,7 +276,9 @@ export async function favoriteTeam(teamId: string): Promise<void> {
 }
 
 export async function unfavoriteTeam(teamId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   await supabase
@@ -303,7 +308,8 @@ async function recalculateCaptain(teamId: string): Promise<void> {
 
   // Sort: highest level first, tiebreak by streak then sessions
   const sorted = [...profiles].sort((a, b) => {
-    if ((b.level as number) !== (a.level as number)) return (b.level as number) - (a.level as number);
+    if ((b.level as number) !== (a.level as number))
+      return (b.level as number) - (a.level as number);
     if ((b.current_streak as number) !== (a.current_streak as number))
       return (b.current_streak as number) - (a.current_streak as number);
     return (b.total_sessions as number) - (a.total_sessions as number);
@@ -328,5 +334,13 @@ function toProfile(row: Record<string, unknown>): CommunityProfile {
 }
 
 function placeholderProfile(id: string): CommunityProfile {
-  return { id, name: 'Runner', level: 1, currentStreak: 0, totalSessions: 0, totalDistanceKm: 0, winPoints: 0 };
+  return {
+    id,
+    name: 'Runner',
+    level: 1,
+    currentStreak: 0,
+    totalSessions: 0,
+    totalDistanceKm: 0,
+    winPoints: 0,
+  };
 }

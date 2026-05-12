@@ -37,9 +37,7 @@ export const AiDecisionView: React.FC<AiDecisionViewProps> = ({
             <Text style={styles.levelChangeText}>from Level {previousLevel}</Text>
           </View>
         )}
-        {levelDiff === 0 && (
-          <Text style={styles.levelSame}>Same as before</Text>
-        )}
+        {levelDiff === 0 && <Text style={styles.levelSame}>Same as before</Text>}
       </View>
 
       <View style={styles.reasoningBox}>

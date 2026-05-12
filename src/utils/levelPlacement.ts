@@ -1,8 +1,4 @@
-import type {
-  ActivityLevel,
-  WalkBaseline,
-  RunReadiness,
-} from '../store/coachSetupStore';
+import type { ActivityLevel, WalkBaseline, RunReadiness } from '../store/coachSetupStore';
 import type { FeedbackRating } from '../types/session';
 
 export interface PlacementResult {
@@ -33,27 +29,51 @@ export function computeStartingLevel(
 
   // Walk baseline — dominant factor (concrete capacity).
   switch (walk) {
-    case 'under_5':       score += 0; break;
-    case 'five_to_15':    score += 1; break;
-    case 'fifteen_to_30': score += 3; break;
-    case 'thirty_plus':   score += 4; break;
+    case 'under_5':
+      score += 0;
+      break;
+    case 'five_to_15':
+      score += 1;
+      break;
+    case 'fifteen_to_30':
+      score += 3;
+      break;
+    case 'thirty_plus':
+      score += 4;
+      break;
   }
 
   // Activity level — small modifier for habit intensity.
   switch (activity) {
-    case 'no_exercise_years': score += -1; break;
-    case 'occasionally_walk': score += 0;  break;
-    case 'somewhat_active':   score += 0;  break;
-    case 'active_want_run':   score += 1;  break;
-    default: break;
+    case 'no_exercise_years':
+      score += -1;
+      break;
+    case 'occasionally_walk':
+      score += 0;
+      break;
+    case 'somewhat_active':
+      score += 0;
+      break;
+    case 'active_want_run':
+      score += 1;
+      break;
+    default:
+      break;
   }
 
   // Run readiness — boosts placement into running-focused levels.
   switch (run) {
-    case 'no_never_tried':    score += 0; break;
-    case 'maybe_with_effort': score += 1; break;
-    case 'yes_easily':        score += 2; break;
-    default: break;
+    case 'no_never_tried':
+      score += 0;
+      break;
+    case 'maybe_with_effort':
+      score += 1;
+      break;
+    case 'yes_easily':
+      score += 2;
+      break;
+    default:
+      break;
   }
 
   let level = Math.max(1, Math.min(6, Math.round(score)));
@@ -73,13 +93,20 @@ export function computeStartingLevel(
 
 function levelReason(level: number): string {
   switch (level) {
-    case 1:  return 'Starting fresh — building the daily habit first';
-    case 2:  return 'Some walking experience — varying your pace';
-    case 3:  return 'Comfortable walker — adding short jogs';
-    case 4:  return 'Active walker — building run intervals';
-    case 5:  return 'Confident — sustained running';
-    case 6:  return 'Strong baseline — straight to running';
-    default: return '';
+    case 1:
+      return 'Starting fresh — building the daily habit first';
+    case 2:
+      return 'Some walking experience — varying your pace';
+    case 3:
+      return 'Comfortable walker — adding short jogs';
+    case 4:
+      return 'Active walker — building run intervals';
+    case 5:
+      return 'Confident — sustained running';
+    case 6:
+      return 'Strong baseline — straight to running';
+    default:
+      return '';
   }
 }
 

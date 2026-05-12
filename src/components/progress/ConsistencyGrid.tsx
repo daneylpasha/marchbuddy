@@ -10,7 +10,10 @@ interface Props {
   days: { label: string; status: DayStatus }[];
 }
 
-const STATUS_CONFIG: Record<DayStatus, { bg: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }> = {
+const STATUS_CONFIG: Record<
+  DayStatus,
+  { bg: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }
+> = {
   completed: { bg: colors.successDim, icon: 'checkmark-circle', iconColor: colors.success },
   partial: { bg: colors.warningDim, icon: 'ellipse-outline', iconColor: colors.warning },
   missed: { bg: colors.dangerDim, icon: 'close-circle', iconColor: colors.danger },
@@ -46,5 +49,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  label: { color: colors.textSecondary, fontSize: 10, fontWeight: '500', fontFamily: fonts.medium, letterSpacing: 0.3 },
+  label: {
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
 });

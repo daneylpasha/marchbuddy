@@ -27,10 +27,7 @@ export const CoachChatBanner: React.FC = () => {
       <Text style={styles.text}>
         Tell your coach anything — feedback, complaints, ideas. We're listening.
       </Text>
-      <TouchableOpacity
-        onPress={dismiss}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
+      <TouchableOpacity onPress={dismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons name="close" size={18} color={colors.textTertiary} />
       </TouchableOpacity>
     </View>

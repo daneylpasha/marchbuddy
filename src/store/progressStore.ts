@@ -224,7 +224,10 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
       };
 
       set((state) => {
-        const summaries = [summary, ...state.weeklySummaries.filter((s) => s.weekStartDate !== weekStart)];
+        const summaries = [
+          summary,
+          ...state.weeklySummaries.filter((s) => s.weekStartDate !== weekStart),
+        ];
         offlineCache.set(CACHE_KEYS.WEEKLY_SUMMARIES, summaries, userId);
         return { weeklySummaries: summaries };
       });

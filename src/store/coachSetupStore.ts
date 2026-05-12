@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { TriggerTheme, FailureTheme, FearTheme, AnchorTheme } from '../services/themeDetection';
+import type {
+  TriggerTheme,
+  FailureTheme,
+  FearTheme,
+  AnchorTheme,
+} from '../services/themeDetection';
 
 export type { TriggerTheme, FailureTheme, FearTheme, AnchorTheme };
 
@@ -24,18 +29,11 @@ export type ActivityLevel =
 // Self-reported continuous walk baseline. Used together with activityLevel
 // and runReadiness to place new users at an appropriate starting level
 // instead of forcing everyone through Level 1.
-export type WalkBaseline =
-  | 'under_5'
-  | 'five_to_15'
-  | 'fifteen_to_30'
-  | 'thirty_plus';
+export type WalkBaseline = 'under_5' | 'five_to_15' | 'fifteen_to_30' | 'thirty_plus';
 
 // Only asked when walkBaseline >= 15 minutes — for low-baseline walkers,
 // running readiness is moot since placement is bounded by walking capacity.
-export type RunReadiness =
-  | 'no_never_tried'
-  | 'maybe_with_effort'
-  | 'yes_easily';
+export type RunReadiness = 'no_never_tried' | 'maybe_with_effort' | 'yes_easily';
 
 export type TimePreference = 'morning' | 'midday' | 'evening' | 'varies';
 
@@ -74,7 +72,7 @@ interface SetupData {
 interface CoachSetupState {
   setupData: SetupData;
   setupComplete: boolean;
-  guestId: string | null;  // Stable guest user ID (no auth required for MVP)
+  guestId: string | null; // Stable guest user ID (no auth required for MVP)
   // Phase 1 actions
   setUserName: (name: string) => void;
   setActivityLevel: (level: ActivityLevel) => void;
@@ -126,94 +124,93 @@ const emptySetupData = (): SetupData => ({
 export const useCoachSetupStore = create<CoachSetupState>()(
   persist(
     (set) => ({
-  setupData: emptySetupData(),
-  setupComplete: false,
-  guestId: null,
+      setupData: emptySetupData(),
+      setupComplete: false,
+      guestId: null,
 
-  setUserName: (name) =>
-    set((s) => ({ setupData: { ...s.setupData, userName: name } })),
+      setUserName: (name) => set((s) => ({ setupData: { ...s.setupData, userName: name } })),
 
-  setActivityLevel: (level) =>
-    set((s) => ({ setupData: { ...s.setupData, activityLevel: level } })),
+      setActivityLevel: (level) =>
+        set((s) => ({ setupData: { ...s.setupData, activityLevel: level } })),
 
-  setWalkBaseline: (baseline) =>
-    set((s) => ({ setupData: { ...s.setupData, walkBaseline: baseline } })),
+      setWalkBaseline: (baseline) =>
+        set((s) => ({ setupData: { ...s.setupData, walkBaseline: baseline } })),
 
-  setRunReadiness: (readiness) =>
-    set((s) => ({ setupData: { ...s.setupData, runReadiness: readiness } })),
+      setRunReadiness: (readiness) =>
+        set((s) => ({ setupData: { ...s.setupData, runReadiness: readiness } })),
 
-  setTimePreference: (pref) =>
-    set((s) => ({ setupData: { ...s.setupData, timePreference: pref } })),
+      setTimePreference: (pref) =>
+        set((s) => ({ setupData: { ...s.setupData, timePreference: pref } })),
 
-  setTrigger: (statement, theme) =>
-    set((s) => ({
-      setupData: { ...s.setupData, triggerStatement: statement, triggerTheme: theme },
-    })),
+      setTrigger: (statement, theme) =>
+        set((s) => ({
+          setupData: { ...s.setupData, triggerStatement: statement, triggerTheme: theme },
+        })),
 
-  setPastAttempts: (attempts) =>
-    set((s) => ({ setupData: { ...s.setupData, pastAttempts: attempts } })),
+      setPastAttempts: (attempts) =>
+        set((s) => ({ setupData: { ...s.setupData, pastAttempts: attempts } })),
 
-  setPastFailure: (reason, theme) =>
-    set((s) => ({
-      setupData: { ...s.setupData, pastFailureReason: reason, pastFailureTheme: theme },
-    })),
+      setPastFailure: (reason, theme) =>
+        set((s) => ({
+          setupData: { ...s.setupData, pastFailureReason: reason, pastFailureTheme: theme },
+        })),
 
-  setFear: (statement, theme) =>
-    set((s) => ({
-      setupData: { ...s.setupData, primaryFear: statement, fearTheme: theme },
-    })),
+      setFear: (statement, theme) =>
+        set((s) => ({
+          setupData: { ...s.setupData, primaryFear: statement, fearTheme: theme },
+        })),
 
-  setObstacles: (ids, otherText) =>
-    set((s) => ({
-      setupData: { ...s.setupData, obstacles: ids, obstaclesOther: otherText },
-    })),
+      setObstacles: (ids, otherText) =>
+        set((s) => ({
+          setupData: { ...s.setupData, obstacles: ids, obstaclesOther: otherText },
+        })),
 
-  setAnchor: (statement, theme) =>
-    set((s) => ({
-      setupData: { ...s.setupData, anchorPerson: statement, anchorTheme: theme },
-    })),
+      setAnchor: (statement, theme) =>
+        set((s) => ({
+          setupData: { ...s.setupData, anchorPerson: statement, anchorTheme: theme },
+        })),
 
-  setVision: (statement) =>
-    set((s) => ({
-      setupData: { ...s.setupData, successVision: statement },
-    })),
+      setVision: (statement) =>
+        set((s) => ({
+          setupData: { ...s.setupData, successVision: statement },
+        })),
 
-  setPreferredStartDate: (date) =>
-    set((s) => ({
-      setupData: { ...s.setupData, preferredStartDate: date },
-    })),
+      setPreferredStartDate: (date) =>
+        set((s) => ({
+          setupData: { ...s.setupData, preferredStartDate: date },
+        })),
 
-  setWeeklyFrequency: (freq) =>
-    set((s) => ({
-      setupData: { ...s.setupData, weeklyFrequency: freq },
-    })),
+      setWeeklyFrequency: (freq) =>
+        set((s) => ({
+          setupData: { ...s.setupData, weeklyFrequency: freq },
+        })),
 
-  markSetupStarted: () =>
-    set((s) => ({
-      setupData: { ...s.setupData, startedAt: new Date().toISOString() },
-    })),
+      markSetupStarted: () =>
+        set((s) => ({
+          setupData: { ...s.setupData, startedAt: new Date().toISOString() },
+        })),
 
-  markSetupComplete: () => {
-    // Mark intro as seen so welcome/feature screens never show again
-    const { useSettingsStore } = require('./settingsStore');
-    useSettingsStore.getState().setHasSeenIntro(true);
+      markSetupComplete: () => {
+        // Mark intro as seen so welcome/feature screens never show again
+        const { useSettingsStore } = require('./settingsStore');
+        useSettingsStore.getState().setHasSeenIntro(true);
 
-    // Only mint a guestId for actual guests (no Supabase session). For
-    // authenticated users, guestId MUST stay null — otherwise a subsequent
-    // sign-in misidentifies their local state as "guest with data to
-    // migrate" and triggers the conflict-resolution dialog ("Use Existing
-    // Account / Keep Guest") even though they're the real account owner.
-    const { useAuthStore } = require('./authStore');
-    const isAuthenticatedUser = !!useAuthStore.getState().session;
+        // Only mint a guestId for actual guests (no Supabase session). For
+        // authenticated users, guestId MUST stay null — otherwise a subsequent
+        // sign-in misidentifies their local state as "guest with data to
+        // migrate" and triggers the conflict-resolution dialog ("Use Existing
+        // Account / Keep Guest") even though they're the real account owner.
+        const { useAuthStore } = require('./authStore');
+        const isAuthenticatedUser = !!useAuthStore.getState().session;
 
-    set((s) => ({
-      setupComplete: true,
-      guestId: isAuthenticatedUser ? null : (s.guestId ?? `guest-${Date.now()}`),
-      setupData: { ...s.setupData, completedAt: new Date().toISOString() },
-    }));
-  },
+        set((s) => ({
+          setupComplete: true,
+          guestId: isAuthenticatedUser ? null : (s.guestId ?? `guest-${Date.now()}`),
+          setupData: { ...s.setupData, completedAt: new Date().toISOString() },
+        }));
+      },
 
-  resetSetup: () => set({ setupData: emptySetupData(), setupComplete: false, guestId: null }),
+      resetSetup: () => set({ setupData: emptySetupData(), setupComplete: false, guestId: null }),
     }),
     {
       name: 'march-buddy-coach-setup',

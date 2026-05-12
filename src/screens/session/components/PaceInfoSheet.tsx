@@ -1,16 +1,6 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../../theme';
@@ -68,21 +58,22 @@ const PaceInfoSheet = forwardRef<PaceInfoSheetRef>((_props, ref) => {
         <View style={styles.exampleBox}>
           <Text style={styles.exampleLabel}>EXAMPLE</Text>
           <Text style={styles.exampleText}>
-            <Text style={styles.exampleHighlight}>6:30 /km</Text> means you'd cover 1 km in 6 minutes and 30 seconds.
+            <Text style={styles.exampleHighlight}>6:30 /km</Text> means you'd cover 1 km in 6
+            minutes and 30 seconds.
           </Text>
-          <Text style={styles.exampleSub}>
-            Lower number = faster. Higher number = slower.
-          </Text>
+          <Text style={styles.exampleSub}>Lower number = faster. Higher number = slower.</Text>
         </View>
 
         <Text style={styles.body}>
-          We calculate it live from your GPS — distance ÷ time. The first ~100 metres are skipped because GPS readings are unreliable at very short distances.
+          We calculate it live from your GPS — distance ÷ time. The first ~100 metres are skipped
+          because GPS readings are unreliable at very short distances.
         </Text>
 
         <View style={styles.tipRow}>
           <Ionicons name="bulb-outline" size={16} color={colors.primary} />
           <Text style={styles.tipText}>
-            For walking, anything between 9:00 and 14:00 /km is normal. Don't chase a number — focus on showing up.
+            For walking, anything between 9:00 and 14:00 /km is normal. Don't chase a number — focus
+            on showing up.
           </Text>
         </View>
       </BottomSheetView>

@@ -63,26 +63,33 @@ export default function DiscoverScreen({ navigation }: Props) {
     }, 350);
   }, []);
 
-  const toggleFollow = useCallback(async (profile: CommunityProfile) => {
-    setLoadingFollowId(profile.id);
-    const alreadyFollowing = followingIds.has(profile.id);
-    if (alreadyFollowing) {
-      await unfollowUser(profile.id);
-      setFollowingIds((prev) => { const s = new Set(prev); s.delete(profile.id); return s; });
-      setFollowing((prev) => prev.filter((p) => p.id !== profile.id));
-      // Move back to suggestions if still in level range
-      setSuggested((prev) => {
-        if (prev.find((p) => p.id === profile.id)) return prev;
-        return [profile, ...prev];
-      });
-    } else {
-      await followUser(profile.id);
-      setFollowingIds((prev) => new Set([...prev, profile.id]));
-      setFollowing((prev) => [...prev, profile]);
-      setSuggested((prev) => prev.filter((p) => p.id !== profile.id));
-    }
-    setLoadingFollowId(null);
-  }, [followingIds]);
+  const toggleFollow = useCallback(
+    async (profile: CommunityProfile) => {
+      setLoadingFollowId(profile.id);
+      const alreadyFollowing = followingIds.has(profile.id);
+      if (alreadyFollowing) {
+        await unfollowUser(profile.id);
+        setFollowingIds((prev) => {
+          const s = new Set(prev);
+          s.delete(profile.id);
+          return s;
+        });
+        setFollowing((prev) => prev.filter((p) => p.id !== profile.id));
+        // Move back to suggestions if still in level range
+        setSuggested((prev) => {
+          if (prev.find((p) => p.id === profile.id)) return prev;
+          return [profile, ...prev];
+        });
+      } else {
+        await followUser(profile.id);
+        setFollowingIds((prev) => new Set([...prev, profile.id]));
+        setFollowing((prev) => [...prev, profile]);
+        setSuggested((prev) => prev.filter((p) => p.id !== profile.id));
+      }
+      setLoadingFollowId(null);
+    },
+    [followingIds],
+  );
 
   const isSearchMode = query.trim().length > 0;
 
@@ -91,9 +98,7 @@ export default function DiscoverScreen({ navigation }: Props) {
     ...(following.length > 0
       ? [{ title: `FOLLOWING (${following.length})`, data: following }]
       : []),
-    ...(suggested.length > 0
-      ? [{ title: 'DISCOVER RUNNERS', data: suggested }]
-      : []),
+    ...(suggested.length > 0 ? [{ title: 'DISCOVER RUNNERS', data: suggested }] : []),
   ];
 
   return (
@@ -147,9 +152,7 @@ export default function DiscoverScreen({ navigation }: Props) {
                   onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
                 />
               )}
-              ListHeaderComponent={
-                <Text style={styles.sectionLabel}>SEARCH RESULTS</Text>
-              }
+              ListHeaderComponent={<Text style={styles.sectionLabel}>SEARCH RESULTS</Text>}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>No runners found for "{query}"</Text>
               }
@@ -218,14 +221,14 @@ function RunnerCard({
       onPress={onPress}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarLetter}>
-          {profile.name.charAt(0).toUpperCase()}
-        </Text>
+        <Text style={styles.avatarLetter}>{profile.name.charAt(0).toUpperCase()}</Text>
       </View>
 
       <View style={styles.cardBody}>
         <View style={styles.cardNameRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{profile.name}</Text>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {profile.name}
+          </Text>
           <View style={styles.levelBadge}>
             <Text style={styles.levelBadgeText}>LVL {profile.level}</Text>
           </View>

@@ -1,12 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,15 +75,10 @@ export default function LoginScreen({ navigation }: Props) {
           <View style={styles.spacer} />
 
           <View style={styles.signInSection}>
-            <Text style={styles.signInLabel}>
-              Continue with your Google account
-            </Text>
+            <Text style={styles.signInLabel}>Continue with your Google account</Text>
 
             <TouchableOpacity
-              style={[
-                styles.googleButton,
-                isLoading && styles.buttonDisabled,
-              ]}
+              style={[styles.googleButton, isLoading && styles.buttonDisabled]}
               onPress={handleGoogleSignIn}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -111,9 +99,7 @@ export default function LoginScreen({ navigation }: Props) {
               activeOpacity={0.7}
               style={styles.emailTrigger}
             >
-              <Text style={styles.emailTriggerText}>
-                I'd like to sign in with email & password
-              </Text>
+              <Text style={styles.emailTriggerText}>I'd like to sign in with email & password</Text>
             </TouchableOpacity>
 
             {/* Guest mode */}
@@ -123,9 +109,7 @@ export default function LoginScreen({ navigation }: Props) {
               style={styles.guestTrigger}
             >
               <Ionicons name="person-outline" size={16} color={colors.textTertiary} />
-              <Text style={styles.guestTriggerText}>
-                Skip for now — explore as guest
-              </Text>
+              <Text style={styles.guestTriggerText}>Skip for now — explore as guest</Text>
             </TouchableOpacity>
 
             <Text style={styles.privacyText}>

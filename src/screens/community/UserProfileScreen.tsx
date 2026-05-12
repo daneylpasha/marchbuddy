@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -22,7 +15,6 @@ import {
   getBuddyStatus,
   sendBuddyRequest,
   cancelBuddyRequest,
-  acceptBuddyRequest,
   levelsCompatible,
   type BuddyStatus,
 } from '../../services/buddyService';
@@ -43,16 +35,14 @@ export default function UserProfileScreen({ navigation, route }: Props) {
   const [buddyLoading, setBuddyLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      getUserProfile(userId),
-      isFollowing(userId),
-      getBuddyStatus(userId),
-    ]).then(([p, f, b]) => {
-      setProfile(p);
-      setFollowing(f);
-      setBuddyStatus(b);
-      setLoading(false);
-    });
+    Promise.all([getUserProfile(userId), isFollowing(userId), getBuddyStatus(userId)]).then(
+      ([p, f, b]) => {
+        setProfile(p);
+        setFollowing(f);
+        setBuddyStatus(b);
+        setLoading(false);
+      },
+    );
   }, [userId]);
 
   const toggleFollow = async () => {
@@ -118,16 +108,11 @@ export default function UserProfileScreen({ navigation, route }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Avatar + name */}
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>
-              {profile.name.charAt(0).toUpperCase()}
-            </Text>
+            <Text style={styles.avatarLetter}>{profile.name.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.name}>{profile.name}</Text>
 
@@ -141,9 +126,7 @@ export default function UserProfileScreen({ navigation, route }: Props) {
           <View style={styles.privateCard}>
             <Ionicons name="lock-closed-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.privateTitle}>Private Profile</Text>
-            <Text style={styles.privateSubtitle}>
-              {profile.name} has hidden their details.
-            </Text>
+            <Text style={styles.privateSubtitle}>{profile.name} has hidden their details.</Text>
           </View>
         ) : (
           <>
@@ -153,9 +136,7 @@ export default function UserProfileScreen({ navigation, route }: Props) {
               <Text style={styles.heroStreakValue}>{profile.currentStreak}</Text>
               <Text style={styles.heroStreakLabel}>DAY STREAK</Text>
               {(profile.bestStreakDays ?? 0) > 0 && (
-                <Text style={styles.heroBestStreak}>
-                  Best: {profile.bestStreakDays} days
-                </Text>
+                <Text style={styles.heroBestStreak}>Best: {profile.bestStreakDays} days</Text>
               )}
             </View>
 
@@ -192,14 +173,18 @@ export default function UserProfileScreen({ navigation, route }: Props) {
                 {(profile.totalDurationMinutes ?? 0) > 0 && (
                   <View style={styles.metaItem}>
                     <Ionicons name="time-outline" size={14} color={colors.primary} />
-                    <Text style={styles.metaValue}>{formatDuration(profile.totalDurationMinutes!)}</Text>
+                    <Text style={styles.metaValue}>
+                      {formatDuration(profile.totalDurationMinutes!)}
+                    </Text>
                     <Text style={styles.metaLabel}>Active Time</Text>
                   </View>
                 )}
                 {profile.lastSessionDate && (
                   <View style={styles.metaItem}>
                     <Ionicons name="calendar-outline" size={14} color={colors.primary} />
-                    <Text style={styles.metaValue}>{formatRelativeDate(profile.lastSessionDate)}</Text>
+                    <Text style={styles.metaValue}>
+                      {formatRelativeDate(profile.lastSessionDate)}
+                    </Text>
                     <Text style={styles.metaLabel}>Last Active</Text>
                   </View>
                 )}
@@ -274,9 +259,7 @@ function BuddyButton({
     return (
       <View style={styles.buddyLocked}>
         <Ionicons name="lock-closed-outline" size={16} color={colors.textTertiary} />
-        <Text style={styles.buddyLockedText}>
-          Buddy up unlocks within 2 levels
-        </Text>
+        <Text style={styles.buddyLockedText}>Buddy up unlocks within 2 levels</Text>
       </View>
     );
   }
@@ -291,9 +274,13 @@ function BuddyButton({
   }
 
   const config = {
-    none:             { label: 'Send Buddy Request', icon: 'people-outline' as const, active: true },
-    pending_sent:     { label: 'Request Sent — Cancel?', icon: 'time-outline' as const, active: false },
-    pending_received: { label: 'Accept Buddy Request', icon: 'people-outline' as const, active: true },
+    none: { label: 'Send Buddy Request', icon: 'people-outline' as const, active: true },
+    pending_sent: { label: 'Request Sent — Cancel?', icon: 'time-outline' as const, active: false },
+    pending_received: {
+      label: 'Accept Buddy Request',
+      icon: 'people-outline' as const,
+      active: true,
+    },
   }[status];
 
   return (
@@ -315,7 +302,9 @@ function BuddyButton({
             size={18}
             color={config.active ? '#fff' : colors.textSecondary}
           />
-          <Text style={[styles.buddyBtnActiveText, !config.active && { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.buddyBtnActiveText, !config.active && { color: colors.textSecondary }]}
+          >
             {config.label}
           </Text>
         </>

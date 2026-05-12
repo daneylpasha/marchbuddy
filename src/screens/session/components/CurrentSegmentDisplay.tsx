@@ -66,12 +66,7 @@ export const CurrentSegmentDisplay: React.FC<CurrentSegmentDisplayProps> = ({
         {formatDuration(remainingSeconds)}
       </Text>
 
-      <Text
-        style={[
-          styles.remainingLabel,
-          { marginTop: labelGap, marginBottom: labelGap },
-        ]}
-      >
+      <Text style={[styles.remainingLabel, { marginTop: labelGap, marginBottom: labelGap }]}>
         remaining
       </Text>
 

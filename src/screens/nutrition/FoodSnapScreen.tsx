@@ -1,13 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fonts } from '../../theme';
@@ -31,7 +23,12 @@ export default function FoodSnapScreen({ navigation }: Props) {
   const [step, setStep] = useState<Step>('capture');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<FoodAnalysisResult | null>(null);
-  const [editedValues, setEditedValues] = useState({ calories: '', protein: '', carbs: '', fat: '' });
+  const [editedValues, setEditedValues] = useState({
+    calories: '',
+    protein: '',
+    carbs: '',
+    fat: '',
+  });
   const [hasEdited, setHasEdited] = useState(false);
 
   const addFoodSnap = useNutritionStore((s) => s.addFoodSnap);
@@ -159,7 +156,9 @@ export default function FoodSnapScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.analyzingContainer}>
-          {imageUri && <Image source={{ uri: imageUri }} style={styles.analyzingImage} resizeMode="cover" />}
+          {imageUri && (
+            <Image source={{ uri: imageUri }} style={styles.analyzingImage} resizeMode="cover" />
+          )}
           <View style={styles.analyzingOverlay}>
             <TypingIndicator />
             <Text style={styles.analyzingText}>Analyzing your food...</Text>
@@ -215,15 +214,27 @@ export default function FoodSnapScreen({ navigation }: Props) {
         </View>
 
         {/* Image */}
-        {imageUri && <Image source={{ uri: imageUri }} style={styles.reviewImage} resizeMode="cover" />}
+        {imageUri && (
+          <Image source={{ uri: imageUri }} style={styles.reviewImage} resizeMode="cover" />
+        )}
 
         {/* Description */}
         <Text style={styles.foodDescription}>{result?.description}</Text>
 
         {/* Confidence badge */}
         {result && (
-          <View style={[styles.confidenceBadge, { backgroundColor: CONFIDENCE_COLORS[result.confidence] + '22' }]}>
-            <View style={[styles.confidenceDot, { backgroundColor: CONFIDENCE_COLORS[result.confidence] }]} />
+          <View
+            style={[
+              styles.confidenceBadge,
+              { backgroundColor: CONFIDENCE_COLORS[result.confidence] + '22' },
+            ]}
+          >
+            <View
+              style={[
+                styles.confidenceDot,
+                { backgroundColor: CONFIDENCE_COLORS[result.confidence] },
+              ]}
+            />
             <Text style={[styles.confidenceText, { color: CONFIDENCE_COLORS[result.confidence] }]}>
               {result.confidence.charAt(0).toUpperCase() + result.confidence.slice(1)} confidence
             </Text>
@@ -243,10 +254,34 @@ export default function FoodSnapScreen({ navigation }: Props) {
         <Text style={styles.editHint}>Tap any value to adjust</Text>
 
         <View style={styles.valuesGrid}>
-          <EditableValue label="Calories" value={editedValues.calories} unit="cal" color={colors.primary} onChange={(v) => updateValue('calories', v)} />
-          <EditableValue label="Protein" value={editedValues.protein} unit="g" color={colors.protein} onChange={(v) => updateValue('protein', v)} />
-          <EditableValue label="Carbs" value={editedValues.carbs} unit="g" color={colors.carbs} onChange={(v) => updateValue('carbs', v)} />
-          <EditableValue label="Fat" value={editedValues.fat} unit="g" color={colors.fat} onChange={(v) => updateValue('fat', v)} />
+          <EditableValue
+            label="Calories"
+            value={editedValues.calories}
+            unit="cal"
+            color={colors.primary}
+            onChange={(v) => updateValue('calories', v)}
+          />
+          <EditableValue
+            label="Protein"
+            value={editedValues.protein}
+            unit="g"
+            color={colors.protein}
+            onChange={(v) => updateValue('protein', v)}
+          />
+          <EditableValue
+            label="Carbs"
+            value={editedValues.carbs}
+            unit="g"
+            color={colors.carbs}
+            onChange={(v) => updateValue('carbs', v)}
+          />
+          <EditableValue
+            label="Fat"
+            value={editedValues.fat}
+            unit="g"
+            color={colors.fat}
+            onChange={(v) => updateValue('fat', v)}
+          />
         </View>
 
         {/* Action buttons */}
@@ -270,7 +305,13 @@ export default function FoodSnapScreen({ navigation }: Props) {
 
 // ─── Editable Value ──────────────────────────────────────────────────────────
 
-function EditableValue({ label, value, unit, color, onChange }: {
+function EditableValue({
+  label,
+  value,
+  unit,
+  color,
+  onChange,
+}: {
   label: string;
   value: string;
   unit: string;
@@ -302,9 +343,23 @@ const evStyles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
-  label: { color: colors.textSecondary, fontSize: 11, marginBottom: 6, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  label: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginBottom: 6,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   inputRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  input: { fontSize: 22, fontWeight: '700', minWidth: 30, textAlign: 'center', padding: 0, fontFamily: fonts.bold, letterSpacing: 0.3 },
+  input: {
+    fontSize: 22,
+    fontWeight: '700',
+    minWidth: 30,
+    textAlign: 'center',
+    padding: 0,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
   unit: { color: colors.textTertiary, fontSize: 13, fontFamily: fonts.regular, letterSpacing: 0.3 },
 });
 
@@ -314,56 +369,169 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   // Capture
-  captureContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 },
+  captureContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    gap: 12,
+  },
   backBtn: { position: 'absolute', top: 16, right: 16 },
-  captureTitle: { color: colors.textPrimary, fontSize: 22, fontWeight: '700', marginTop: 8, fontFamily: fonts.bold, letterSpacing: 0.3 },
-  captureSubtitle: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', fontFamily: fonts.regular, letterSpacing: 0.3 },
+  captureTitle: {
+    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 8,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+  captureSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   captureActions: { width: '100%', gap: 10, marginTop: 16 },
   captureBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    minHeight: 48,
   },
-  captureBtnText: { color: '#fff', fontSize: 16, fontWeight: '600', fontFamily: fonts.bold, letterSpacing: 0.3 },
+  captureBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
   captureBtnOutline: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1, borderColor: colors.primary, borderRadius: 12, paddingVertical: 14, minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    minHeight: 48,
   },
-  captureBtnOutlineText: { color: colors.primary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  captureBtnOutlineText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Analyzing
   analyzingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   analyzingImage: { width: '100%', height: '60%', position: 'absolute', top: 0, opacity: 0.4 },
   analyzingOverlay: { alignItems: 'center', gap: 16 },
-  analyzingText: { color: colors.textSecondary, fontSize: 16, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  analyzingText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Review
   reviewContent: { padding: spacing.screenPadding },
   reviewHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  reviewTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  reviewTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   reviewImage: { width: '100%', height: 220, borderRadius: 14, marginBottom: 16 },
-  foodDescription: { color: colors.textPrimary, fontSize: 17, fontWeight: '600', marginBottom: 10, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  foodDescription: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 10,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   confidenceBadge: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginBottom: 12,
   },
   confidenceDot: { width: 6, height: 6, borderRadius: 3 },
-  confidenceText: { fontSize: 12, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
-  suggestionBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: colors.primaryDim, borderRadius: 10, padding: 12, marginBottom: 16,
+  confidenceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
   },
-  suggestionText: { color: colors.textSecondary, fontSize: 13, flex: 1, lineHeight: 19, fontFamily: fonts.regular, letterSpacing: 0.3 },
-  sectionLabel: { color: colors.textPrimary, fontSize: 16, fontWeight: '600', marginBottom: 2, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
-  editHint: { color: colors.textTertiary, fontSize: 12, marginBottom: 12, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  suggestionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: colors.primaryDim,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  suggestionText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 19,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
+  sectionLabel: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
+  editHint: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    marginBottom: 12,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   valuesGrid: { flexDirection: 'row', gap: 8, marginBottom: 20 },
 
   // Actions
   actionButtons: { gap: 10 },
   primaryBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 15, minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 15,
+    minHeight: 48,
   },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '600', fontFamily: fonts.bold, letterSpacing: 0.3 },
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
 });

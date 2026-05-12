@@ -9,10 +9,10 @@ interface FeedbackSelectorProps {
 }
 
 const FEEDBACK_OPTIONS: { rating: FeedbackRating; label: string; description: string }[] = [
-  { rating: 'too_easy',    label: 'Too Easy',    description: 'Could have done more' },
-  { rating: 'just_right',  label: 'Just Right',  description: 'Perfect challenge' },
+  { rating: 'too_easy', label: 'Too Easy', description: 'Could have done more' },
+  { rating: 'just_right', label: 'Just Right', description: 'Perfect challenge' },
   { rating: 'challenging', label: 'Challenging', description: 'Pushed myself' },
-  { rating: 'too_hard',    label: 'Too Hard',    description: 'Really struggled' },
+  { rating: 'too_hard', label: 'Too Hard', description: 'Really struggled' },
 ];
 
 export const FeedbackSelector: React.FC<FeedbackSelectorProps> = ({ selected, onSelect }) => (
@@ -30,9 +30,7 @@ export const FeedbackSelector: React.FC<FeedbackSelectorProps> = ({ selected, on
           ]}
           onPress={() => onSelect(option.rating)}
         >
-          <Text style={[styles.label, isSelected && styles.labelSelected]}>
-            {option.label}
-          </Text>
+          <Text style={[styles.label, isSelected && styles.labelSelected]}>{option.label}</Text>
           <Text style={[styles.description, isSelected && styles.descriptionSelected]}>
             {option.description}
           </Text>

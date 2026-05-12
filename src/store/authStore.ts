@@ -41,7 +41,11 @@ interface AuthState {
   resolveConflictKeepGuest: () => Promise<void>;
 }
 
-const mapSupabaseUser = (supabaseUser: { id: string; email?: string; created_at: string }): User => ({
+const mapSupabaseUser = (supabaseUser: {
+  id: string;
+  email?: string;
+  created_at: string;
+}): User => ({
   id: supabaseUser.id,
   email: supabaseUser.email ?? '',
   createdAt: supabaseUser.created_at,
@@ -105,8 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           userName: onboardingData.user_name ?? current.setupData.userName,
           activityLevel: onboardingData.activity_level ?? current.setupData.activityLevel,
           timePreference: onboardingData.preferred_time ?? current.setupData.timePreference,
-          triggerStatement:
-            onboardingData.trigger_statement ?? current.setupData.triggerStatement,
+          triggerStatement: onboardingData.trigger_statement ?? current.setupData.triggerStatement,
           pastFailureReason:
             onboardingData.past_failure_reason ?? current.setupData.pastFailureReason,
           primaryFear: onboardingData.primary_fear ?? current.setupData.primaryFear,
@@ -224,6 +227,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
+    // Stitch analytics events to this user's stable ID. PostHog merges any
+    // anonymous events fired before this point with the identified user.
+    // No PII passed — just the auth UUID. Traits are intentionally minimal
+    // here; subscription tier / starting_level can be set later via a
+    // followup identify() after pullSubscription hydrates.
+    try {
+      const { analytics } = require('../services/analytics');
+      analytics.identify(session.user.id);
+    } catch {
+      // analytics not available — non-fatal
+    }
+
     // ─── Unified user-state resolver ─────────────────────────────────────────
     // This is the single source of truth for deciding what happens after a
     // sign-in. Four possible outcomes:
@@ -244,6 +259,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         const { useCoachSetupStore } = require('./coachSetupStore');
         const { useSettingsStore } = require('./settingsStore');
+
+        // Pull subscription state from server — hydrates the local
+        // subscription store so Pro status and the free-funnel boundary
+        // survive reinstall / new-device sign-in. Fire-and-forget; runs in
+        // parallel with onboarding + run_progress fetches below. The pull
+        // method handles hydration internally and is safe to call even
+        // when the server row doesn't exist (e.g. legacy accounts).
+        // Scoped in its own block so the `authService` const doesn't collide
+        // with the later push in this same async IIFE.
+        {
+          const { authService } = require('../services/authService');
+          authService.pullSubscription(session.user.id).catch(() => {});
+        }
 
         const [onboardingRes, progressRes] = await Promise.all([
           supabase
@@ -281,9 +309,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // created_at catches this class of returning user even when their
         // onboarding row is missing.
         const userCreatedAt = session.user.created_at;
-        const authUserAgeMs = userCreatedAt
-          ? Date.now() - new Date(userCreatedAt).getTime()
-          : 0;
+        const authUserAgeMs = userCreatedAt ? Date.now() - new Date(userCreatedAt).getTime() : 0;
         const isReturningAuthUser = authUserAgeMs > 60_000; // > 1 minute old
 
         if (hasGuestData && (serverHasOnboarding || isReturningAuthUser)) {
@@ -412,6 +438,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // progress is at default (no meaningful data to push).
         const { authService } = require('../services/authService');
         authService.pushRunProgress().catch(() => {});
+
+        // Push full user traits to PostHog now that profile + progress have
+        // hydrated. This stitches name / email / level / streak / etc. to
+        // the previously-identified anonymous user so the Persons dashboard
+        // shows readable identities instead of bare UUIDs.
+        try {
+          const { analytics } = require('../services/analytics');
+          analytics.refreshUserTraits();
+        } catch {
+          // analytics unavailable — non-fatal
+        }
       } catch (err) {
         console.error('Error resolving user state:', err);
       } finally {
@@ -506,16 +543,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { useWaterStore } = require('./waterStore');
     const { useChatStore } = require('./chatStore');
     const { useScheduleStore } = require('./scheduleStore');
+    const { useSubscriptionStore } = require('./subscriptionStore');
 
     useCoachSetupStore.getState().resetSetup();
     useRunProgressStore.getState().resetProgress();
     useProfileStore.setState({ profile: null, onboardingCompleted: false, isLoading: false });
     useProgressStore.getState().reset();
-    useWorkoutStore.setState({ todayWorkout: null, workoutHistory: [], historyLoading: false, summary: null, isLoading: false });
+    useWorkoutStore.setState({
+      todayWorkout: null,
+      workoutHistory: [],
+      historyLoading: false,
+      summary: null,
+      isLoading: false,
+    });
     useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
     useWaterStore.setState({ todayWaterLog: null });
     useChatStore.setState({ messages: [], isAiTyping: false });
     useScheduleStore.setState({ scheduledSessions: [] });
+    // Critical: clear subscription state so a subsequent sign-in on this
+    // device doesn't inherit the previous user's tier or free-funnel.
+    useSubscriptionStore.getState().reset();
+
+    // Disassociate analytics — subsequent events on this device get a fresh
+    // anonymous distinct_id until the next identify() on sign-in.
+    try {
+      const { analytics } = require('../services/analytics');
+      analytics.reset();
+    } catch {
+      // non-fatal
+    }
 
     // Clear persisted cache so a re-login starts from fresh server data
     await offlineCache.clearAll();
@@ -548,16 +604,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { useWaterStore } = require('./waterStore');
       const { useChatStore } = require('./chatStore');
       const { useScheduleStore } = require('./scheduleStore');
+      const { useSubscriptionStore } = require('./subscriptionStore');
 
       useCoachSetupStore.getState().resetSetup();
       useRunProgressStore.getState().resetProgress();
       useProfileStore.setState({ profile: null, onboardingCompleted: false, isLoading: false });
       useProgressStore.getState().reset();
-      useWorkoutStore.setState({ todayWorkout: null, workoutHistory: [], historyLoading: false, summary: null, isLoading: false });
+      useWorkoutStore.setState({
+        todayWorkout: null,
+        workoutHistory: [],
+        historyLoading: false,
+        summary: null,
+        isLoading: false,
+      });
       useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
       useWaterStore.setState({ todayWaterLog: null });
       useChatStore.setState({ messages: [], isAiTyping: false });
       useScheduleStore.setState({ scheduledSessions: [] });
+      // Wipe subscription state — the server row is cascaded by the
+      // user_subscriptions FK on auth.users(id) ON DELETE CASCADE, but the
+      // AsyncStorage cache also needs to be cleared so a fresh sign-in on
+      // this device starts as 'free'.
+      useSubscriptionStore.getState().reset();
+
+      try {
+        const { analytics } = require('../services/analytics');
+        analytics.reset();
+      } catch {
+        // non-fatal
+      }
 
       await offlineCache.clearAll();
 
@@ -574,7 +649,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isInitializing: true });
 
     // Check for existing session (local — works offline)
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session) {
       // Try to refresh token, but don't block on network failure
       try {

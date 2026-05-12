@@ -18,7 +18,7 @@ export async function regenerateTodayMealPlan() {
 
     const today = new Date().toISOString().split('T')[0];
 
-    console.log('🗑️ Deleting today\'s meal plan...');
+    console.log("🗑️ Deleting today's meal plan...");
     await deleteTodayPlans(userId, today);
 
     console.log('🔄 Regenerating with new variety logic...');

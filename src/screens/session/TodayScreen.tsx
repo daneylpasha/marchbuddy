@@ -18,6 +18,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { ProBanner } from '../../components/upgrade/ProBanner';
+import { analytics, EVENTS } from '../../services/analytics';
 import { useSessionStore } from '../../store/sessionStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -55,7 +58,14 @@ function getTimeGreeting(): string {
 export default function TodayScreen({ navigation }: Props) {
   const { setupData, guestId } = useCoachSetupStore();
   const TARGET_SESSIONS_PER_WEEK = setupData.weeklyFrequency ?? 3;
-  const { progress, initializeProgress, declareRestDay, isPerfectWeek, markPerfectWeekCelebrated, restDayDeclaredDate } = useRunProgressStore();
+  const {
+    progress,
+    initializeProgress,
+    declareRestDay,
+    isPerfectWeek,
+    markPerfectWeekCelebrated,
+    restDayDeclaredDate,
+  } = useRunProgressStore();
   const {
     todayOptions,
     isLoadingOptions,
@@ -102,7 +112,9 @@ export default function TodayScreen({ navigation }: Props) {
         setLoadError(null);
       } catch (error) {
         console.error('Failed to load session options:', error);
-        setLoadError('We had trouble building your session. This usually fixes itself — try again.');
+        setLoadError(
+          'We had trouble building your session. This usually fixes itself — try again.',
+        );
         setLoadingOptions(false);
       }
     },
@@ -174,9 +186,35 @@ export default function TodayScreen({ navigation }: Props) {
     setShowAlternatives((prev) => !prev);
   };
 
+  const { setStartingLevel, isLevelLocked, isOnLastFreeLevel, openPaywall, tier } =
+    useSubscriptionStore();
+  const isFree = tier === 'free';
+
   const currentLevel = progress?.currentLevel ?? 1;
   const sessionsThisWeek = progress?.sessionsThisWeek ?? 0;
   const streak = progress?.currentStreakDays ?? 0;
+
+  // Capture starting level once — idempotent, only fires on first call
+  React.useEffect(() => {
+    if (progress?.currentLevel) {
+      setStartingLevel(progress.currentLevel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress?.currentLevel]);
+
+  const levelLocked = isLevelLocked(currentLevel);
+  const onLastFreeLevel = isOnLastFreeLevel(currentLevel);
+
+  // Fire a level_locked_view event once per (user, level) pair. The same
+  // user landing on the same locked level repeatedly shouldn't inflate the
+  // funnel — use a ref to dedupe within this screen mount.
+  const lastLoggedLockedLevelRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (levelLocked && currentLevel !== lastLoggedLockedLevelRef.current) {
+      lastLoggedLockedLevelRef.current = currentLevel;
+      analytics.track(EVENTS.level_locked_view, { level: currentLevel });
+    }
+  }, [levelLocked, currentLevel]);
   const greeting = setupData.userName
     ? `${getTimeGreeting()}, ${setupData.userName}`
     : getTimeGreeting();
@@ -185,7 +223,8 @@ export default function TodayScreen({ navigation }: Props) {
   const isRestDay = planAdjustment?.suggestedVariant === 'rest';
   const adjustedPlan =
     planAdjustment && !isRestDay && todayOptions
-      ? (todayOptions.alternatives.find((a) => a.variant === planAdjustment.suggestedVariant) ?? null)
+      ? (todayOptions.alternatives.find((a) => a.variant === planAdjustment.suggestedVariant) ??
+        null)
       : null;
   const effectiveRecommended = adjustedPlan ?? todayOptions?.recommended ?? null;
 
@@ -216,13 +255,25 @@ export default function TodayScreen({ navigation }: Props) {
               </>
             )}
           </View>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="settings-outline" size={22} color={colors.textTertiary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {isFree && (
+              <TouchableOpacity
+                style={styles.freeChip}
+                onPress={() => openPaywall('header_chip_today')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="flash" size={11} color={colors.primary} />
+                <Text style={styles.freeChipText}>Free</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate('Settings')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.headerTitle}>{greeting}</Text>
       </View>
@@ -266,8 +317,34 @@ export default function TodayScreen({ navigation }: Props) {
               </TouchableOpacity>
             )}
 
+            {/* Level locked — replace session cards with upgrade gate */}
+            {levelLocked ? (
+              <View style={styles.lockedCard}>
+                <View style={styles.lockedIconRing}>
+                  <Ionicons name="lock-closed" size={32} color={colors.primary} />
+                </View>
+                <Text style={styles.lockedTitle}>LEVEL {currentLevel}</Text>
+                <Text style={styles.lockedHeadline}>This is Pro territory</Text>
+                <Text style={styles.lockedBody}>
+                  You've completed your free levels and built a real habit. Level {currentLevel} is
+                  where the real running begins — and it's waiting for you.
+                </Text>
+                <TouchableOpacity
+                  style={styles.lockedCta}
+                  onPress={() => openPaywall('today_locked')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="flash" size={16} color="#fff" />
+                  <Text style={styles.lockedCtaText}>Unlock with MarchBuddy Pro</Text>
+                </TouchableOpacity>
+                <Text style={styles.lockedPricing}>
+                  $4.99/month · $35/year · Founding member price
+                </Text>
+              </View>
+            ) : null}
+
             {/* Rest day state */}
-            {isRestDay ? (
+            {!levelLocked && isRestDay ? (
               <View style={styles.restDayCard}>
                 <Text style={styles.restDayEmoji}>🛌</Text>
                 <Text style={styles.restDayTitle}>Rest Day</Text>
@@ -275,13 +352,11 @@ export default function TodayScreen({ navigation }: Props) {
                   Your coach cleared your session today. Recovery is part of the training.
                 </Text>
               </View>
-            ) : (
+            ) : !levelLocked ? (
               <>
                 {(() => {
                   const coachBlock = todayOptions.coachMessage ? (
-                    <View
-                      style={alreadyDoneToday ? styles.coachHero : styles.coachInline}
-                    >
+                    <View style={alreadyDoneToday ? styles.coachHero : styles.coachInline}>
                       <Ionicons
                         name="chatbubble"
                         size={alreadyDoneToday ? 16 : 14}
@@ -290,23 +365,30 @@ export default function TodayScreen({ navigation }: Props) {
                       <Text
                         style={alreadyDoneToday ? styles.coachHeroText : styles.coachInlineText}
                       >
-                        {todayOptions.coachMessage.split(/(\*\*[^*]+\*\*)/g).map((part: string, i: number) =>
-                          part.startsWith('**') && part.endsWith('**')
-                            ? <Text key={i} style={{ fontFamily: fonts.bold, fontStyle: 'normal' }}>{part.slice(2, -2)}</Text>
-                            : part
-                        )}
+                        {todayOptions.coachMessage
+                          .split(/(\*\*[^*]+\*\*)/g)
+                          .map((part: string, i: number) =>
+                            part.startsWith('**') && part.endsWith('**') ? (
+                              <Text key={i} style={{ fontFamily: fonts.bold, fontStyle: 'normal' }}>
+                                {part.slice(2, -2)}
+                              </Text>
+                            ) : (
+                              part
+                            ),
+                          )}
                       </Text>
                     </View>
                   ) : null;
 
-                  const streakBlock = streak > 0 ? (
-                    <View style={styles.streakNudge}>
-                      <Ionicons name="flame" size={16} color={colors.streak} />
-                      <Text style={styles.streakNudgeText}>
-                        {streak} day streak — keep it alive!
-                      </Text>
-                    </View>
-                  ) : null;
+                  const streakBlock =
+                    streak > 0 ? (
+                      <View style={styles.streakNudge}>
+                        <Ionicons name="flame" size={16} color={colors.streak} />
+                        <Text style={styles.streakNudgeText}>
+                          {streak} day streak — keep it alive!
+                        </Text>
+                      </View>
+                    ) : null;
 
                   const cardBlock = effectiveRecommended ? (
                     <RecommendedSessionCard
@@ -370,10 +452,7 @@ export default function TodayScreen({ navigation }: Props) {
                   (a) => a.variant !== planAdjustment?.suggestedVariant,
                 ).length > 0 && (
                   <View style={styles.alternativesSection}>
-                    <Pressable
-                      onPress={toggleAlternatives}
-                      style={styles.alternativesToggle}
-                    >
+                    <Pressable onPress={toggleAlternatives} style={styles.alternativesToggle}>
                       <Text style={styles.alternativesToggleText}>
                         {showAlternatives ? 'Hide options' : 'Not feeling it? See other options'}
                       </Text>
@@ -399,8 +478,17 @@ export default function TodayScreen({ navigation }: Props) {
                     )}
                   </View>
                 )}
+
+                {/* "Next level is Pro" teaser — shown on last free level */}
+                {onLastFreeLevel && (
+                  <ProBanner
+                    variant="next_level"
+                    nextLevel={currentLevel + 1}
+                    onPress={() => openPaywall('level_locked_next')}
+                  />
+                )}
               </>
-            )}
+            ) : null}
 
             {/* Minimal week progress — dots + label */}
             {progress && (
@@ -424,10 +512,7 @@ export default function TodayScreen({ navigation }: Props) {
 
             {/* Perfect Week celebration */}
             {isPerfectWeek(TARGET_SESSIONS_PER_WEEK) && (
-              <Pressable
-                style={styles.perfectWeekCard}
-                onPress={markPerfectWeekCelebrated}
-              >
+              <Pressable style={styles.perfectWeekCard} onPress={markPerfectWeekCelebrated}>
                 <Text style={styles.perfectWeekEmoji}>🏅</Text>
                 <View style={styles.perfectWeekContent}>
                   <Text style={styles.perfectWeekTitle}>Perfect Week!</Text>
@@ -439,23 +524,25 @@ export default function TodayScreen({ navigation }: Props) {
             )}
 
             {/* Rest day — saves streak without breaking it */}
-            {!isRestDay && streak > 0 && restDayDeclaredDate !== new Date().toISOString().split('T')[0] && (
-              <Pressable
-                style={styles.restDayButton}
-                onPress={() => {
-                  declareRestDay();
-                  // Push updated progress to server so the rest-day-saved
-                  // streak survives sign-out → sign-in.
-                  const { authService } = require('../../services/authService');
-                  authService.pushRunProgress().catch(() => {});
-                }}
-              >
-                <Ionicons name="bed-outline" size={16} color={colors.textTertiary} />
-                <Text style={styles.restDayButtonText}>
-                  Taking a rest day? Your streak is safe.
-                </Text>
-              </Pressable>
-            )}
+            {!isRestDay &&
+              streak > 0 &&
+              restDayDeclaredDate !== new Date().toISOString().split('T')[0] && (
+                <Pressable
+                  style={styles.restDayButton}
+                  onPress={() => {
+                    declareRestDay();
+                    // Push updated progress to server so the rest-day-saved
+                    // streak survives sign-out → sign-in.
+                    const { authService } = require('../../services/authService');
+                    authService.pushRunProgress().catch(() => {});
+                  }}
+                >
+                  <Ionicons name="bed-outline" size={16} color={colors.textTertiary} />
+                  <Text style={styles.restDayButtonText}>
+                    Taking a rest day? Your streak is safe.
+                  </Text>
+                </Pressable>
+              )}
           </>
         ) : (
           <View style={styles.emptyState}>
@@ -467,11 +554,14 @@ export default function TodayScreen({ navigation }: Props) {
             <Text style={styles.emptyStateTitle}>
               {loadError ? 'Connection hiccup' : "Couldn't load today's session"}
             </Text>
-            {loadError && (
-              <Text style={styles.emptyStateDetail}>{loadError}</Text>
-            )}
+            {loadError && <Text style={styles.emptyStateDetail}>{loadError}</Text>}
             <TouchableOpacity onPress={handleRefresh} style={styles.retryButton}>
-              <Ionicons name="refresh-outline" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+              <Ionicons
+                name="refresh-outline"
+                size={16}
+                color={colors.primary}
+                style={{ marginRight: 6 }}
+              />
               <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
@@ -522,6 +612,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.3,
     color: colors.textTertiary,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  freeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16,185,129,0.14)',
+    borderColor: 'rgba(16,185,129,0.3)',
+    borderWidth: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  freeChipText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: colors.primary,
+    letterSpacing: 0.6,
   },
   settingsButton: {
     padding: 2,
@@ -771,6 +883,80 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+
+  // Level locked gate
+  lockedCard: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 8,
+    gap: 14,
+  },
+  lockedIconRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryDim,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  lockedTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: colors.primary,
+    textTransform: 'uppercase',
+  },
+  lockedHeadline: {
+    fontFamily: fonts.titleRegular,
+    fontSize: 36,
+    color: colors.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  lockedBody: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 23,
+    letterSpacing: 0.2,
+    maxWidth: 300,
+  },
+  lockedCta: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    marginTop: 4,
+  },
+  lockedCtaText: {
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  lockedPricing: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textMuted,
+    letterSpacing: 0.2,
   },
 
   // Rest day button

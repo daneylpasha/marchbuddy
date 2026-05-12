@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { LogBox } from 'react-native';
-
-LogBox.ignoreLogs([
-  'FunctionsHttpError',
-  'Edge Function returned a non-2xx',
-  'Error calling generate-session-options',
-  'Error sending chat message',
-  'Failed to generate coach reply',
-  'LayoutAnimationEnabledExperimental',
-]);
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { navigationRef } from './src/navigation/navigationRef';
 import { StatusBar } from 'expo-status-bar';
@@ -27,7 +18,7 @@ import ErrorBoundary from './src/components/common/ErrorBoundary';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useNotificationListener } from './src/hooks/useNotificationListener';
 import { useNotificationStore } from './src/store/notificationStore';
-import { registerForPushNotifications, refreshPushToken } from './src/services/notificationService';
+import { registerForPushNotifications } from './src/services/notificationService';
 import { useNotificationPrefsStore } from './src/store/notificationPrefsStore';
 import { useAuthStore } from './src/store/authStore';
 import { useNetworkStore } from './src/store/networkStore';
@@ -35,6 +26,16 @@ import { offlineQueue } from './src/services/offlineQueue';
 import { registerOfflineActions } from './src/services/offlineActions';
 import { offlineCache } from './src/services/offlineCache';
 import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
+import { analytics, EVENTS } from './src/services/analytics';
+
+LogBox.ignoreLogs([
+  'FunctionsHttpError',
+  'Edge Function returned a non-2xx',
+  'Error calling generate-session-options',
+  'Error sending chat message',
+  'Failed to generate coach reply',
+  'LayoutAnimationEnabledExperimental',
+]);
 
 const NAV_THEME = {
   ...DarkTheme,
@@ -83,6 +84,26 @@ export default function App() {
     };
   }, []);
 
+  // Boot analytics on a microtask so it never races the splash transition
+  // or font loader. Events fired before init completes are buffered in
+  // analytics.queue and replayed after init resolves, so deferring by one
+  // tick has zero functional cost. We wrap in setTimeout(0) so any
+  // PostHog-internal fetch failures (e.g. dev simulator offline) surface
+  // *after* the splash has had a chance to hide.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      analytics
+        .init()
+        .then(() => {
+          analytics.track(EVENTS.app_opened);
+        })
+        .catch(() => {
+          /* analytics never breaks the app */
+        });
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
   // Register/refresh push token after login (ensures token is saved to Supabase)
   // and hydrate notification prefs from the server so the client can
   // pre-check them before scheduling local reminders.
@@ -100,9 +121,17 @@ export default function App() {
   }, [fontsLoaded]);
 
   // Show permission modal after user reaches home (past intro + setup)
-  const setupComplete = require('./src/store/coachSetupStore').useCoachSetupStore((s: any) => s.setupComplete);
+  const setupComplete = require('./src/store/coachSetupStore').useCoachSetupStore(
+    (s: any) => s.setupComplete,
+  );
   useEffect(() => {
-    if (fontsLoaded && isAuthenticated && setupComplete && permissionStatus === 'undetermined' && canPrompt()) {
+    if (
+      fontsLoaded &&
+      isAuthenticated &&
+      setupComplete &&
+      permissionStatus === 'undetermined' &&
+      canPrompt()
+    ) {
       const timer = setTimeout(() => setShowPermissionModal(true), 3000);
       return () => clearTimeout(timer);
     }

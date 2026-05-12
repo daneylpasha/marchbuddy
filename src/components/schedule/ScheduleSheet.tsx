@@ -16,19 +16,12 @@ import {
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useScheduleStore, type ScheduledSession } from '../../store/scheduleStore';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
-import {
-  scheduleSessionReminder,
-  cancelAllForSession,
-} from '../../services/notificationService';
+import { scheduleSessionReminder, cancelAllForSession } from '../../services/notificationService';
 import { colors, fonts, spacing } from '../../theme';
 
 export interface ScheduleSheetRef {
@@ -82,8 +75,13 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
 
-  const { scheduleSession, updateSchedule, cancelSchedule, getScheduleForSession, setLocalNotificationId } =
-    useScheduleStore();
+  const {
+    scheduleSession,
+    updateSchedule,
+    cancelSchedule,
+    getScheduleForSession,
+    setLocalNotificationId,
+  } = useScheduleStore();
   const userName = useCoachSetupStore((s) => s.setupData.userName);
   const days = useMemo(() => getNext7Days(), []);
   const snapPoints = useMemo(() => ['52%'], []);
@@ -101,9 +99,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
       if (existing) {
         const existingDate = new Date(existing.scheduled_at);
         // Find closest day chip
-        const closest = days.find(
-          (d) => d.toDateString() === existingDate.toDateString(),
-        );
+        const closest = days.find((d) => d.toDateString() === existingDate.toDateString());
         if (closest) setSelectedDate(closest);
         setSelectedTime(existingDate);
       } else {
@@ -121,12 +117,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
     setIsSubmitting(true);
     try {
       const scheduledAt = new Date(selectedDate);
-      scheduledAt.setHours(
-        selectedTime.getHours(),
-        selectedTime.getMinutes(),
-        0,
-        0,
-      );
+      scheduledAt.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
 
       if (existingSchedule) {
         // Defensive cancel: wipes everything on-device for this
@@ -134,12 +125,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
         // the ghost-notification race from the Phase-1 audit).
         await cancelAllForSession(sessionKey, existingSchedule.local_notification_id);
 
-        await updateSchedule(
-          existingSchedule.id,
-          sessionKey,
-          sessionTitle,
-          scheduledAt,
-        );
+        await updateSchedule(existingSchedule.id, sessionKey, sessionTitle, scheduledAt);
         const notifId = await scheduleSessionReminder(
           sessionTitle,
           scheduledAt,
@@ -239,9 +225,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
         ) : confirmation ? (
           <View style={styles.confirmationContainer}>
             <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
-            <Text style={styles.confirmationText}>
-              Scheduled for {confirmation}
-            </Text>
+            <Text style={styles.confirmationText}>Scheduled for {confirmation}</Text>
           </View>
         ) : (
           <>
@@ -259,18 +243,10 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
                 return (
                   <Pressable
                     key={day.toISOString()}
-                    style={[
-                      styles.dateChip,
-                      isSelected && styles.dateChipSelected,
-                    ]}
+                    style={[styles.dateChip, isSelected && styles.dateChipSelected]}
                     onPress={() => setSelectedDate(day)}
                   >
-                    <Text
-                      style={[
-                        styles.dateChipText,
-                        isSelected && styles.dateChipTextSelected,
-                      ]}
-                    >
+                    <Text style={[styles.dateChipText, isSelected && styles.dateChipTextSelected]}>
                       {formatDayLabel(day)}
                     </Text>
                   </Pressable>
@@ -282,10 +258,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
             <View style={styles.timeSection}>
               <Text style={styles.timeLabel}>Time</Text>
               {Platform.OS === 'android' ? (
-                <Pressable
-                  style={styles.androidTimeButton}
-                  onPress={() => setShowTimePicker(true)}
-                >
+                <Pressable style={styles.androidTimeButton} onPress={() => setShowTimePicker(true)}>
                   <Text style={styles.androidTimeText}>
                     {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>

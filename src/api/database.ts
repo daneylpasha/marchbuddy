@@ -1,7 +1,7 @@
 // api/database.ts — Supabase database helper functions
 // Each function wraps a Supabase query with error handling and type mapping.
 
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 import type {
   BodyMeasurement,
   ChatMessage,
@@ -20,7 +20,7 @@ import type {
   WeeklySummary,
   WeightEntry,
   WorkoutPlan,
-} from "../types";
+} from '../types';
 
 // ─── Row types (Supabase snake_case) ────────────────────────────────────────
 
@@ -141,26 +141,26 @@ interface WeeklySummaryRow {
 function toProfile(row: ProfileRow): UserProfile {
   return {
     userId: row.id,
-    name: row.name ?? "",
+    name: row.name ?? '',
     age: row.age ?? 0,
-    gender: row.gender ?? "",
+    gender: row.gender ?? '',
     height: row.height_cm ?? 0,
     currentWeight: row.current_weight_kg ?? 0,
     targetWeight: row.target_weight_kg ?? 0,
-    fitnessHistory: row.fitness_history ?? "",
+    fitnessHistory: row.fitness_history ?? '',
     pastSports: row.past_sports ?? [],
-    peakFitnessLevel: row.peak_fitness_level ?? "",
-    currentActivityLevel: row.current_activity_level ?? "",
+    peakFitnessLevel: row.peak_fitness_level ?? '',
+    currentActivityLevel: row.current_activity_level ?? '',
     injuries: row.injuries ?? [],
     dietaryPreferences: row.dietary_preferences ?? {
-      type: "non-veg",
+      type: 'non-veg',
       allergies: [],
       dislikes: [],
-      cuisineRegion: "",
+      cuisineRegion: '',
     },
     goals: row.goals ?? {
-      primaryGoal: "",
-      targetTimeline: "",
+      primaryGoal: '',
+      targetTimeline: '',
       targetWeight: 0,
     },
     eatingContext: row.eating_context ?? undefined,
@@ -172,10 +172,7 @@ function toProfile(row: ProfileRow): UserProfile {
   };
 }
 
-function fromProfile(
-  userId: string,
-  data: Partial<UserProfile>,
-): Record<string, unknown> {
+function fromProfile(userId: string, data: Partial<UserProfile>): Record<string, unknown> {
   const row: Record<string, unknown> = {
     id: userId,
     updated_at: new Date().toISOString(),
@@ -184,27 +181,20 @@ function fromProfile(
   if (data.age !== undefined) row.age = data.age;
   if (data.gender !== undefined) row.gender = data.gender;
   if (data.height !== undefined) row.height_cm = data.height;
-  if (data.currentWeight !== undefined)
-    row.current_weight_kg = data.currentWeight;
+  if (data.currentWeight !== undefined) row.current_weight_kg = data.currentWeight;
   if (data.targetWeight !== undefined) row.target_weight_kg = data.targetWeight;
-  if (data.fitnessHistory !== undefined)
-    row.fitness_history = data.fitnessHistory;
+  if (data.fitnessHistory !== undefined) row.fitness_history = data.fitnessHistory;
   if (data.pastSports !== undefined) row.past_sports = data.pastSports;
-  if (data.peakFitnessLevel !== undefined)
-    row.peak_fitness_level = data.peakFitnessLevel;
+  if (data.peakFitnessLevel !== undefined) row.peak_fitness_level = data.peakFitnessLevel;
   if (data.currentActivityLevel !== undefined)
     row.current_activity_level = data.currentActivityLevel;
   if (data.injuries !== undefined) row.injuries = data.injuries;
-  if (data.dietaryPreferences !== undefined)
-    row.dietary_preferences = data.dietaryPreferences;
+  if (data.dietaryPreferences !== undefined) row.dietary_preferences = data.dietaryPreferences;
   if (data.goals !== undefined) row.goals = data.goals;
   if (data.eatingContext !== undefined) row.eating_context = data.eatingContext;
-  if (data.workoutSchedule !== undefined)
-    row.workout_schedule = data.workoutSchedule;
-  if (data.equipmentAvailable !== undefined)
-    row.equipment_available = data.equipmentAvailable;
-  if (data.onboardingCompleted !== undefined)
-    row.onboarding_completed = data.onboardingCompleted;
+  if (data.workoutSchedule !== undefined) row.workout_schedule = data.workoutSchedule;
+  if (data.equipmentAvailable !== undefined) row.equipment_available = data.equipmentAvailable;
+  if (data.onboardingCompleted !== undefined) row.onboarding_completed = data.onboardingCompleted;
   return row;
 }
 
@@ -213,23 +203,17 @@ function toWorkout(row: WorkoutRow): WorkoutPlan {
     id: row.id,
     userId: row.user_id,
     date: row.date,
-    exercises: (Array.isArray(row.exercises)
-      ? row.exercises
-      : []) as WorkoutPlan["exercises"],
-    warmUp: (Array.isArray(row.warm_up)
-      ? row.warm_up
-      : []) as WarmUpCoolDownExercise[],
-    coolDown: (Array.isArray(row.cool_down)
-      ? row.cool_down
-      : []) as WarmUpCoolDownExercise[],
-    status: row.status as WorkoutPlan["status"],
+    exercises: (Array.isArray(row.exercises) ? row.exercises : []) as WorkoutPlan['exercises'],
+    warmUp: (Array.isArray(row.warm_up) ? row.warm_up : []) as WarmUpCoolDownExercise[],
+    coolDown: (Array.isArray(row.cool_down) ? row.cool_down : []) as WarmUpCoolDownExercise[],
+    status: row.status as WorkoutPlan['status'],
     isRestDay: row.is_rest_day,
-    restDayType: row.rest_day_type as WorkoutPlan["restDayType"],
-    energyLevel: (row.energy_level as WorkoutPlan["energyLevel"]) ?? undefined,
+    restDayType: row.rest_day_type as WorkoutPlan['restDayType'],
+    energyLevel: (row.energy_level as WorkoutPlan['energyLevel']) ?? undefined,
     readiness: row.readiness ?? undefined,
     sessionRPE: row.session_rpe ?? undefined,
     workoutStartedAt: row.workout_started_at ?? undefined,
-    aiNotes: row.ai_notes ?? "",
+    aiNotes: row.ai_notes ?? '',
     createdAt: row.created_at,
   };
 }
@@ -253,7 +237,7 @@ function toFoodSnap(row: FoodSnapRow): FoodSnap {
     id: row.id,
     userId: row.user_id,
     mealId: row.meal_id ?? undefined,
-    imageUri: row.image_url ?? "",
+    imageUri: row.image_url ?? '',
     aiEstimate: row.ai_estimate,
     userAmended: row.user_amended,
     amendedValues: row.amended_values ?? undefined,
@@ -276,7 +260,7 @@ function toChatMessage(row: ChatMessageRow): ChatMessage {
   return {
     id: row.id,
     userId: row.user_id,
-    role: row.role as ChatMessage["role"],
+    role: row.role as ChatMessage['role'],
     content: row.content,
     imageUri: row.image_url ?? undefined,
     actionsTaken: row.actions_taken ?? [],
@@ -301,7 +285,7 @@ function toBodyMeasurement(row: BodyMeasurementRow): BodyMeasurement {
     waist: row.waist_cm ?? 0,
     chest: row.chest_cm ?? 0,
     arms: row.arms_cm ?? 0,
-    notes: row.notes ?? "",
+    notes: row.notes ?? '',
   };
 }
 
@@ -310,7 +294,7 @@ function toWeeklySummary(row: WeeklySummaryRow): WeeklySummary {
     id: row.id,
     userId: row.user_id,
     weekStartDate: row.week_start_date,
-    summaryText: row.summary_text ?? "",
+    summaryText: row.summary_text ?? '',
     insights: row.insights ?? [],
     createdAt: row.created_at,
   };
@@ -325,14 +309,14 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
     // showed up as a red console error every sign-in even though the
     // missing profile is a perfectly normal state.
     const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
       .maybeSingle();
     if (error) throw error;
     return data ? toProfile(data as ProfileRow) : null;
   } catch (e) {
-    console.error("[DB] getProfile error:", e);
+    console.error('[DB] getProfile error:', e);
     return null;
   }
 }
@@ -344,14 +328,14 @@ export async function upsertProfile(
   try {
     const row = fromProfile(userId, data);
     const { data: result, error } = await supabase
-      .from("profiles")
-      .upsert(row, { onConflict: "id" })
+      .from('profiles')
+      .upsert(row, { onConflict: 'id' })
       .select()
       .single();
     if (error) throw error;
     return result ? toProfile(result as ProfileRow) : null;
   } catch (e) {
-    console.error("[DB] upsertProfile error:", e);
+    console.error('[DB] upsertProfile error:', e);
     return null;
   }
 }
@@ -360,21 +344,18 @@ export async function upsertProfile(
 // Workout
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function getTodayWorkout(
-  userId: string,
-  date: string,
-): Promise<WorkoutPlan | null> {
+export async function getTodayWorkout(userId: string, date: string): Promise<WorkoutPlan | null> {
   try {
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", date)
+      .from('workout_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
       .single();
-    if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
     return data ? toWorkout(data as WorkoutRow) : null;
   } catch (e) {
-    console.error("[DB] getTodayWorkout error:", e);
+    console.error('[DB] getTodayWorkout error:', e);
     return null;
   }
 }
@@ -385,7 +366,7 @@ export async function upsertWorkout(
 ): Promise<WorkoutPlan | null> {
   try {
     const { data, error } = await supabase
-      .from("workout_plans")
+      .from('workout_plans')
       .upsert(
         {
           id: workout.id,
@@ -401,48 +382,45 @@ export async function upsertWorkout(
           ai_notes: workout.aiNotes,
           created_at: workout.createdAt,
         },
-        { onConflict: "user_id,date" },
+        { onConflict: 'user_id,date' },
       )
       .select()
       .single();
     if (error) throw error;
     return data ? toWorkout(data as WorkoutRow) : null;
   } catch (e) {
-    console.error("[DB] upsertWorkout error:", e);
+    console.error('[DB] upsertWorkout error:', e);
     return null;
   }
 }
 
 export async function updateWorkoutStatus(
   workoutId: string,
-  status: WorkoutPlan["status"],
+  status: WorkoutPlan['status'],
   summary?: Record<string, unknown> | null,
 ): Promise<void> {
   try {
     const update: Record<string, unknown> = { status };
     if (summary !== undefined) update.summary = summary;
-    const { error } = await supabase
-      .from("workout_plans")
-      .update(update)
-      .eq("id", workoutId);
+    const { error } = await supabase.from('workout_plans').update(update).eq('id', workoutId);
     if (error) throw error;
   } catch (e) {
-    console.error("[DB] updateWorkoutStatus error:", e);
+    console.error('[DB] updateWorkoutStatus error:', e);
   }
 }
 
 export async function updateExerciseFeedback(
   workoutId: string,
-  exercises: WorkoutPlan["exercises"],
+  exercises: WorkoutPlan['exercises'],
 ): Promise<void> {
   try {
     const { error } = await supabase
-      .from("workout_plans")
+      .from('workout_plans')
       .update({ exercises })
-      .eq("id", workoutId);
+      .eq('id', workoutId);
     if (error) throw error;
   } catch (e) {
-    console.error("[DB] updateExerciseFeedback error:", e);
+    console.error('[DB] updateExerciseFeedback error:', e);
   }
 }
 
@@ -450,53 +428,44 @@ export async function updateExerciseFeedback(
 // Nutrition
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function getTodayMealPlan(
-  userId: string,
-  date: string,
-): Promise<MealPlan | null> {
+export async function getTodayMealPlan(userId: string, date: string): Promise<MealPlan | null> {
   try {
     const { data, error } = await supabase
-      .from("meal_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", date)
+      .from('meal_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
       .single();
-    if (error && error.code !== "PGRST116") throw error;
+    if (error && error.code !== 'PGRST116') throw error;
     return data ? toMealPlan(data as MealPlanRow) : null;
   } catch (e) {
-    console.error("[DB] getTodayMealPlan error:", e);
+    console.error('[DB] getTodayMealPlan error:', e);
     return null;
   }
 }
 
-export async function getRecentMealPlans(
-  userId: string,
-  days: number,
-): Promise<MealPlan[]> {
+export async function getRecentMealPlans(userId: string, days: number): Promise<MealPlan[]> {
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const { data, error } = await supabase
-      .from("meal_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("date", startDate.toISOString().split("T")[0])
-      .order("date", { ascending: false });
+      .from('meal_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row) => toMealPlan(row as MealPlanRow));
   } catch (e) {
-    console.error("[DB] getRecentMealPlans error:", e);
+    console.error('[DB] getRecentMealPlans error:', e);
     return [];
   }
 }
 
-export async function upsertMealPlan(
-  userId: string,
-  plan: MealPlan,
-): Promise<MealPlan | null> {
+export async function upsertMealPlan(userId: string, plan: MealPlan): Promise<MealPlan | null> {
   try {
     const { data, error } = await supabase
-      .from("meal_plans")
+      .from('meal_plans')
       .upsert(
         {
           id: plan.id,
@@ -509,40 +478,31 @@ export async function upsertMealPlan(
           total_fat: plan.totalFat,
           created_at: plan.createdAt,
         },
-        { onConflict: "user_id,date" },
+        { onConflict: 'user_id,date' },
       )
       .select()
       .single();
     if (error) throw error;
     return data ? toMealPlan(data as MealPlanRow) : null;
   } catch (e) {
-    console.error("[DB] upsertMealPlan error:", e);
+    console.error('[DB] upsertMealPlan error:', e);
     return null;
   }
 }
 
-export async function updateMealFeedback(
-  mealPlanId: string,
-  meals: Meal[],
-): Promise<void> {
+export async function updateMealFeedback(mealPlanId: string, meals: Meal[]): Promise<void> {
   try {
-    const { error } = await supabase
-      .from("meal_plans")
-      .update({ meals })
-      .eq("id", mealPlanId);
+    const { error } = await supabase.from('meal_plans').update({ meals }).eq('id', mealPlanId);
     if (error) throw error;
   } catch (e) {
-    console.error("[DB] updateMealFeedback error:", e);
+    console.error('[DB] updateMealFeedback error:', e);
   }
 }
 
-export async function saveFoodSnap(
-  userId: string,
-  snap: FoodSnap,
-): Promise<FoodSnap | null> {
+export async function saveFoodSnap(userId: string, snap: FoodSnap): Promise<FoodSnap | null> {
   try {
     const { data, error } = await supabase
-      .from("food_snaps")
+      .from('food_snaps')
       .insert({
         user_id: userId,
         meal_id: snap.mealId ?? null,
@@ -557,27 +517,24 @@ export async function saveFoodSnap(
     if (error) throw error;
     return data ? toFoodSnap(data as FoodSnapRow) : null;
   } catch (e) {
-    console.error("[DB] saveFoodSnap error:", e);
+    console.error('[DB] saveFoodSnap error:', e);
     return null;
   }
 }
 
-export async function getTodayFoodSnaps(
-  userId: string,
-  date: string,
-): Promise<FoodSnap[]> {
+export async function getTodayFoodSnaps(userId: string, date: string): Promise<FoodSnap[]> {
   try {
     const { data, error } = await supabase
-      .from("food_snaps")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("created_at", `${date}T00:00:00`)
-      .lt("created_at", `${date}T23:59:59.999`)
-      .order("created_at", { ascending: true });
+      .from('food_snaps')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', `${date}T00:00:00`)
+      .lt('created_at', `${date}T23:59:59.999`)
+      .order('created_at', { ascending: true });
     if (error) throw error;
     return (data ?? []).map((row) => toFoodSnap(row as FoodSnapRow));
   } catch (e) {
-    console.error("[DB] getTodayFoodSnaps error:", e);
+    console.error('[DB] getTodayFoodSnaps error:', e);
     return [];
   }
 }
@@ -586,32 +543,26 @@ export async function getTodayFoodSnaps(
 // Water
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function getTodayWaterLog(
-  userId: string,
-  date: string,
-): Promise<WaterLog | null> {
+export async function getTodayWaterLog(userId: string, date: string): Promise<WaterLog | null> {
   try {
     const { data, error } = await supabase
-      .from("water_logs")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", date)
+      .from('water_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', date)
       .single();
-    if (error && error.code !== "PGRST116") throw error;
+    if (error && error.code !== 'PGRST116') throw error;
     return data ? toWaterLog(data as WaterLogRow) : null;
   } catch (e) {
-    console.error("[DB] getTodayWaterLog error:", e);
+    console.error('[DB] getTodayWaterLog error:', e);
     return null;
   }
 }
 
-export async function upsertWaterLog(
-  userId: string,
-  waterLog: WaterLog,
-): Promise<WaterLog | null> {
+export async function upsertWaterLog(userId: string, waterLog: WaterLog): Promise<WaterLog | null> {
   try {
     const { data, error } = await supabase
-      .from("water_logs")
+      .from('water_logs')
       .upsert(
         {
           id: waterLog.id,
@@ -621,14 +572,14 @@ export async function upsertWaterLog(
           consumed_ml: waterLog.consumed,
           entries: waterLog.entries,
         },
-        { onConflict: "user_id,date" },
+        { onConflict: 'user_id,date' },
       )
       .select()
       .single();
     if (error) throw error;
     return data ? toWaterLog(data as WaterLogRow) : null;
   } catch (e) {
-    console.error("[DB] upsertWaterLog error:", e);
+    console.error('[DB] upsertWaterLog error:', e);
     return null;
   }
 }
@@ -640,30 +591,25 @@ export async function upsertWaterLog(
 export async function getRecentExerciseHistory(
   userId: string,
   days: number = 14,
-): Promise<
-  Map<string, { weight?: number; reps?: number; sets?: number; date: string }>
-> {
-  const result = new Map<
-    string,
-    { weight?: number; reps?: number; sets?: number; date: string }
-  >();
+): Promise<Map<string, { weight?: number; reps?: number; sets?: number; date: string }>> {
+  const result = new Map<string, { weight?: number; reps?: number; sets?: number; date: string }>();
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("date, exercises")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .gte("date", startDate.toISOString().split("T")[0])
-      .order("date", { ascending: false });
+      .from('workout_plans')
+      .select('date, exercises')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false });
     if (error) throw error;
     for (const row of data ?? []) {
       const exercises = Array.isArray(row.exercises) ? row.exercises : [];
       for (const ex of exercises) {
         const fb = (ex as Record<string, unknown>).feedback as string;
         if (
-          (fb === "completed" || fb === "too-easy") &&
+          (fb === 'completed' || fb === 'too-easy') &&
           !result.has((ex as Record<string, unknown>).name as string)
         ) {
           const e = ex as Record<string, unknown>;
@@ -677,7 +623,7 @@ export async function getRecentExerciseHistory(
       }
     }
   } catch (e) {
-    console.error("[DB] getRecentExerciseHistory error:", e);
+    console.error('[DB] getRecentExerciseHistory error:', e);
   }
   return result;
 }
@@ -695,11 +641,11 @@ export async function getMuscleGroupFrequency(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("exercises")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .gte("date", startDate.toISOString().split("T")[0]);
+      .from('workout_plans')
+      .select('exercises')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .gte('date', startDate.toISOString().split('T')[0]);
     if (error) throw error;
     for (const row of data ?? []) {
       const exercises = Array.isArray(row.exercises) ? row.exercises : [];
@@ -711,7 +657,7 @@ export async function getMuscleGroupFrequency(
       }
     }
   } catch (e) {
-    console.error("[DB] getMuscleGroupFrequency error:", e);
+    console.error('[DB] getMuscleGroupFrequency error:', e);
   }
   return result;
 }
@@ -728,20 +674,20 @@ export async function getRecentSessionRPE(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("date, session_rpe")
-      .eq("user_id", userId)
-      .eq("status", "completed")
-      .not("session_rpe", "is", null)
-      .gte("date", startDate.toISOString().split("T")[0])
-      .order("date", { ascending: false });
+      .from('workout_plans')
+      .select('date, session_rpe')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .not('session_rpe', 'is', null)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row) => ({
       date: row.date as string,
       rpe: row.session_rpe as number,
     }));
   } catch (e) {
-    console.error("[DB] getRecentSessionRPE error:", e);
+    console.error('[DB] getRecentSessionRPE error:', e);
     return [];
   }
 }
@@ -761,15 +707,13 @@ export interface PersonalRecord {
  * Fetch all personal records for the user.
  * Returns Map<exerciseName, {weightKg, reps, date}>.
  */
-export async function getPersonalRecords(
-  userId: string,
-): Promise<Map<string, PersonalRecord>> {
+export async function getPersonalRecords(userId: string): Promise<Map<string, PersonalRecord>> {
   const result = new Map<string, PersonalRecord>();
   try {
     const { data, error } = await supabase
-      .from("personal_records")
-      .select("exercise_name, weight_kg, reps, date")
-      .eq("user_id", userId);
+      .from('personal_records')
+      .select('exercise_name, weight_kg, reps, date')
+      .eq('user_id', userId);
     if (error) throw error;
     for (const row of data ?? []) {
       result.set(row.exercise_name as string, {
@@ -780,7 +724,7 @@ export async function getPersonalRecords(
       });
     }
   } catch (e) {
-    console.error("[DB] getPersonalRecords error:", e);
+    console.error('[DB] getPersonalRecords error:', e);
   }
   return result;
 }
@@ -796,7 +740,7 @@ export async function upsertPersonalRecord(
   date: string,
 ): Promise<void> {
   try {
-    const { error } = await supabase.from("personal_records").upsert(
+    const { error } = await supabase.from('personal_records').upsert(
       {
         user_id: userId,
         exercise_name: exerciseName,
@@ -804,11 +748,11 @@ export async function upsertPersonalRecord(
         reps,
         date,
       },
-      { onConflict: "user_id,exercise_name" },
+      { onConflict: 'user_id,exercise_name' },
     );
     if (error) throw error;
   } catch (e) {
-    console.error("[DB] upsertPersonalRecord error:", e);
+    console.error('[DB] upsertPersonalRecord error:', e);
   }
 }
 
@@ -822,16 +766,16 @@ export async function getWorkoutHistory(
 ): Promise<WorkoutPlan[]> {
   try {
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("*")
-      .eq("user_id", userId)
-      .in("status", ["completed", "skipped"])
-      .order("date", { ascending: false })
+      .from('workout_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .in('status', ['completed', 'skipped'])
+      .order('date', { ascending: false })
       .range(offset, offset + limit - 1);
     if (error) throw error;
     return (data ?? []).map((row) => toWorkout(row as WorkoutRow));
   } catch (e) {
-    console.error("[DB] getWorkoutHistory error:", e);
+    console.error('[DB] getWorkoutHistory error:', e);
     return [];
   }
 }
@@ -848,16 +792,16 @@ export async function getRecentWorkoutDates(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const { data, error } = await supabase
-      .from("workout_plans")
-      .select("date, status")
-      .eq("user_id", userId)
-      .gte("date", startDate.toISOString().split("T")[0])
-      .in("status", ["completed", "in-progress"])
-      .order("date", { ascending: false });
+      .from('workout_plans')
+      .select('date, status')
+      .eq('user_id', userId)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .in('status', ['completed', 'in-progress'])
+      .order('date', { ascending: false });
     if (error) throw error;
     return (data ?? []) as { date: string; status: string }[];
   } catch (e) {
-    console.error("[DB] getRecentWorkoutDates error:", e);
+    console.error('[DB] getRecentWorkoutDates error:', e);
     return [];
   }
 }
@@ -866,25 +810,14 @@ export async function getRecentWorkoutDates(
  * Delete today's workout and meal plans so they can be regenerated.
  * Water log is preserved since users may have already logged water.
  */
-export async function deleteTodayPlans(
-  userId: string,
-  date: string,
-): Promise<void> {
+export async function deleteTodayPlans(userId: string, date: string): Promise<void> {
   try {
     await Promise.all([
-      supabase
-        .from("workout_plans")
-        .delete()
-        .eq("user_id", userId)
-        .eq("date", date),
-      supabase
-        .from("meal_plans")
-        .delete()
-        .eq("user_id", userId)
-        .eq("date", date),
+      supabase.from('workout_plans').delete().eq('user_id', userId).eq('date', date),
+      supabase.from('meal_plans').delete().eq('user_id', userId).eq('date', date),
     ]);
   } catch (e) {
-    console.error("[DB] deleteTodayPlans error:", e);
+    console.error('[DB] deleteTodayPlans error:', e);
   }
 }
 
@@ -892,21 +825,18 @@ export async function deleteTodayPlans(
 // Chat
 // ═════════════════════════════════════════════════════════════════════════════
 
-export async function getChatMessages(
-  userId: string,
-  limit = 50,
-): Promise<ChatMessage[]> {
+export async function getChatMessages(userId: string, limit = 50): Promise<ChatMessage[]> {
   try {
     const { data, error } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true })
+      .from('chat_messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
       .limit(limit);
     if (error) throw error;
     return (data ?? []).map((row) => toChatMessage(row as ChatMessageRow));
   } catch (e) {
-    console.error("[DB] getChatMessages error:", e);
+    console.error('[DB] getChatMessages error:', e);
     return [];
   }
 }
@@ -917,7 +847,7 @@ export async function saveChatMessage(
 ): Promise<ChatMessage | null> {
   try {
     const { data, error } = await supabase
-      .from("chat_messages")
+      .from('chat_messages')
       .insert({
         user_id: userId,
         role: message.role,
@@ -931,7 +861,7 @@ export async function saveChatMessage(
     if (error) throw error;
     return data ? toChatMessage(data as ChatMessageRow) : null;
   } catch (e) {
-    console.error("[DB] saveChatMessage error:", e);
+    console.error('[DB] saveChatMessage error:', e);
     return null;
   }
 }
@@ -943,14 +873,14 @@ export async function saveChatMessage(
 export async function getWeightEntries(userId: string): Promise<WeightEntry[]> {
   try {
     const { data, error } = await supabase
-      .from("weight_entries")
-      .select("*")
-      .eq("user_id", userId)
-      .order("date", { ascending: true });
+      .from('weight_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: true });
     if (error) throw error;
     return (data ?? []).map((row) => toWeightEntry(row as WeightEntryRow));
   } catch (e) {
-    console.error("[DB] getWeightEntries error:", e);
+    console.error('[DB] getWeightEntries error:', e);
     return [];
   }
 }
@@ -962,33 +892,29 @@ export async function saveWeightEntry(
 ): Promise<WeightEntry | null> {
   try {
     const { data, error } = await supabase
-      .from("weight_entries")
+      .from('weight_entries')
       .insert({ user_id: userId, weight_kg: weight, date })
       .select()
       .single();
     if (error) throw error;
     return data ? toWeightEntry(data as WeightEntryRow) : null;
   } catch (e) {
-    console.error("[DB] saveWeightEntry error:", e);
+    console.error('[DB] saveWeightEntry error:', e);
     return null;
   }
 }
 
-export async function getMeasurements(
-  userId: string,
-): Promise<BodyMeasurement[]> {
+export async function getMeasurements(userId: string): Promise<BodyMeasurement[]> {
   try {
     const { data, error } = await supabase
-      .from("body_measurements")
-      .select("*")
-      .eq("user_id", userId)
-      .order("date", { ascending: true });
+      .from('body_measurements')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((row) =>
-      toBodyMeasurement(row as BodyMeasurementRow),
-    );
+    return (data ?? []).map((row) => toBodyMeasurement(row as BodyMeasurementRow));
   } catch (e) {
-    console.error("[DB] getMeasurements error:", e);
+    console.error('[DB] getMeasurements error:', e);
     return [];
   }
 }
@@ -999,7 +925,7 @@ export async function saveMeasurement(
 ): Promise<BodyMeasurement | null> {
   try {
     const { data, error } = await supabase
-      .from("body_measurements")
+      .from('body_measurements')
       .insert({
         user_id: userId,
         date: m.date,
@@ -1013,24 +939,22 @@ export async function saveMeasurement(
     if (error) throw error;
     return data ? toBodyMeasurement(data as BodyMeasurementRow) : null;
   } catch (e) {
-    console.error("[DB] saveMeasurement error:", e);
+    console.error('[DB] saveMeasurement error:', e);
     return null;
   }
 }
 
-export async function getWeeklySummaries(
-  userId: string,
-): Promise<WeeklySummary[]> {
+export async function getWeeklySummaries(userId: string): Promise<WeeklySummary[]> {
   try {
     const { data, error } = await supabase
-      .from("weekly_summaries")
-      .select("*")
-      .eq("user_id", userId)
-      .order("week_start_date", { ascending: false });
+      .from('weekly_summaries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('week_start_date', { ascending: false });
     if (error) throw error;
     return (data ?? []).map((row) => toWeeklySummary(row as WeeklySummaryRow));
   } catch (e) {
-    console.error("[DB] getWeeklySummaries error:", e);
+    console.error('[DB] getWeeklySummaries error:', e);
     return [];
   }
 }
@@ -1043,7 +967,7 @@ export async function saveWeeklySummary(
 ): Promise<WeeklySummary | null> {
   try {
     const { data, error } = await supabase
-      .from("weekly_summaries")
+      .from('weekly_summaries')
       .upsert(
         {
           user_id: userId,
@@ -1051,14 +975,14 @@ export async function saveWeeklySummary(
           summary_text: summaryText,
           insights,
         },
-        { onConflict: "user_id,week_start_date" },
+        { onConflict: 'user_id,week_start_date' },
       )
       .select()
       .single();
     if (error) throw error;
     return data ? toWeeklySummary(data as WeeklySummaryRow) : null;
   } catch (e) {
-    console.error("[DB] saveWeeklySummary error:", e);
+    console.error('[DB] saveWeeklySummary error:', e);
     return null;
   }
 }

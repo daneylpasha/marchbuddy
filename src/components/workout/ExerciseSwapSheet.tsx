@@ -1,5 +1,13 @@
 import React from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../theme';
 import type { SwapAlternative } from '../../services/aiService';
@@ -28,9 +36,7 @@ export default function ExerciseSwapSheet({
           <View style={styles.handle} />
 
           <Text style={styles.title}>Swap Exercise</Text>
-          <Text style={styles.subtitle}>
-            Replace {exerciseName} with an alternative
-          </Text>
+          <Text style={styles.subtitle}>Replace {exerciseName} with an alternative</Text>
 
           {loading ? (
             <View style={styles.loadingBox}>

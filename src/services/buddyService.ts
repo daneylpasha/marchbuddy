@@ -13,9 +13,9 @@ function sendBuddyRequestPush(targetUserId: string, senderId: string): void {
 
 export type BuddyStatus =
   | 'none'
-  | 'pending_sent'       // I sent a request, waiting on them
-  | 'pending_received'   // They sent a request, waiting on me
-  | 'accepted';          // We're buddies
+  | 'pending_sent' // I sent a request, waiting on them
+  | 'pending_received' // They sent a request, waiting on me
+  | 'accepted'; // We're buddies
 
 export interface BuddyRequest {
   id: string;
@@ -37,7 +37,9 @@ export function levelsCompatible(myLevel: number, theirLevel: number): boolean {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getBuddyStatus(targetUserId: string): Promise<BuddyStatus> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return 'none';
 
   const me = session.user.id;
@@ -59,7 +61,9 @@ export async function getBuddyStatus(targetUserId: string): Promise<BuddyStatus>
 }
 
 export async function getBuddies(): Promise<CommunityProfile[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const me = session.user.id;
@@ -87,7 +91,9 @@ export async function getBuddies(): Promise<CommunityProfile[]> {
 }
 
 export async function getPendingIncoming(): Promise<BuddyRequest[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const { data: rows, error } = await supabase
@@ -121,14 +127,17 @@ export async function getPendingIncoming(): Promise<BuddyRequest[]> {
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
 export async function sendBuddyRequest(targetUserId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const { error } = await supabase
     .from('buddy_requests')
     .insert({ requester_id: session.user.id, addressee_id: targetUserId });
 
-  if (error && error.code !== '23505') { // ignore duplicate
+  if (error && error.code !== '23505') {
+    // ignore duplicate
     console.warn('[buddy] sendBuddyRequest error:', error.message);
     return;
   }
@@ -138,7 +147,9 @@ export async function sendBuddyRequest(targetUserId: string): Promise<void> {
 }
 
 export async function cancelBuddyRequest(targetUserId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const { error } = await supabase

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import { colors, spacing, fonts } from '../../theme';
+import { colors, spacing } from '../../theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -19,11 +19,7 @@ export default function Card({ children, onPress, style }: CardProps) {
       </Pressable>
     );
   }
-  return (
-    <Pressable style={[styles.card, style]}>
-      {children}
-    </Pressable>
-  );
+  return <Pressable style={[styles.card, style]}>{children}</Pressable>;
 }
 
 const styles = StyleSheet.create({

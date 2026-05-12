@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useCoachSetupStore } from '../../store/coachSetupStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { ProBanner } from '../../components/upgrade/ProBanner';
 import { useFeedbackStore } from '../../store/feedbackStore';
 import { useProgressStore } from '../../store/progressStore';
 import { useAuthStore } from '../../store/authStore';
@@ -26,7 +28,6 @@ import DataFilterChips from '../../components/progress/DataFilterChips';
 import FilteredStatsCard from '../../components/progress/FilteredStatsCard';
 import type { FilterPeriod } from '../../components/progress/DataFilterChips';
 import { RatingNudgeCard } from './components/RatingNudgeCard';
-import { MILESTONE_CONFIGS } from '../../constants/milestones';
 
 // ─── Ring constants ───────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ const BAR_WIDTH = 28;
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function getLastSevenDays(): Array<{ date: string; label: string; isToday: boolean }> {
+function getLastSevenDays(): { date: string; label: string; isToday: boolean }[] {
   const result = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
@@ -160,7 +161,7 @@ function getSessionBadge(
   session: any,
   sessionHistory: any[],
   longestRunMinutes: number,
-  previousLevel: number,
+  _previousLevel: number,
 ): SessionBadge | null {
   // Check if longest duration session
   if (session.durationMinutes === longestRunMinutes && longestRunMinutes > 0) {
@@ -168,7 +169,7 @@ function getSessionBadge(
   }
 
   // Check if level-up session (heuristic: next session is higher level)
-  const sessionIndex = sessionHistory.findIndex(s => s.id === session.id);
+  const sessionIndex = sessionHistory.findIndex((s) => s.id === session.id);
   if (sessionIndex > 0) {
     const previousSession = sessionHistory[sessionIndex - 1];
     if (session.planLevel > previousSession.planLevel) {
@@ -182,7 +183,7 @@ function getSessionBadge(
     const previousSession = sessionHistory[sessionIndex - 1];
     const previousDate = new Date(previousSession.date);
     const daysDiff = Math.floor(
-      (sessionDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24)
+      (sessionDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24),
     );
     if (daysDiff >= 3) {
       return { type: 'comeback', label: 'Comeback', emoji: '🔙' };
@@ -195,7 +196,8 @@ function getSessionBadge(
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<ProgressStackParamList, 'ProgressMain'>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<ProgressStackParamList, 'ProgressMain'>>();
   const { progress, sessionHistory } = useRunProgressStore();
   const { setupData, guestId } = useCoachSetupStore();
   const shouldShowRatingNudge = useFeedbackStore((s) => s.shouldShowRatingNudge);
@@ -227,7 +229,7 @@ export default function ProgressScreen() {
         easing: Easing.out(Easing.cubic),
       }),
     ]).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Generate the weekly AI summary on first visit each week — fire and forget.
@@ -239,7 +241,7 @@ export default function ProgressScreen() {
     if (!alreadyGenerated) {
       generateAndSaveWeeklySummary(userId).catch(() => {});
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Animate streak counter
@@ -287,7 +289,7 @@ export default function ProgressScreen() {
     acc[s.date] = (acc[s.date] || 0) + s.durationMinutes;
     return acc;
   }, {});
-  const maxMinutes = Math.max(20, ...weekDays.map(d => sessionsByDate[d.date] || 0));
+  const maxMinutes = Math.max(20, ...weekDays.map((d) => sessionsByDate[d.date] || 0));
 
   // Recent sessions (most recent first)
   const recentSessions = [...(sessionHistory ?? [])].reverse().slice(0, 15);
@@ -295,17 +297,27 @@ export default function ProgressScreen() {
   // Upcoming milestone
   const upcomingMilestone = getClosestUpcomingMilestone(totalSessions, totalKm, streak);
 
+  const { tier, openPaywall } = useSubscriptionStore();
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-
           {/* ── Header ──────────────────────────────────────────────────── */}
           <View style={styles.header}>
-            <Text style={styles.headerLabel}>YOUR JOURNEY</Text>
+            <View style={styles.headerTopRow}>
+              <Text style={styles.headerLabel}>YOUR JOURNEY</Text>
+              {tier === 'free' && (
+                <TouchableOpacity
+                  style={styles.freeChip}
+                  onPress={() => openPaywall('header_chip_progress')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="flash" size={11} color={colors.primary} />
+                  <Text style={styles.freeChipText}>Free</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={styles.headerTitle}>{userName || 'Progress'}</Text>
           </View>
 
@@ -320,7 +332,8 @@ export default function ProgressScreen() {
               <Text style={styles.welcomeEmoji}>👟</Text>
               <Text style={styles.welcomeTitle}>Your Journey Starts Here</Text>
               <Text style={styles.welcomeSubtitle}>
-                Complete your first session and this page will come alive with streaks, levels, milestones, and stats.
+                Complete your first session and this page will come alive with streaks, levels,
+                milestones, and stats.
               </Text>
               <View style={styles.welcomeHintRow}>
                 <View style={styles.welcomeHint}>
@@ -458,7 +471,8 @@ export default function ProgressScreen() {
             <View style={styles.barChart}>
               {weekDays.map(({ date, label, isToday }) => {
                 const minutes = sessionsByDate[date] || 0;
-                const barH = minutes > 0 ? Math.max(6, Math.round((minutes / maxMinutes) * BAR_HEIGHT)) : 0;
+                const barH =
+                  minutes > 0 ? Math.max(6, Math.round((minutes / maxMinutes) * BAR_HEIGHT)) : 0;
                 const hasActivity = minutes > 0;
                 return (
                   <View key={date} style={styles.barColumn}>
@@ -478,9 +492,7 @@ export default function ProgressScreen() {
                       )}
                     </View>
                     <Text style={[styles.barLabel, isToday && styles.barLabelToday]}>{label}</Text>
-                    {hasActivity && (
-                      <Text style={styles.barMinutes}>{Math.round(minutes)}m</Text>
-                    )}
+                    {hasActivity && <Text style={styles.barMinutes}>{Math.round(minutes)}m</Text>}
                   </View>
                 );
               })}
@@ -500,11 +512,14 @@ export default function ProgressScreen() {
                 <Text style={styles.milestoneTeaserText}>
                   {upcomingMilestone.type === 'distance'
                     ? upcomingMilestone.remaining.toFixed(2)
-                    : upcomingMilestone.remaining} more {
-                    upcomingMilestone.type === 'sessions' ? 'sessions' :
-                    upcomingMilestone.type === 'distance' ? 'km' :
-                    'days'
-                  } to reach
+                    : upcomingMilestone.remaining}{' '}
+                  more{' '}
+                  {upcomingMilestone.type === 'sessions'
+                    ? 'sessions'
+                    : upcomingMilestone.type === 'distance'
+                      ? 'km'
+                      : 'days'}{' '}
+                  to reach
                 </Text>
                 <View style={styles.milestoneTeaserBadge}>
                   <Text style={styles.milestoneTeaserEmoji}>
@@ -514,8 +529,11 @@ export default function ProgressScreen() {
                   </Text>
                   <Text style={styles.milestoneTeaserLabel}>
                     {upcomingMilestone.targetValue}
-                    {upcomingMilestone.type === 'distance' ? 'km' :
-                     upcomingMilestone.type === 'streak' ? '-day' : ''}{' '}
+                    {upcomingMilestone.type === 'distance'
+                      ? 'km'
+                      : upcomingMilestone.type === 'streak'
+                        ? '-day'
+                        : ''}{' '}
                     {upcomingMilestone.type === 'sessions' && 'Sessions'}
                     {upcomingMilestone.type === 'distance' && 'Total'}
                     {upcomingMilestone.type === 'streak' && 'Streak'}
@@ -538,7 +556,12 @@ export default function ProgressScreen() {
               </View>
             ) : (
               recentSessions.map((session, i) => {
-                const badge = getSessionBadge(session, recentSessions, longestRunMinutes, currentLevel);
+                const badge = getSessionBadge(
+                  session,
+                  recentSessions,
+                  longestRunMinutes,
+                  currentLevel,
+                );
                 return (
                   <TouchableOpacity
                     key={`${session.id}-${i}`}
@@ -550,12 +573,16 @@ export default function ProgressScreen() {
                       <Text style={styles.historyLevelText}>L{session.planLevel}</Text>
                     </View>
                     <View style={styles.historyInfo}>
-                      <Text style={styles.historyTitle} numberOfLines={1}>{session.planTitle}</Text>
+                      <Text style={styles.historyTitle} numberOfLines={1}>
+                        {session.planTitle}
+                      </Text>
                       <Text style={styles.historyDate}>{formatDate(session.date)}</Text>
                     </View>
                     <View style={styles.historyRight}>
                       <View style={styles.historyDurationBadgeRow}>
-                        <Text style={styles.historyDuration}>{formatDuration(session.durationMinutes)}</Text>
+                        <Text style={styles.historyDuration}>
+                          {formatDuration(session.durationMinutes)}
+                        </Text>
                         {badge && (
                           <View style={styles.sessionBadge}>
                             <Text style={styles.sessionBadgeEmoji}>{badge.emoji}</Text>
@@ -564,7 +591,9 @@ export default function ProgressScreen() {
                         )}
                       </View>
                       {session.distanceKm > 0 && (
-                        <Text style={styles.historyDistance}>{session.distanceKm.toFixed(2)} km</Text>
+                        <Text style={styles.historyDistance}>
+                          {session.distanceKm.toFixed(2)} km
+                        </Text>
                       )}
                     </View>
                     <Ionicons
@@ -579,6 +608,12 @@ export default function ProgressScreen() {
             )}
           </View>
 
+          {/* ── Pro upgrade banner — shown to free users ── */}
+          {tier === 'free' && (
+            <View style={styles.proBannerWrap}>
+              <ProBanner variant="general" onPress={() => openPaywall('progress_general')} />
+            </View>
+          )}
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -602,13 +637,35 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 4,
   },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   headerLabel: {
     fontFamily: fonts.bold,
     fontSize: 11,
     letterSpacing: 1.4,
     color: colors.primary,
     textTransform: 'uppercase',
-    marginBottom: 4,
+  },
+  freeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16,185,129,0.14)',
+    borderColor: 'rgba(16,185,129,0.3)',
+    borderWidth: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  freeChipText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: colors.primary,
+    letterSpacing: 0.6,
   },
   headerTitle: {
     fontFamily: fonts.semiBold,
@@ -1050,5 +1107,9 @@ const styles = StyleSheet.create({
     maxWidth: 240,
     lineHeight: 21,
     letterSpacing: 0.2,
+  },
+  proBannerWrap: {
+    marginTop: 8,
+    marginBottom: 4,
   },
 });

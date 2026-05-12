@@ -10,7 +10,11 @@ interface ChatHeaderProps {
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ onBack }) => {
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={onBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={onBack}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
         <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
       </TouchableOpacity>
 

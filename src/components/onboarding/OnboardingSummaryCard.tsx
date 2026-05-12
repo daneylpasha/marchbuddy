@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, fonts, spacing, typography } from '../../theme';
 import type { OnboardingData } from '../../services/onboardingService';
 import { SUMMARY_FIELDS, formatDisplayValue } from '../../services/onboardingService';
@@ -134,10 +127,7 @@ export default function OnboardingSummaryCard({
                       returnKeyType="done"
                       onSubmitEditing={() => handleSaveEdit(field.key)}
                     />
-                    <Pressable
-                      style={styles.saveButton}
-                      onPress={() => handleSaveEdit(field.key)}
-                    >
+                    <Pressable style={styles.saveButton} onPress={() => handleSaveEdit(field.key)}>
                       <Text style={styles.saveButtonText}>Save</Text>
                     </Pressable>
                     <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>

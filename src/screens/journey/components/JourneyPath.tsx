@@ -38,10 +38,12 @@ export const JourneyPath: React.FC<JourneyPathProps> = ({
           <View key={levelDef.level} style={styles.nodeWrapper}>
             {/* Connecting line above (skip for the very first node = level 16) */}
             {index > 0 && (
-              <View style={[
-                styles.connectingLine,
-                lineAboveActive ? styles.lineActive : styles.lineInactive,
-              ]} />
+              <View
+                style={[
+                  styles.connectingLine,
+                  lineAboveActive ? styles.lineActive : styles.lineInactive,
+                ]}
+              />
             )}
 
             <LevelNode
@@ -55,9 +57,7 @@ export const JourneyPath: React.FC<JourneyPathProps> = ({
             />
 
             {/* Line below the last node (level 1) connecting to Start point */}
-            {isLastNode && (
-              <View style={[styles.connectingLine, styles.lineActive]} />
-            )}
+            {isLastNode && <View style={[styles.connectingLine, styles.lineActive]} />}
           </View>
         );
       })}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, StyleSheet, Text } from 'react-native';
 import { colors, fonts } from '../../theme';
 
 interface StreakMilestoneModalProps {
@@ -9,13 +9,41 @@ interface StreakMilestoneModalProps {
 }
 
 const MILESTONES: Record<number, { emoji: string; title: string; message: string }> = {
-  7: { emoji: '\uD83C\uDF1F', title: 'First Week!', message: '7 days consistent. You\'re building a real habit!' },
-  14: { emoji: '\uD83D\uDCAA', title: 'Two Weeks Strong!', message: '14 days in a row. Most people quit by now — not you.' },
-  21: { emoji: '\uD83C\uDFC6', title: 'Three Weeks!', message: '21 days — the science says this is when habits stick.' },
-  30: { emoji: '\uD83D\uDD25', title: 'One Month!', message: '30 days of consistency. You\'re unstoppable.' },
-  50: { emoji: '\uD83D\uDE80', title: '50 Days!', message: 'Half a hundred. You\'ve transformed your routine.' },
-  75: { emoji: '\uD83D\uDC8E', title: '75 Days!', message: 'This is discipline. This is who you are now.' },
-  100: { emoji: '\uD83C\uDF89', title: '100 Days!', message: 'Triple digits. You\'re in the top 1% of consistency.' },
+  7: {
+    emoji: '\uD83C\uDF1F',
+    title: 'First Week!',
+    message: "7 days consistent. You're building a real habit!",
+  },
+  14: {
+    emoji: '\uD83D\uDCAA',
+    title: 'Two Weeks Strong!',
+    message: '14 days in a row. Most people quit by now — not you.',
+  },
+  21: {
+    emoji: '\uD83C\uDFC6',
+    title: 'Three Weeks!',
+    message: '21 days — the science says this is when habits stick.',
+  },
+  30: {
+    emoji: '\uD83D\uDD25',
+    title: 'One Month!',
+    message: "30 days of consistency. You're unstoppable.",
+  },
+  50: {
+    emoji: '\uD83D\uDE80',
+    title: '50 Days!',
+    message: "Half a hundred. You've transformed your routine.",
+  },
+  75: {
+    emoji: '\uD83D\uDC8E',
+    title: '75 Days!',
+    message: 'This is discipline. This is who you are now.',
+  },
+  100: {
+    emoji: '\uD83C\uDF89',
+    title: '100 Days!',
+    message: "Triple digits. You're in the top 1% of consistency.",
+  },
 };
 
 function getMilestone(days: number) {
@@ -26,7 +54,11 @@ export function isMilestoneDay(days: number): boolean {
   return days in MILESTONES;
 }
 
-export default function StreakMilestoneModal({ visible, streakDays, onDismiss }: StreakMilestoneModalProps) {
+export default function StreakMilestoneModal({
+  visible,
+  streakDays,
+  onDismiss,
+}: StreakMilestoneModalProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const milestone = getMilestone(streakDays);
 

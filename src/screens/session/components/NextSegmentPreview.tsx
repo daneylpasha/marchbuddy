@@ -43,9 +43,7 @@ export const NextSegmentPreview: React.FC<NextSegmentPreviewProps> = ({
             <Text style={styles.segmentType} numberOfLines={1}>
               {getSegmentTypeName(segment.type)}
             </Text>
-            <Text style={styles.duration}>
-              {formatDuration(segment.durationSeconds)}
-            </Text>
+            <Text style={styles.duration}>{formatDuration(segment.durationSeconds)}</Text>
           </View>
         </>
       ) : (
@@ -106,7 +104,7 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   barWalk: { backgroundColor: colors.textTertiary },
-  barRun:  { backgroundColor: colors.primary },
+  barRun: { backgroundColor: colors.primary },
   segmentType: {
     fontFamily: fonts.medium,
     fontSize: 16,

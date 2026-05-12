@@ -21,7 +21,7 @@ function sendSocialPush(
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ChallengeStatus = 'invited' | 'active' | 'completed' | 'declined' | 'expired';
-export type ChallengeMode   = 'cooperative' | 'competitive';
+export type ChallengeMode = 'cooperative' | 'competitive';
 
 export interface MemberProgress {
   userId: string;
@@ -69,7 +69,9 @@ export interface ChallengeWithScores extends Challenge {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getMyTeamId(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return null;
   const { data } = await supabase
     .from('team_members')
@@ -107,7 +109,9 @@ export async function getPendingInvites(): Promise<Challenge[]> {
 
   if (!rows?.length) return [];
 
-  const teamIds = Array.from(new Set(rows.flatMap((r) => [r.team_a_id as string, r.team_b_id as string])));
+  const teamIds = Array.from(
+    new Set(rows.flatMap((r) => [r.team_a_id as string, r.team_b_id as string])),
+  );
   const { data: teams } = await supabase.from('teams').select('id, name').in('id', teamIds);
   const nameMap = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
 
@@ -128,14 +132,18 @@ export async function getChallengeHistory(): Promise<Challenge[]> {
 
   if (!rows?.length) return [];
 
-  const teamIds = Array.from(new Set(rows.flatMap((r) => [r.team_a_id as string, r.team_b_id as string])));
+  const teamIds = Array.from(
+    new Set(rows.flatMap((r) => [r.team_a_id as string, r.team_b_id as string])),
+  );
   const { data: teams } = await supabase.from('teams').select('id, name').in('id', teamIds);
   const nameMap = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
 
   return rows.map((r) => toChallenge(r, teamId, nameMap));
 }
 
-export async function getChallengeWithScores(challengeId: string): Promise<ChallengeWithScores | null> {
+export async function getChallengeWithScores(
+  challengeId: string,
+): Promise<ChallengeWithScores | null> {
   const teamId = await getMyTeamId();
   if (!teamId) return null;
 
@@ -155,7 +163,9 @@ export async function sendChallenge(
   opponentTeamId: string,
   mode: ChallengeMode = 'competitive',
 ): Promise<Challenge> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) throw new Error('Not authenticated');
 
   const myTeamId = await getMyTeamId();
@@ -168,13 +178,15 @@ export async function sendChallenge(
     .in('status', ['invited', 'active'])
     .or(
       `and(team_a_id.eq.${myTeamId},team_b_id.eq.${opponentTeamId}),` +
-      `and(team_a_id.eq.${opponentTeamId},team_b_id.eq.${myTeamId})`,
+        `and(team_a_id.eq.${opponentTeamId},team_b_id.eq.${myTeamId})`,
     )
     .maybeSingle();
 
   if (existing) {
-    if (existing.status === 'active') throw new Error('There is already an active challenge between these teams.');
-    if (existing.status === 'invited') throw new Error('A challenge invite is already pending with this team.');
+    if (existing.status === 'active')
+      throw new Error('There is already an active challenge between these teams.');
+    if (existing.status === 'invited')
+      throw new Error('A challenge invite is already pending with this team.');
   }
 
   const { data: challenge, error } = await supabase
@@ -207,7 +219,9 @@ export async function sendChallenge(
 }
 
 export async function acceptChallenge(challengeId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const now = new Date();
   const endsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7-day window
 
@@ -268,7 +282,9 @@ export async function declineChallenge(challengeId: string): Promise<void> {
 export async function updateProgressAfterOutdoorSession(sessionData: {
   durationMinutes: number;
 }): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const teamId = await getMyTeamId();
@@ -294,8 +310,16 @@ export async function updateProgressAfterOutdoorSession(sessionData: {
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  const prev = existing ?? { sessions_completed: 0, total_minutes: 0, current_streak: 0, last_session_at: null };
-  const newStreak = computeNewStreak(prev.current_streak as number, prev.last_session_at as string | null);
+  const prev = existing ?? {
+    sessions_completed: 0,
+    total_minutes: 0,
+    current_streak: 0,
+    last_session_at: null,
+  };
+  const newStreak = computeNewStreak(
+    prev.current_streak as number,
+    prev.last_session_at as string | null,
+  );
 
   await supabase.from('challenge_progress').upsert({
     challenge_id: challenge.id,
@@ -362,7 +386,8 @@ export function computeScores(
 
 function aggregateTeam(members: MemberProgress[], expectedSessions: number) {
   const memberCount = members.length || 1;
-  const completionRate = members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCount);
+  const completionRate =
+    members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCount);
   const streakTotal = members.reduce((s, m) => s + m.currentStreak, 0);
   const volumeMinutes = members.reduce((s, m) => s + m.totalMinutes, 0);
   return { completionRate, streakTotal, volumeMinutes };
@@ -407,7 +432,9 @@ async function enrichChallenge(
     supabase.from('teams').select('id, name').in('id', [teamAId, teamBId]),
     supabase
       .from('challenge_progress')
-      .select('user_id, team_id, sessions_completed, total_minutes, current_streak, last_session_at')
+      .select(
+        'user_id, team_id, sessions_completed, total_minutes, current_streak, last_session_at',
+      )
       .eq('challenge_id', challengeId),
   ]);
 
@@ -435,9 +462,14 @@ async function enrichChallenge(
   const aMembers = (progressRows ?? []).filter((r) => r.team_id === teamAId).map(toMemberProgress);
   const bMembers = (progressRows ?? []).filter((r) => r.team_id === teamBId).map(toMemberProgress);
 
-  const durationDays = row.ends_at && row.starts_at
-    ? Math.round((new Date(row.ends_at as string).getTime() - new Date(row.starts_at as string).getTime()) / 86400000)
-    : 7;
+  const durationDays =
+    row.ends_at && row.starts_at
+      ? Math.round(
+          (new Date(row.ends_at as string).getTime() -
+            new Date(row.starts_at as string).getTime()) /
+            86400000,
+        )
+      : 7;
 
   const aScore = aggregateTeam(aMembers, durationDays);
   const bScore = aggregateTeam(bMembers, durationDays);
@@ -491,9 +523,7 @@ async function seedProgressRows(challengeId: string): Promise<void> {
 
 function computeNewStreak(prevStreak: number, lastSessionAt: string | null): number {
   if (!lastSessionAt) return 1;
-  const diffDays = Math.floor(
-    (Date.now() - new Date(lastSessionAt).getTime()) / 86400000,
-  );
+  const diffDays = Math.floor((Date.now() - new Date(lastSessionAt).getTime()) / 86400000);
   if (diffDays <= 1) return prevStreak + 1;
   return 1;
 }
@@ -511,5 +541,13 @@ function toProfile(row: Record<string, unknown>): CommunityProfile {
 }
 
 function placeholderProfile(id: string): CommunityProfile {
-  return { id, name: 'Runner', level: 1, currentStreak: 0, totalSessions: 0, totalDistanceKm: 0, winPoints: 0 };
+  return {
+    id,
+    name: 'Runner',
+    level: 1,
+    currentStreak: 0,
+    totalSessions: 0,
+    totalDistanceKm: 0,
+    winPoints: 0,
+  };
 }

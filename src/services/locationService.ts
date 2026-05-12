@@ -76,8 +76,8 @@ class LocationService {
       this.subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 3000,    // Every 3 seconds
-          distanceInterval: 5,   // Or every 5 meters
+          timeInterval: 3000, // Every 3 seconds
+          distanceInterval: 5, // Or every 5 meters
         },
         (location) => {
           onLocation({

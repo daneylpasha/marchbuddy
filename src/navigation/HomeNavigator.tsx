@@ -18,11 +18,7 @@ export default function HomeNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
-      <Stack.Screen
-        name="Water"
-        component={WaterScreen}
-        options={{ presentation: 'modal' }}
-      />
+      <Stack.Screen name="Water" component={WaterScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
     </Stack.Navigator>

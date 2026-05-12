@@ -19,9 +19,7 @@ async function init(): Promise<boolean> {
     const available = await initialize();
     if (!available) return false;
     const granted = await requestPermission(PERMISSIONS);
-    return granted.some(
-      (p) => p.accessType === 'write' && p.recordType === 'ExerciseSession',
-    );
+    return granted.some((p) => p.accessType === 'write' && p.recordType === 'ExerciseSession');
   } catch {
     return false;
   }
@@ -44,9 +42,7 @@ const healthService: IHealthService = {
           startTime,
           endTime,
           exerciseType:
-            workout.workoutType === 'running'
-              ? ExerciseType.RUNNING
-              : ExerciseType.WALKING,
+            workout.workoutType === 'running' ? ExerciseType.RUNNING : ExerciseType.WALKING,
           title: 'MarchBuddy Session',
         },
       ]),

@@ -37,7 +37,7 @@ const TIPS: Tip[] = [
     icon: 'flame',
     title: 'Streaks & Rest Days',
     description:
-      "Run consistently to build streaks. Need a break? Declare a rest day — your streak stays safe.",
+      'Run consistently to build streaks. Need a break? Declare a rest day — your streak stays safe.',
     accent: colors.streak,
   },
   {
@@ -114,10 +114,7 @@ export function FeatureTips() {
           {TIPS.map((_, i) => (
             <View
               key={i}
-              style={[
-                styles.dot,
-                i === currentTip ? styles.dotActive : styles.dotInactive,
-              ]}
+              style={[styles.dot, i === currentTip ? styles.dotActive : styles.dotInactive]}
             />
           ))}
         </View>
@@ -128,12 +125,8 @@ export function FeatureTips() {
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
           <Pressable style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>
-              {isLast ? "Let's go!" : 'Next'}
-            </Text>
-            {!isLast && (
-              <Ionicons name="chevron-forward" size={16} color={colors.background} />
-            )}
+            <Text style={styles.nextButtonText}>{isLast ? "Let's go!" : 'Next'}</Text>
+            {!isLast && <Ionicons name="chevron-forward" size={16} color={colors.background} />}
           </Pressable>
         </View>
       </View>
@@ -159,7 +152,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   tipPage: {
-    width: SCREEN_WIDTH - (spacing.screenPadding * 2),
+    width: SCREEN_WIDTH - spacing.screenPadding * 2,
     alignItems: 'center',
     paddingHorizontal: CARD_PADDING,
     gap: 12,

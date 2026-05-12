@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fonts } from '../../theme';
@@ -39,7 +30,9 @@ export default function WaterScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Ionicons name="water-outline" size={48} color={colors.textMuted} />
-          <Text style={{ color: colors.textSecondary, fontSize: 16, marginTop: 12 }}>Loading water log...</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 16, marginTop: 12 }}>
+            Loading water log...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -90,12 +83,21 @@ export default function WaterScreen() {
             {/* ── Header ────────────────────────────────── */}
             <View style={styles.headerRow}>
               <BebasText>Water Tracking</BebasText>
-              <Pressable onPress={() => { setGoalInput(water.goal.toString()); setGoalModalVisible(true); }}>
+              <Pressable
+                onPress={() => {
+                  setGoalInput(water.goal.toString());
+                  setGoalModalVisible(true);
+                }}
+              >
                 <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
               </Pressable>
             </View>
             <Text style={styles.date}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+              })}
             </Text>
 
             {/* ── Water fill visual ─────────────────────── */}
@@ -222,7 +224,14 @@ const styles = StyleSheet.create({
 
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: {},
-  date: { color: colors.textSecondary, fontSize: 14, marginTop: 2, marginBottom: 20, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  date: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+    marginBottom: 20,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Fill card
   fillCard: {
@@ -253,16 +262,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fillValue: { color: colors.textPrimary, fontSize: 24, fontWeight: '700', marginTop: 4, fontFamily: fonts.bold, letterSpacing: 0.3 },
-  fillUnit: { color: colors.textSecondary, fontSize: 12, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  fillValue: {
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 4,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+  fillUnit: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   fillStats: { flex: 1, gap: 4 },
-  pctText: { color: colors.water, fontSize: 32, fontWeight: '700', fontFamily: fonts.bold, letterSpacing: 0.3 },
-  remainText: { color: colors.textSecondary, fontSize: 14, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  pctText: {
+    color: colors.water,
+    fontSize: 32,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+  remainText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   goalReached: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  goalReachedText: { color: colors.success, fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  goalReachedText: {
+    color: colors.success,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Quick add
-  sectionTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '600', marginBottom: 12, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   quickBtn: {
     flexDirection: 'row',
@@ -274,7 +319,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     minHeight: 48,
   },
-  quickBtnText: { color: colors.water, fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  quickBtnText: {
+    color: colors.water,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   quickBtnCustom: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -286,7 +337,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     minHeight: 48,
   },
-  quickBtnCustomText: { color: colors.primary, fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  quickBtnCustomText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Entry rows
   entryRow: {
@@ -299,12 +356,34 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 48,
   },
-  entryAmount: { color: colors.textPrimary, fontSize: 15, fontWeight: '600', flex: 1, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
-  entryTime: { color: colors.textTertiary, fontSize: 13, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  entryAmount: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
+  entryTime: {
+    color: colors.textTertiary,
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Empty
-  emptyCard: { backgroundColor: colors.surfaceElevated, borderRadius: 14, padding: 24, alignItems: 'center' },
-  emptyText: { color: colors.textSecondary, fontSize: 14, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  emptyCard: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 14,
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Modal
   modalOverlay: {
@@ -313,8 +392,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalCard: { backgroundColor: colors.surfaceElevated, borderRadius: 16, padding: 24, width: '80%' },
-  modalTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '600', marginBottom: 16, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  modalCard: {
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   modalInput: {
     backgroundColor: colors.background,
     borderRadius: 10,
@@ -326,7 +417,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     letterSpacing: 0.3,
   },
-  modalHint: { color: colors.textTertiary, fontSize: 12, textAlign: 'center', marginBottom: 16, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  modalHint: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   modalActions: { flexDirection: 'row', gap: 10 },
   modalCancelBtn: {
     flex: 1,
@@ -336,7 +434,13 @@ const styles = StyleSheet.create({
     borderColor: colors.dotInactive,
     alignItems: 'center',
   },
-  modalCancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  modalCancelText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   modalSaveBtn: {
     flex: 1,
     paddingVertical: 12,
@@ -344,7 +448,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
   },
-  modalSaveText: { color: '#fff', fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  modalSaveText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   bottomSpacer: { height: 20 },
 });

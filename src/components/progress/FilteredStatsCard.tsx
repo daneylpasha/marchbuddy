@@ -37,18 +37,13 @@ export default function FilteredStatsCard({ period }: FilteredStatsCardProps) {
 
   const stats = useMemo(() => {
     const { start, end } = getDateRangeForPeriod(period);
-    const filtered = (sessionHistory ?? []).filter(
-      (s) => s.date >= start && s.date < end,
-    );
+    const filtered = (sessionHistory ?? []).filter((s) => s.date >= start && s.date < end);
 
     const totalSessions = filtered.length;
     const totalMinutes = filtered.reduce((sum, s) => sum + s.durationMinutes, 0);
     const totalDistance = filtered.reduce((sum, s) => sum + s.distanceKm, 0);
     const avgDuration = totalSessions > 0 ? totalMinutes / totalSessions : 0;
-    const longestSession = filtered.reduce(
-      (max, s) => Math.max(max, s.durationMinutes),
-      0,
-    );
+    const longestSession = filtered.reduce((max, s) => Math.max(max, s.durationMinutes), 0);
 
     return { totalSessions, totalMinutes, totalDistance, avgDuration, longestSession };
   }, [sessionHistory, period]);

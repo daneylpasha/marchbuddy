@@ -10,7 +10,13 @@ interface ChatBubbleProps {
   onImagePress?: (uri: string) => void;
 }
 
-export default function ChatBubble({ role, content, imageUri, timestamp, onImagePress }: ChatBubbleProps) {
+export default function ChatBubble({
+  role,
+  content,
+  imageUri,
+  timestamp,
+  onImagePress,
+}: ChatBubbleProps) {
   const isUser = role === 'user';
   return (
     <View style={[styles.row, isUser && styles.rowUser]}>

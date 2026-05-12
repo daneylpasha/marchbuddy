@@ -31,10 +31,7 @@ export const SessionControls: React.FC<SessionControlsProps> = ({
 
       {/* End early — tap opens confirmation modal */}
       <Pressable
-        style={({ pressed }) => [
-          styles.endButton,
-          pressed && styles.endButtonPressed,
-        ]}
+        style={({ pressed }) => [styles.endButton, pressed && styles.endButtonPressed]}
         onPress={onEndEarly}
       >
         <Ionicons name="stop" size={16} color={colors.danger} />

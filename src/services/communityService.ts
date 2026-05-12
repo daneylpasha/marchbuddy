@@ -19,11 +19,12 @@ export interface CommunityProfile {
   lastSessionDate?: string | null;
 }
 
-
 // ─── Discoverability (user-controlled privacy) ───────────────────────────────
 
 export async function getDiscoverable(): Promise<boolean> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return true;
 
   const { data } = await supabase
@@ -36,7 +37,9 @@ export async function getDiscoverable(): Promise<boolean> {
 }
 
 export async function setDiscoverable(discoverable: boolean): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const { error } = await supabase
@@ -83,19 +86,24 @@ export async function syncCommunityProfile(
 // ─── Follow / Bench March ─────────────────────────────────────────────────────
 
 export async function followUser(targetUserId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const { error } = await supabase
     .from('follows')
     .insert({ follower_id: session.user.id, following_id: targetUserId });
 
-  if (error && error.code !== '23505') // ignore duplicate inserts
+  if (error && error.code !== '23505')
+    // ignore duplicate inserts
     console.warn('[community] followUser error:', error.message);
 }
 
 export async function unfollowUser(targetUserId: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return;
 
   const { error } = await supabase
@@ -108,7 +116,9 @@ export async function unfollowUser(targetUserId: string): Promise<void> {
 }
 
 export async function isFollowing(targetUserId: string): Promise<boolean> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return false;
 
   const { data } = await supabase
@@ -124,7 +134,9 @@ export async function isFollowing(targetUserId: string): Promise<boolean> {
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getFollowing(): Promise<CommunityProfile[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   // Step 1: get IDs of users this person follows
@@ -149,7 +161,9 @@ export async function getFollowing(): Promise<CommunityProfile[]> {
 }
 
 export async function searchUsers(query: string): Promise<CommunityProfile[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   const trimmed = query.trim();
@@ -169,7 +183,9 @@ export async function searchUsers(query: string): Promise<CommunityProfile[]> {
 }
 
 export async function getSuggestedRunners(): Promise<CommunityProfile[]> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session?.user) return [];
 
   // All visible runners (Level 2+), highest level first; streak/sessions tie-break.
@@ -190,7 +206,9 @@ export async function getSuggestedRunners(): Promise<CommunityProfile[]> {
 export async function getUserProfile(userId: string): Promise<CommunityProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, level, current_streak, total_sessions, total_distance_km, win_points, discoverable, longest_run_minutes, best_streak_days, total_duration_minutes, last_session_date')
+    .select(
+      'id, name, level, current_streak, total_sessions, total_distance_km, win_points, discoverable, longest_run_minutes, best_streak_days, total_duration_minutes, last_session_date',
+    )
     .eq('id', userId)
     .eq('is_visible', true)
     .maybeSingle();

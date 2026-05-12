@@ -13,27 +13,27 @@ function getMessage(missed: number): { emoji: string; title: string; body: strin
     return {
       emoji: '\u{1F44B}',
       title: 'Welcome back!',
-      body: 'One day off is no big deal. Let\'s pick up where you left off.',
+      body: "One day off is no big deal. Let's pick up where you left off.",
     };
   }
   if (missed <= 3) {
     return {
       emoji: '\u{1F4AA}',
-      title: 'Hey, you\'re back!',
-      body: 'Everyone needs a breather. Today\'s workout is adjusted for an easy return.',
+      title: "Hey, you're back!",
+      body: "Everyone needs a breather. Today's workout is adjusted for an easy return.",
     };
   }
   if (missed <= 6) {
     return {
       emoji: '\u{1F305}',
       title: 'Good to see you!',
-      body: 'I\'ve dialed down the intensity so you can ease back in comfortably.',
+      body: "I've dialed down the intensity so you can ease back in comfortably.",
     };
   }
   return {
     emoji: '\u{1F331}',
     title: 'Fresh start!',
-    body: 'No pressure at all. I\'ve set up a gentle workout to get you moving again.',
+    body: "No pressure at all. I've set up a gentle workout to get you moving again.",
   };
 }
 
@@ -42,7 +42,12 @@ export default function WelcomeBackCard({ missedDays, onDismiss }: WelcomeBackCa
 
   return (
     <View style={styles.card}>
-      <Pressable style={styles.dismissBtn} onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Dismiss">
+      <Pressable
+        style={styles.dismissBtn}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss"
+      >
         <Ionicons name="close" size={16} color={colors.textTertiary} />
       </Pressable>
       <View style={styles.content}>

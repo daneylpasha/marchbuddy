@@ -31,7 +31,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       if (isConnected) {
         const profile = await getProfile(userId);
         if (profile) {
-          console.log('Profile found. onboardingCompleted:', profile.onboardingCompleted, 'name:', profile.name);
+          console.log(
+            'Profile found. onboardingCompleted:',
+            profile.onboardingCompleted,
+            'name:',
+            profile.name,
+          );
           set({
             profile,
             onboardingCompleted: profile.onboardingCompleted,
@@ -89,7 +94,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
       peakFitnessLevel: '',
       currentActivityLevel: '',
       injuries: [],
-      dietaryPreferences: { type: 'non-veg' as const, allergies: [], dislikes: [], cuisineRegion: '' },
+      dietaryPreferences: {
+        type: 'non-veg' as const,
+        allergies: [],
+        dislikes: [],
+        cuisineRegion: '',
+      },
       goals: { primaryGoal: '', targetTimeline: '', targetWeight: 0 },
       onboardingCompleted: false,
       createdAt: new Date().toISOString(),
@@ -137,7 +147,10 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
             console.error('[profileStore] setOnboardingCompleted persist error:', e),
           );
         } else {
-          offlineQueue.enqueue('upsertProfile', [current.userId, { onboardingCompleted: completed }]);
+          offlineQueue.enqueue('upsertProfile', [
+            current.userId,
+            { onboardingCompleted: completed },
+          ]);
         }
       }
     }

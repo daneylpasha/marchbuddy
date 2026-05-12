@@ -188,11 +188,16 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       let calibration: { previousLevel: number; newLevel: number; reason: string } | undefined;
       let progressUpdate = result.progressUpdate;
       if (wasFirstSession && feedbackRating) {
-        const currentLevel = useRunProgressStore.getState().progress?.currentLevel ?? progressUpdate.newLevel;
+        const currentLevel =
+          useRunProgressStore.getState().progress?.currentLevel ?? progressUpdate.newLevel;
         const calib = calibrateFromFirstSession(currentLevel, feedbackRating);
         if (calib.delta !== 0) {
           useRunProgressStore.getState().setLevel(calib.newLevel);
-          calibration = { previousLevel: calib.previousLevel, newLevel: calib.newLevel, reason: calib.reason };
+          calibration = {
+            previousLevel: calib.previousLevel,
+            newLevel: calib.newLevel,
+            reason: calib.reason,
+          };
           progressUpdate = { ...progressUpdate, newLevel: calib.newLevel };
         }
       }
@@ -258,7 +263,11 @@ export default function PostSessionScreen({ navigation, route }: Props) {
         const calib = calibrateFromFirstSession(newLevel, feedbackRating);
         if (calib.delta !== 0) {
           useRunProgressStore.getState().setLevel(calib.newLevel);
-          calibration = { previousLevel: calib.previousLevel, newLevel: calib.newLevel, reason: calib.reason };
+          calibration = {
+            previousLevel: calib.previousLevel,
+            newLevel: calib.newLevel,
+            reason: calib.reason,
+          };
           newLevel = calib.newLevel;
         }
       }
@@ -341,8 +350,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
               <Text style={styles.sectionLabel}>TREADMILL STATS</Text>
               <View style={styles.treadmillCard}>
                 <Text style={styles.treadmillHint}>
-                  Enter your treadmill distance to log this session. Steps &
-                  calories are optional.
+                  Enter your treadmill distance to log this session. Steps & calories are optional.
                 </Text>
                 <View style={styles.treadmillFields}>
                   <View style={styles.treadmillField}>

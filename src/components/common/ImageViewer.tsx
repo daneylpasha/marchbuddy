@@ -15,11 +15,7 @@ export default function ImageViewer({ visible, imageUri, onClose }: ImageViewerP
         <Pressable style={styles.closeButton} onPress={onClose}>
           <Ionicons name="close" size={28} color="#fff" />
         </Pressable>
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.image}
-          resizeMode="contain"
-        />
+        <Image source={{ uri: imageUri }} style={styles.image} resizeMode="contain" />
       </View>
     </Modal>
   );

@@ -18,15 +18,22 @@ export default function EditProfileScreen() {
   const [currentWeight, setCurrentWeight] = useState(profile?.currentWeight?.toString() ?? '');
   const [targetWeight, setTargetWeight] = useState(profile?.targetWeight?.toString() ?? '');
   const [injuries, setInjuries] = useState(profile?.injuries?.join(', ') ?? '');
-  const [allergies, setAllergies] = useState(profile?.dietaryPreferences?.allergies?.join(', ') ?? '');
+  const [allergies, setAllergies] = useState(
+    profile?.dietaryPreferences?.allergies?.join(', ') ?? '',
+  );
   const [dislikes, setDislikes] = useState(profile?.dietaryPreferences?.dislikes?.join(', ') ?? '');
-  const [cuisineRegion, setCuisineRegion] = useState(profile?.dietaryPreferences?.cuisineRegion ?? '');
+  const [cuisineRegion, setCuisineRegion] = useState(
+    profile?.dietaryPreferences?.cuisineRegion ?? '',
+  );
 
   if (!profile) return null;
 
   const handleSave = () => {
     const parseList = (s: string) =>
-      s.split(',').map((v) => v.trim()).filter(Boolean);
+      s
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
 
     updateProfile({
       name: name.trim() || profile.name,
@@ -47,8 +54,11 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()}>
@@ -64,12 +74,37 @@ export default function EditProfileScreen() {
         <Field label="Name" value={name} onChange={setName} />
         <Field label="Age" value={age} onChange={setAge} keyboard="numeric" />
         <Field label="Height (cm)" value={height} onChange={setHeight} keyboard="numeric" />
-        <Field label="Current Weight (kg)" value={currentWeight} onChange={setCurrentWeight} keyboard="numeric" />
-        <Field label="Target Weight (kg)" value={targetWeight} onChange={setTargetWeight} keyboard="numeric" />
+        <Field
+          label="Current Weight (kg)"
+          value={currentWeight}
+          onChange={setCurrentWeight}
+          keyboard="numeric"
+        />
+        <Field
+          label="Target Weight (kg)"
+          value={targetWeight}
+          onChange={setTargetWeight}
+          keyboard="numeric"
+        />
         <Field label="Cuisine Region" value={cuisineRegion} onChange={setCuisineRegion} />
-        <Field label="Injuries" value={injuries} onChange={setInjuries} placeholder="Comma-separated, or 'none'" />
-        <Field label="Allergies" value={allergies} onChange={setAllergies} placeholder="Comma-separated, or 'none'" />
-        <Field label="Food Dislikes" value={dislikes} onChange={setDislikes} placeholder="Comma-separated, or 'none'" />
+        <Field
+          label="Injuries"
+          value={injuries}
+          onChange={setInjuries}
+          placeholder="Comma-separated, or 'none'"
+        />
+        <Field
+          label="Allergies"
+          value={allergies}
+          onChange={setAllergies}
+          placeholder="Comma-separated, or 'none'"
+        />
+        <Field
+          label="Food Dislikes"
+          value={dislikes}
+          onChange={setDislikes}
+          placeholder="Comma-separated, or 'none'"
+        />
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -77,7 +112,13 @@ export default function EditProfileScreen() {
   );
 }
 
-function Field({ label, value, onChange, keyboard, placeholder }: {
+function Field({
+  label,
+  value,
+  onChange,
+  keyboard,
+  placeholder,
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -104,12 +145,29 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: spacing.lg },
 
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   title: {},
-  saveText: { color: colors.primary, fontSize: 16, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  saveText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   field: { marginBottom: 16 },
-  fieldLabel: { color: colors.textSecondary, fontSize: 13, marginBottom: 6, fontFamily: fonts.medium, letterSpacing: 0.3 },
+  fieldLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 6,
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
   fieldInput: {
     backgroundColor: colors.surfaceElevated,
     borderRadius: 10,

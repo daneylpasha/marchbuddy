@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Svg, { Circle } from "react-native-svg";
-import { colors } from "../../theme";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
+import { colors } from '../../theme';
 
 interface CircularProgressProps {
   size?: number;
@@ -9,11 +9,7 @@ interface CircularProgressProps {
   progress: number; // 0 – 100
 }
 
-const CircularProgress = ({
-  size = 120,
-  strokeWidth = 10,
-  progress,
-}: CircularProgressProps) => {
+const CircularProgress = ({ size = 120, strokeWidth = 10, progress }: CircularProgressProps) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
@@ -61,17 +57,17 @@ export default CircularProgress;
 
 const styles = StyleSheet.create({
   center: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   percent: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: colors.primary,
   },
 });

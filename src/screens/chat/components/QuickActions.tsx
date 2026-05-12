@@ -105,13 +105,13 @@ function getContextualActions(context?: QuickActionsContext): QuickAction[] {
       {
         id: 'easier',
         label: 'Start easier?',
-        message: "Should I ease back in after my break or pick up where I left off?",
+        message: 'Should I ease back in after my break or pick up where I left off?',
         icon: 'fitness-outline',
       },
       {
         id: 'guilt',
         label: 'Feeling guilty',
-        message: "I feel bad about missing so many days",
+        message: 'I feel bad about missing so many days',
         icon: 'sad-outline',
       },
       {

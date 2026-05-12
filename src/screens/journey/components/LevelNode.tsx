@@ -32,30 +32,32 @@ export const LevelNode: React.FC<LevelNodeProps> = ({
     >
       <View style={styles.row}>
         {/* Node circle */}
-        <View style={[
-          styles.node,
-          isCurrent ? styles.nodeLarge : styles.nodeSmall,
-          isCompleted ? styles.nodeCompleted : isCurrent ? styles.nodeCurrent : styles.nodeLocked,
-          isSelected && styles.nodeSelected,
-        ]}>
-          {isCompleted && (
-            <Ionicons name="checkmark" size={isCurrent ? 24 : 16} color="#FFFFFF" />
-          )}
-          {isCurrent && (
-            <Text style={styles.currentLevelText}>L{level.level}</Text>
-          )}
-          {isLocked && (
-            <Ionicons name="lock-closed" size={12} color={colors.textTertiary} />
-          )}
+        <View
+          style={[
+            styles.node,
+            isCurrent ? styles.nodeLarge : styles.nodeSmall,
+            isCompleted ? styles.nodeCompleted : isCurrent ? styles.nodeCurrent : styles.nodeLocked,
+            isSelected && styles.nodeSelected,
+          ]}
+        >
+          {isCompleted && <Ionicons name="checkmark" size={isCurrent ? 24 : 16} color="#FFFFFF" />}
+          {isCurrent && <Text style={styles.currentLevelText}>L{level.level}</Text>}
+          {isLocked && <Ionicons name="lock-closed" size={12} color={colors.textTertiary} />}
         </View>
 
         {/* Level info */}
         <View style={styles.info}>
           <View style={styles.titleRow}>
-            <Text style={[
-              styles.levelNumber,
-              isLocked ? styles.textLocked : isCurrent ? styles.textCurrent : styles.textCompleted,
-            ]}>
+            <Text
+              style={[
+                styles.levelNumber,
+                isLocked
+                  ? styles.textLocked
+                  : isCurrent
+                    ? styles.textCurrent
+                    : styles.textCompleted,
+              ]}
+            >
               Level {level.level}
             </Text>
             {isCurrent && (
@@ -63,20 +65,19 @@ export const LevelNode: React.FC<LevelNodeProps> = ({
                 <Text style={styles.currentBadgeText}>YOU ARE HERE</Text>
               </View>
             )}
-            {isCompleted && (
-              <Text style={styles.checkLabel}>✓</Text>
-            )}
+            {isCompleted && <Text style={styles.checkLabel}>✓</Text>}
           </View>
 
-          <Text style={[styles.levelName, isLocked && styles.textLocked]}>
-            {level.name}
-          </Text>
+          <Text style={[styles.levelName, isLocked && styles.textLocked]}>{level.name}</Text>
 
           {isCurrent && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
                 <View
-                  style={[styles.progressFill, { width: `${Math.min((sessionsCompleted / 3) * 100, 100)}%` }]}
+                  style={[
+                    styles.progressFill,
+                    { width: `${Math.min((sessionsCompleted / 3) * 100, 100)}%` },
+                  ]}
                 />
               </View>
               <Text style={styles.progressText}>{sessionsCompleted}/3</Text>

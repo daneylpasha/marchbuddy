@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
-  APP_NAME: "MarchBuddy",
-  VERSION: "0.1.0",
-  AI_MODEL: "claude-sonnet-4-20250514",
+  APP_NAME: 'MarchBuddy',
+  VERSION: '0.1.0',
+  AI_MODEL: 'claude-sonnet-4-20250514',
   DEFAULT_WATER_GOAL_ML: 2500,
   MAX_CHAT_HISTORY_FOR_CONTEXT: 20,
   MAX_WORKOUT_HISTORY_DAYS: 7,
@@ -12,12 +12,12 @@ export const APP_CONFIG = {
 };
 
 export const EQUIPMENT_OPTIONS = [
-  "Bodyweight",
-  "Dumbbells",
-  "Barbell",
-  "Cables",
-  "Machines",
-  "Pull-Up Bar",
-  "Resistance Bands",
-  "Kettlebell",
+  'Bodyweight',
+  'Dumbbells',
+  'Barbell',
+  'Cables',
+  'Machines',
+  'Pull-Up Bar',
+  'Resistance Bands',
+  'Kettlebell',
 ] as const;

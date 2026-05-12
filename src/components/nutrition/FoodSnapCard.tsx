@@ -14,25 +14,33 @@ const CONFIDENCE_COLORS = {
 };
 
 export default function FoodSnapCard({ snap }: FoodSnapCardProps) {
-  const estimate = snap.userAmended && snap.amendedValues
-    ? { ...snap.aiEstimate, ...snap.amendedValues }
-    : snap.aiEstimate;
+  const estimate =
+    snap.userAmended && snap.amendedValues
+      ? { ...snap.aiEstimate, ...snap.amendedValues }
+      : snap.aiEstimate;
 
   return (
     <View style={styles.card}>
       <Image source={{ uri: snap.imageUri }} style={styles.thumb} />
       <View style={styles.info}>
-        <Text style={styles.description} numberOfLines={1}>{snap.aiEstimate.description}</Text>
+        <Text style={styles.description} numberOfLines={1}>
+          {snap.aiEstimate.description}
+        </Text>
         <View style={styles.row}>
           <Text style={styles.calories}>{estimate.calories} cal</Text>
-          <View style={[styles.badge, { backgroundColor: CONFIDENCE_COLORS[snap.aiEstimate.confidence] + '22' }]}>
-            <Text style={[styles.badgeText, { color: CONFIDENCE_COLORS[snap.aiEstimate.confidence] }]}>
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: CONFIDENCE_COLORS[snap.aiEstimate.confidence] + '22' },
+            ]}
+          >
+            <Text
+              style={[styles.badgeText, { color: CONFIDENCE_COLORS[snap.aiEstimate.confidence] }]}
+            >
               {snap.aiEstimate.confidence}
             </Text>
           </View>
-          {snap.userAmended && (
-            <Text style={styles.amended}>Amended</Text>
-          )}
+          {snap.userAmended && <Text style={styles.amended}>Amended</Text>}
         </View>
         <Text style={styles.macros}>
           P {estimate.protein}g {'\u00B7'} C {estimate.carbs}g {'\u00B7'} F {estimate.fat}g

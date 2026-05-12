@@ -48,9 +48,7 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session 
       {/* Segments + steps (only show steps if we actually captured any) */}
       <Text style={styles.segmentsText}>
         {session.completedSegments} of {session.plannedSegments.length} segments completed
-        {session.actualSteps > 0
-          ? ` · ${session.actualSteps.toLocaleString()} steps`
-          : ''}
+        {session.actualSteps > 0 ? ` · ${session.actualSteps.toLocaleString()} steps` : ''}
       </Text>
     </View>
   );

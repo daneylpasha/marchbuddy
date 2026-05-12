@@ -47,20 +47,26 @@ export default function PRCelebrationModal({
     }
   }, [visible, scaleAnim, glowAnim]);
 
-  const improvementText = previousWeight != null
-    ? newWeight > previousWeight
-      ? `+${(newWeight - previousWeight).toFixed(1)}kg`
-      : newReps > (previousReps ?? 0)
-        ? `+${newReps - (previousReps ?? 0)} reps`
-        : 'New record!'
-    : 'First tracked record!';
+  const improvementText =
+    previousWeight != null
+      ? newWeight > previousWeight
+        ? `+${(newWeight - previousWeight).toFixed(1)}kg`
+        : newReps > (previousReps ?? 0)
+          ? `+${newReps - (previousReps ?? 0)} reps`
+          : 'New record!'
+      : 'First tracked record!';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
           {/* Trophy icon */}
-          <Animated.View style={[styles.trophyCircle, { opacity: Animated.add(0.7, Animated.multiply(glowAnim, 0.3)) }]}>
+          <Animated.View
+            style={[
+              styles.trophyCircle,
+              { opacity: Animated.add(0.7, Animated.multiply(glowAnim, 0.3)) },
+            ]}
+          >
             <Ionicons name="trophy" size={44} color="#FFD700" />
           </Animated.View>
 

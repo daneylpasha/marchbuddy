@@ -3,7 +3,10 @@ import * as Notifications from 'expo-notifications';
 import type { EventSubscription } from 'expo-modules-core';
 import { useNotificationStore } from '../store/notificationStore';
 import { navigate } from '../navigation/navigationRef';
-import { logLocalReceived, type NotificationKind } from '../services/notifications/NotificationManager';
+import {
+  logLocalReceived,
+  type NotificationKind,
+} from '../services/notifications/NotificationManager';
 
 /**
  * Hook to listen for notification responses (user tapping) and for
@@ -32,29 +35,26 @@ export function useNotificationListener() {
 
   useEffect(() => {
     // ── Tap handler ─────────────────────────────────────────────────────
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as
-          | { type?: string; sessionKey?: string; sessionTitle?: string }
-          | undefined;
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as
+        | { type?: string; sessionKey?: string; sessionTitle?: string }
+        | undefined;
 
-        const type = data?.type;
-        const sessionKey = data?.sessionKey;
+      const type = data?.type;
+      const sessionKey = data?.sessionKey;
 
-        // Persist tap context so downstream screens can deep-link.
-        setLastNotificationTap({ sessionKey, type });
+      // Persist tap context so downstream screens can deep-link.
+      setLastNotificationTap({ sessionKey, type });
 
-        if (type === 'A' || type === 'B' || type === 'C' || sessionKey) {
-          navigate('Run');
-        }
-      });
+      if (type === 'A' || type === 'B' || type === 'C' || sessionKey) {
+        navigate('Run');
+      }
+    });
 
     // ── Received handler ───────────────────────────────────────────────
     receivedListener.current = Notifications.addNotificationReceivedListener((notification) => {
       const content = notification.request.content;
-      const data = content.data as
-        | { type?: NotificationKind; sessionKey?: string }
-        | undefined;
+      const data = content.data as { type?: NotificationKind; sessionKey?: string } | undefined;
 
       // Only log Type-A here (push B/C are logged server-side).
       if (data?.type === 'A') {

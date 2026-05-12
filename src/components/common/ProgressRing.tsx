@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
-import { colors, fonts } from "../../theme";
-import CircularProgress from "../bar/bar";
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { colors, fonts } from '../../theme';
+import CircularProgress from '../bar/bar';
 
 interface ProgressRingProps {
   current: number;
@@ -18,9 +18,9 @@ export default function ProgressRing({
   total,
   size = 100,
   strokeWidth = 8,
-  color = colors.primary,
-  label,
-  customCenter,
+  color: _color = colors.primary,
+  label: _label,
+  customCenter: _customCenter,
 }: ProgressRingProps) {
   // Normal progress: 0% → 100% as calories are consumed
   const progressPercent = total > 0 ? Math.min((current / total) * 100, 100) : 0;
@@ -34,35 +34,35 @@ export default function ProgressRing({
 
 const styles = StyleSheet.create({
   container: {
-    position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   ring: {
-    position: "absolute",
+    position: 'absolute',
   },
   halfClip: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   halfCircle: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
-    borderRightColor: "transparent",
-    borderBottomColor: "transparent",
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
   },
   center: {
     backgroundColor: colors.surfaceElevated,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   valueText: {
     color: colors.textPrimary,
-    fontWeight: "700",
+    fontWeight: '700',
     fontFamily: fonts.bold,
     letterSpacing: 0.3,
-    fontVariant: ["tabular-nums"],
+    fontVariant: ['tabular-nums'],
   },
   labelText: {
     color: colors.textSecondary,

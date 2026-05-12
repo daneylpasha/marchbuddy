@@ -25,18 +25,14 @@ export default function RestDayCard({ restType, aiNotes }: RestDayCardProps) {
       <View style={styles.header}>
         <Ionicons name={isActive ? 'body-outline' : 'bed-outline'} size={24} color={accent} />
         <View style={styles.headerText}>
-          <Text style={styles.title}>
-            {isActive ? 'Active Recovery Day' : 'Complete Rest Day'}
-          </Text>
+          <Text style={styles.title}>{isActive ? 'Active Recovery Day' : 'Complete Rest Day'}</Text>
           <Text style={styles.subtitle}>
             {isActive ? 'Light movement to aid recovery' : 'Your body rebuilds on rest days'}
           </Text>
         </View>
       </View>
 
-      {aiNotes ? (
-        <Text style={styles.aiNotes}>{aiNotes}</Text>
-      ) : null}
+      {aiNotes ? <Text style={styles.aiNotes}>{aiNotes}</Text> : null}
 
       {isActive && (
         <View style={styles.suggestions}>
@@ -54,7 +50,8 @@ export default function RestDayCard({ restType, aiNotes }: RestDayCardProps) {
         <View style={styles.restMessage}>
           <Text style={styles.restEmoji}>&#x1F9D8;</Text>
           <Text style={styles.restText}>
-            Take it easy today. Stay hydrated, get quality sleep, and let your muscles recover. You've earned it.
+            Take it easy today. Stay hydrated, get quality sleep, and let your muscles recover.
+            You've earned it.
           </Text>
         </View>
       )}

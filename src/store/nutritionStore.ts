@@ -4,7 +4,6 @@ import { useAuthStore } from './authStore';
 import { useNetworkStore } from './networkStore';
 import {
   getTodayMealPlan,
-  upsertMealPlan,
   updateMealFeedback as dbUpdateMealFeedback,
   saveFoodSnap,
   getTodayFoodSnaps,
@@ -26,7 +25,12 @@ interface NutritionState {
   isLoading: boolean;
 
   fetchTodayMealPlan: (userId: string) => Promise<void>;
-  updateMealFeedback: (mealId: string, feedback: Meal['feedback'], swapDescription?: string, swapNutrition?: { calories: number; protein: number; carbs: number; fat: number }) => void;
+  updateMealFeedback: (
+    mealId: string,
+    feedback: Meal['feedback'],
+    swapDescription?: string,
+    swapNutrition?: { calories: number; protein: number; carbs: number; fat: number },
+  ) => void;
   addFoodSnap: (snap: FoodSnap) => void;
   updateFoodSnap: (snapId: string, updates: Partial<FoodSnap>) => void;
   getConsumedTotals: () => ConsumedTotals;
@@ -141,9 +145,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
 
   updateFoodSnap: (snapId, updates) => {
     set((state) => ({
-      foodSnaps: state.foodSnaps.map((s) =>
-        s.id === snapId ? { ...s, ...updates } : s,
-      ),
+      foodSnaps: state.foodSnaps.map((s) => (s.id === snapId ? { ...s, ...updates } : s)),
     }));
   },
 

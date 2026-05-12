@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   typeBarWalk: { backgroundColor: colors.textTertiary },
-  typeBarRun:  { backgroundColor: colors.primary },
+  typeBarRun: { backgroundColor: colors.primary },
   content: { flex: 1 },
   mainRow: {
     flexDirection: 'row',

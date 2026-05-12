@@ -1,11 +1,6 @@
 import React, { useRef } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import MapView, {
-  Polyline,
-  Marker,
-  PROVIDER_DEFAULT,
-  Region,
-} from 'react-native-maps';
+import MapView, { Polyline, Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import { GeoPoint } from '../../types/session';
 import { colors } from '../../theme';
 

@@ -352,7 +352,7 @@ export const LEVEL_DEFINITIONS: LevelDefinition[] = [
     week: 3,
     name: 'Run Confidence',
     focus: '2-minute continuous runs',
-    description: "Your runs are getting longer. Two minutes at a time.",
+    description: 'Your runs are getting longer. Two minutes at a time.',
     unlockCriteria: '3 sessions at Level 4',
 
     recommendedTemplate: {
@@ -485,7 +485,7 @@ export const LEVEL_DEFINITIONS: LevelDefinition[] = [
     week: 4,
     name: 'More Running',
     focus: '5-minute continuous runs',
-    description: "Five-minute runs. Your endurance is really building.",
+    description: 'Five-minute runs. Your endurance is really building.',
     unlockCriteria: '3 sessions at Level 6',
 
     recommendedTemplate: {
@@ -1213,12 +1213,14 @@ export const getLevelDefinition = (level: number): LevelDefinition | undefined =
 
 export const getSessionTemplatesForLevel = (
   level: number,
-): {
-  recommended: SessionTemplate;
-  quick: SessionTemplate;
-  challenge: SessionTemplate;
-  push: SessionTemplate;
-} | undefined => {
+):
+  | {
+      recommended: SessionTemplate;
+      quick: SessionTemplate;
+      challenge: SessionTemplate;
+      push: SessionTemplate;
+    }
+  | undefined => {
   const levelDef = getLevelDefinition(level);
   if (!levelDef) return undefined;
 

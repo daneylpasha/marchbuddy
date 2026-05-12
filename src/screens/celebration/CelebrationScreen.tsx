@@ -1,12 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Share,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,12 +9,15 @@ import { getMilestoneConfig } from '../../constants/milestones';
 import { ConfettiAnimation } from './components/ConfettiAnimation';
 import { MilestoneIcon } from './components/MilestoneIcon';
 import { colors, fonts, spacing } from '../../theme';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'Celebration'>;
 
 export default function CelebrationScreen({ navigation, route }: Props) {
   const { milestoneId, coachFeedback, progressUpdate, session, shareAfter } = route.params;
+  const { isLevelLocked, openPaywall } = useSubscriptionStore();
+  const celebratingLockedLevel = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
 
   const milestone = getMilestoneConfig(milestoneId);
 
@@ -57,7 +53,7 @@ export default function CelebrationScreen({ navigation, route }: Props) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     }, 320);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleContinue = () => {
@@ -87,9 +83,7 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Confetti layer */}
-      {milestone.confettiColors && (
-        <ConfettiAnimation colors={milestone.confettiColors} />
-      )}
+      {milestone.confettiColors && <ConfettiAnimation colors={milestone.confettiColors} />}
 
       {/* Main content */}
       <View style={styles.content}>
@@ -114,22 +108,51 @@ export default function CelebrationScreen({ navigation, route }: Props) {
 
       {/* Buttons */}
       <Animated.View style={[styles.footer, { opacity: buttonOpacity }]}>
-        <TouchableOpacity
-          style={styles.shareButton}
-          onPress={handleShare}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="share-social-outline" size={18} color={colors.primary} />
-          <Text style={styles.shareButtonText}>Share Achievement</Text>
-        </TouchableOpacity>
+        {celebratingLockedLevel ? (
+          <>
+            {/* Share first — the user earned this; don't gate the celebration */}
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
+              <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+              <Text style={styles.shareButtonText}>Share Achievement</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={handleContinue}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
+            {/* Then the upgrade CTA — natural next step, not a paywall slap */}
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => openPaywall('celebration_locked')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="flash" size={18} color="#fff" />
+              <Text style={styles.upgradeButtonText}>
+                Unlock Level {progressUpdate.newLevel} with Pro
+              </Text>
+            </TouchableOpacity>
+
+            {/* Tertiary dismiss */}
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleContinue}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipButtonText}>Maybe later</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
+              <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+              <Text style={styles.shareButtonText}>Share Achievement</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={handleContinue}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.continueButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </Animated.View>
     </SafeAreaView>
   );
@@ -219,6 +242,36 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 17,
     color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  upgradeButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 18,
+    borderRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  upgradeButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: 17,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  skipButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  skipButtonText: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
   },
 });

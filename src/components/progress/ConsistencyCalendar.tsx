@@ -39,7 +39,11 @@ function getMonthGrid(year: number, month: number): (number | null)[][] {
   return weeks;
 }
 
-export default function ConsistencyCalendar({ activeDates, currentStreak, longestStreak }: ConsistencyCalendarProps) {
+export default function ConsistencyCalendar({
+  activeDates,
+  currentStreak,
+  longestStreak,
+}: ConsistencyCalendarProps) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -80,7 +84,9 @@ export default function ConsistencyCalendar({ activeDates, currentStreak, longes
       {/* Weekday headers */}
       <View style={styles.weekdayRow}>
         {WEEKDAY_LABELS.map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>{label}</Text>
+          <Text key={label} style={styles.weekdayLabel}>
+            {label}
+          </Text>
         ))}
       </View>
 
@@ -128,7 +134,12 @@ export default function ConsistencyCalendar({ activeDates, currentStreak, longes
           <Text style={styles.legendText}>Workout done</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary }]} />
+          <View
+            style={[
+              styles.legendDot,
+              { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary },
+            ]}
+          />
           <Text style={styles.legendText}>Today</Text>
         </View>
       </View>

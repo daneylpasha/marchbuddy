@@ -37,7 +37,12 @@ export default function ProgressBar({
 
   return (
     <View style={[styles.track, { height, borderRadius: height / 2 }, style]}>
-      <Animated.View style={[styles.fill, { width: widthInterp, backgroundColor: color, borderRadius: height / 2 }]} />
+      <Animated.View
+        style={[
+          styles.fill,
+          { width: widthInterp, backgroundColor: color, borderRadius: height / 2 },
+        ]}
+      />
     </View>
   );
 }

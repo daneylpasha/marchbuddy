@@ -1,5 +1,5 @@
 declare module 'react-native-keyboard-aware-scrollview' {
-  import { ComponentType, RefObject } from 'react';
+  import { ComponentType } from 'react';
   import { ScrollViewProps, TextInput } from 'react-native';
 
   interface KeyboardAwareScrollViewProps extends ScrollViewProps {

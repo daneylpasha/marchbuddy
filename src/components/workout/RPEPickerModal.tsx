@@ -37,12 +37,7 @@ export default function RPEPickerModal({ visible, onSelect, onSkip }: RPEPickerM
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleSkip}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleSkip}>
       <Pressable style={styles.backdrop} onPress={handleSkip}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.handle} />
@@ -57,7 +52,10 @@ export default function RPEPickerModal({ visible, onSelect, onSkip }: RPEPickerM
                 key={opt.value}
                 style={[
                   styles.rpeBtn,
-                  selected === opt.value && { backgroundColor: opt.color + '33', borderColor: opt.color },
+                  selected === opt.value && {
+                    backgroundColor: opt.color + '33',
+                    borderColor: opt.color,
+                  },
                 ]}
                 onPress={() => setSelected(opt.value)}
               >
@@ -76,7 +74,10 @@ export default function RPEPickerModal({ visible, onSelect, onSkip }: RPEPickerM
                 key={opt.value}
                 style={[
                   styles.rpeBtn,
-                  selected === opt.value && { backgroundColor: opt.color + '33', borderColor: opt.color },
+                  selected === opt.value && {
+                    backgroundColor: opt.color + '33',
+                    borderColor: opt.color,
+                  },
                 ]}
                 onPress={() => setSelected(opt.value)}
               >

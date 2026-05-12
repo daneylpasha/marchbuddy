@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,7 +29,9 @@ export default function BuddiesScreen({ navigation }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const accept = async (req: BuddyRequest) => {
     setRespondingId(req.id);
@@ -76,9 +71,7 @@ export default function BuddiesScreen({ navigation }: Props) {
             {/* Incoming requests */}
             {incoming.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>
-                  BUDDY REQUESTS ({incoming.length})
-                </Text>
+                <Text style={styles.sectionLabel}>BUDDY REQUESTS ({incoming.length})</Text>
                 {incoming.map((req) => (
                   <RequestCard
                     key={req.id}
@@ -86,7 +79,9 @@ export default function BuddiesScreen({ navigation }: Props) {
                     loading={respondingId === req.id}
                     onAccept={() => accept(req)}
                     onDecline={() => decline(req)}
-                    onPress={() => req.profile && navigation.navigate('UserProfile', { userId: req.profile.id })}
+                    onPress={() =>
+                      req.profile && navigation.navigate('UserProfile', { userId: req.profile.id })
+                    }
                   />
                 ))}
               </View>
@@ -95,9 +90,7 @@ export default function BuddiesScreen({ navigation }: Props) {
             {/* Buddy list */}
             <View style={styles.section}>
               {buddies.length > 0 && (
-                <Text style={styles.sectionLabel}>
-                  YOUR BUDDIES ({buddies.length})
-                </Text>
+                <Text style={styles.sectionLabel}>YOUR BUDDIES ({buddies.length})</Text>
               )}
               {buddies.map((buddy) => (
                 <BuddyCard
@@ -153,9 +146,7 @@ function RequestCard({
       onPress={onPress}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarLetter}>
-          {(profile?.name ?? 'R').charAt(0).toUpperCase()}
-        </Text>
+        <Text style={styles.avatarLetter}>{(profile?.name ?? 'R').charAt(0).toUpperCase()}</Text>
       </View>
 
       <View style={styles.cardBody}>
@@ -190,26 +181,20 @@ function RequestCard({
   );
 }
 
-function BuddyCard({
-  profile,
-  onPress,
-}: {
-  profile: CommunityProfile;
-  onPress: () => void;
-}) {
+function BuddyCard({ profile, onPress }: { profile: CommunityProfile; onPress: () => void }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
       onPress={onPress}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarLetter}>
-          {profile.name.charAt(0).toUpperCase()}
-        </Text>
+        <Text style={styles.avatarLetter}>{profile.name.charAt(0).toUpperCase()}</Text>
       </View>
 
       <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>{profile.name}</Text>
+        <Text style={styles.cardName} numberOfLines={1}>
+          {profile.name}
+        </Text>
         <View style={styles.cardMeta}>
           <MetaPill icon="trending-up-outline" label={`Lvl ${profile.level}`} />
           <MetaPill icon="flame-outline" label={`${profile.currentStreak}d streak`} />

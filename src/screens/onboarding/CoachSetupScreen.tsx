@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -9,38 +9,38 @@ import {
   Text,
   TextInput,
   View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import { colors, fonts, spacing, touchTarget } from "../../theme";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { colors, fonts, spacing, touchTarget } from '../../theme';
 import {
   useCoachSetupStore,
   type ActivityLevel,
   type WalkBaseline,
   type RunReadiness,
   type TimePreference,
-} from "../../store/coachSetupStore";
-import { useAuthStore } from "../../store/authStore";
-import { useRunProgressStore } from "../../store/runProgressStore";
-import { computeStartingLevel } from "../../utils/levelPlacement";
-import { generateCoachReply } from "../../services/onboardingApi";
+} from '../../store/coachSetupStore';
+import { useAuthStore } from '../../store/authStore';
+import { useRunProgressStore } from '../../store/runProgressStore';
+import { computeStartingLevel } from '../../utils/levelPlacement';
+import { generateCoachReply } from '../../services/onboardingApi';
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 // ─── Step & source types ──────────────────────────────────────────────────────
 
 type ScreenStep =
-  | "name"
-  | "activity"
-  | "walk-baseline"
-  | "run-readiness"
-  | "coach-reply"
-  | "time"
-  | "frequency"
-  | "ready";
+  | 'name'
+  | 'activity'
+  | 'walk-baseline'
+  | 'run-readiness'
+  | 'coach-reply'
+  | 'time'
+  | 'frequency'
+  | 'ready';
 
-type ReplySource = "name" | "activity" | "time";
+type ReplySource = 'name' | 'activity' | 'time';
 
 // ─── Static content ───────────────────────────────────────────────────────────
 
@@ -50,38 +50,38 @@ interface SelectOption<T> {
 }
 
 const ACTIVITY_OPTIONS: SelectOption<ActivityLevel>[] = [
-  { label: "Haven't exercised in years", value: "no_exercise_years" },
-  { label: "Occasionally walk, nothing regular", value: "occasionally_walk" },
-  { label: "Somewhat active but inconsistent", value: "somewhat_active" },
-  { label: "Active but want to run specifically", value: "active_want_run" },
+  { label: "Haven't exercised in years", value: 'no_exercise_years' },
+  { label: 'Occasionally walk, nothing regular', value: 'occasionally_walk' },
+  { label: 'Somewhat active but inconsistent', value: 'somewhat_active' },
+  { label: 'Active but want to run specifically', value: 'active_want_run' },
 ];
 
 const WALK_BASELINE_OPTIONS: SelectOption<WalkBaseline>[] = [
-  { label: "Less than 5 minutes", value: "under_5" },
-  { label: "5–15 minutes", value: "five_to_15" },
-  { label: "15–30 minutes", value: "fifteen_to_30" },
-  { label: "30 minutes or more", value: "thirty_plus" },
+  { label: 'Less than 5 minutes', value: 'under_5' },
+  { label: '5–15 minutes', value: 'five_to_15' },
+  { label: '15–30 minutes', value: 'fifteen_to_30' },
+  { label: '30 minutes or more', value: 'thirty_plus' },
 ];
 
 const RUN_READINESS_OPTIONS: SelectOption<RunReadiness>[] = [
-  { label: "No, I've never tried", value: "no_never_tried" },
-  { label: "Maybe, with effort", value: "maybe_with_effort" },
-  { label: "Yes, easily", value: "yes_easily" },
+  { label: "No, I've never tried", value: 'no_never_tried' },
+  { label: 'Maybe, with effort', value: 'maybe_with_effort' },
+  { label: 'Yes, easily', value: 'yes_easily' },
 ];
 
 const TIME_OPTIONS: SelectOption<TimePreference>[] = [
-  { label: "Morning — before the day starts", value: "morning" },
-  { label: "Midday — lunch break or afternoon", value: "midday" },
-  { label: "Evening — after work winds down", value: "evening" },
-  { label: "It varies — depends on the day", value: "varies" },
+  { label: 'Morning — before the day starts', value: 'morning' },
+  { label: 'Midday — lunch break or afternoon', value: 'midday' },
+  { label: 'Evening — after work winds down', value: 'evening' },
+  { label: 'It varies — depends on the day', value: 'varies' },
 ];
 
 const FREQUENCY_OPTIONS: SelectOption<number>[] = [
-  { label: "2 days a week", value: 2 },
-  { label: "3 days a week", value: 3 },
-  { label: "4 days a week", value: 4 },
-  { label: "5 days a week", value: 5 },
-  { label: "Every day", value: 7 },
+  { label: '2 days a week', value: 2 },
+  { label: '3 days a week', value: 3 },
+  { label: '4 days a week', value: 4 },
+  { label: '5 days a week', value: 5 },
+  { label: 'Every day', value: 7 },
 ];
 
 // ─── Thinking indicator ───────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ function ThinkingDots() {
 }
 
 const thinkingStyles = StyleSheet.create({
-  dotsRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+  dotsRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   dot: {
     width: 10,
     height: 10,
@@ -136,10 +136,10 @@ const thinkingStyles = StyleSheet.create({
 
 export default function CoachSetupScreen() {
   const navigation = useNavigation<any>();
-  const [currentStep, setCurrentStep] = useState<ScreenStep>("name");
-  const [nameInput, setNameInput] = useState("");
-  const [coachReplyText, setCoachReplyText] = useState("");
-  const [coachReplyQuote, setCoachReplyQuote] = useState("");
+  const [currentStep, setCurrentStep] = useState<ScreenStep>('name');
+  const [nameInput, setNameInput] = useState('');
+  const [coachReplyText, setCoachReplyText] = useState('');
+  const [coachReplyQuote, setCoachReplyQuote] = useState('');
   const [isGeneratingReply, setIsGeneratingReply] = useState(false);
 
   // Keyboard height tracking
@@ -147,16 +147,14 @@ export default function CoachSetupScreen() {
   const inputScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    const show1 = Keyboard.addListener("keyboardWillShow", (e) =>
+    const show1 = Keyboard.addListener('keyboardWillShow', (e) =>
       setKbHeight(e.endCoordinates.height),
     );
-    const show2 = Keyboard.addListener("keyboardDidShow", (e) =>
+    const show2 = Keyboard.addListener('keyboardDidShow', (e) =>
       setKbHeight(e.endCoordinates.height),
     );
-    const hide1 = Keyboard.addListener("keyboardWillHide", () =>
-      setKbHeight(0),
-    );
-    const hide2 = Keyboard.addListener("keyboardDidHide", () => setKbHeight(0));
+    const hide1 = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    const hide2 = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
     return () => {
       show1.remove();
       show2.remove();
@@ -167,17 +165,14 @@ export default function CoachSetupScreen() {
 
   useEffect(() => {
     if (kbHeight > 0) {
-      setTimeout(
-        () => inputScrollRef.current?.scrollToEnd({ animated: true }),
-        50,
-      );
+      setTimeout(() => inputScrollRef.current?.scrollToEnd({ animated: true }), 50);
     }
   }, [kbHeight]);
 
   // Async-safe refs
-  const nameRef = useRef("");
+  const nameRef = useRef('');
   const onReplyAdvance = useRef<() => void>(() => {});
-  const replySourceRef = useRef<ReplySource>("activity");
+  const replySourceRef = useRef<ReplySource>('activity');
   const isAnimating = useRef(false);
 
   // Progress bar refs
@@ -203,7 +198,8 @@ export default function CoachSetupScreen() {
     setTimePreference,
     setWeeklyFrequency,
     markSetupStarted,
-    markSetupComplete,
+    // markSetupComplete is no longer called here — OnboardingPaywallScreen
+    // owns the finalization step (both the subscribe path and the skip path).
   } = useCoachSetupStore();
 
   useEffect(() => {
@@ -222,7 +218,7 @@ export default function CoachSetupScreen() {
   useEffect(() => {
     const FADE_IN_MS = 260;
 
-    if (currentStep === "coach-reply") {
+    if (currentStep === 'coach-reply') {
       const timer = setTimeout(
         () => startProgressBar(5000, () => onReplyAdvance.current()),
         FADE_IN_MS,
@@ -251,7 +247,7 @@ export default function CoachSetupScreen() {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        if (typeof next === "function") {
+        if (typeof next === 'function') {
           next();
           isAnimating.current = false;
           return;
@@ -337,7 +333,7 @@ export default function CoachSetupScreen() {
 
   const goBack = () => {
     switch (currentStep) {
-      case "name": {
+      case 'name': {
         // First step — exit back to the login screen.
         //
         // Auth flow is purely declarative now: AppNavigator watches
@@ -364,31 +360,31 @@ export default function CoachSetupScreen() {
         // sign them out.
         break;
       }
-      case "activity":
-        transitionTo("name");
+      case 'activity':
+        transitionTo('name');
         break;
-      case "coach-reply":
+      case 'coach-reply':
         cancelAutoAdvance();
         switch (replySourceRef.current) {
-          case "name":
-            transitionTo("name");
+          case 'name':
+            transitionTo('name');
             break;
-          case "activity":
-            transitionTo("activity");
+          case 'activity':
+            transitionTo('activity');
             break;
-          case "time":
-            transitionTo("time");
+          case 'time':
+            transitionTo('time');
             break;
         }
         break;
-      case "time":
-        transitionTo("activity");
+      case 'time':
+        transitionTo('activity');
         break;
-      case "frequency":
-        transitionTo("time");
+      case 'frequency':
+        transitionTo('time');
         break;
-      case "ready":
-        transitionTo("frequency");
+      case 'ready':
+        transitionTo('frequency');
         break;
     }
   };
@@ -400,7 +396,7 @@ export default function CoachSetupScreen() {
     source: ReplySource,
     userInput: string | string[],
     next: () => void,
-    quote = "",
+    quote = '',
     previousAnswers?: Record<string, unknown>,
   ) => {
     setIsGeneratingReply(true);
@@ -430,7 +426,7 @@ export default function CoachSetupScreen() {
       }),
     ]).start(() => {
       setIsGeneratingReply(false);
-      setCurrentStep("coach-reply");
+      setCurrentStep('coach-reply');
       translateY.setValue(20);
       Animated.parallel([
         Animated.timing(opacity, {
@@ -455,9 +451,7 @@ export default function CoachSetupScreen() {
     Keyboard.dismiss();
     nameRef.current = trimmed;
     setUserName(trimmed);
-    await fetchAndShowReply("name", "name", trimmed, () =>
-      transitionTo("activity"),
-    );
+    await fetchAndShowReply('name', 'name', trimmed, () => transitionTo('activity'));
   };
 
   const handleActivitySelect = async (option: SelectOption<ActivityLevel>) => {
@@ -465,7 +459,7 @@ export default function CoachSetupScreen() {
     // Skip the coach-reply detour after activity — we ask the walk-baseline
     // question immediately so the placement signal stays cohesive in the
     // user's head. Coach reply still fires after the time step.
-    transitionTo("walk-baseline");
+    transitionTo('walk-baseline');
   };
 
   const handleWalkBaselineSelect = (option: SelectOption<WalkBaseline>) => {
@@ -473,44 +467,39 @@ export default function CoachSetupScreen() {
     // Run readiness is only meaningful for users who can already walk
     // ≥15 min — below that, capacity is the binding constraint and the
     // question would feel out of place.
-    const askRunReadiness =
-      option.value === 'fifteen_to_30' || option.value === 'thirty_plus';
+    const askRunReadiness = option.value === 'fifteen_to_30' || option.value === 'thirty_plus';
     if (askRunReadiness) {
-      transitionTo("run-readiness");
+      transitionTo('run-readiness');
     } else {
       // Clear any stale runReadiness if the user backed up and changed answers.
       setRunReadiness(null);
-      transitionTo("time");
+      transitionTo('time');
     }
   };
 
   const handleRunReadinessSelect = (option: SelectOption<RunReadiness>) => {
     setRunReadiness(option.value);
-    transitionTo("time");
+    transitionTo('time');
   };
 
   const handleTimeSelect = async (option: SelectOption<TimePreference>) => {
     setTimePreference(option.value);
-    await fetchAndShowReply(
-      "time",
-      "time",
-      option.value,
-      () => transitionTo("frequency"),
-      "",
-      { activityLevel: setupData.activityLevel ?? undefined },
-    );
+    await fetchAndShowReply('time', 'time', option.value, () => transitionTo('frequency'), '', {
+      activityLevel: setupData.activityLevel ?? undefined,
+    });
   };
 
   const handleFrequencySelect = (option: SelectOption<number>) => {
     setWeeklyFrequency(option.value);
-    transitionTo("ready");
+    transitionTo('ready');
   };
 
   const handleReady = () => {
     transitionTo(async () => {
-      // Apply the computed starting level BEFORE markSetupComplete so the
-      // first session the user sees on Today reflects their placement.
-      // setLevel is idempotent and clamps to 1–16 internally.
+      // Apply the computed starting level so the first session the user
+      // sees on Today reflects their placement. Do this BEFORE the paywall
+      // so even users who immediately kill the app on the paywall come back
+      // to the right level. setLevel is idempotent and clamps to 1–16.
       const placement = computeStartingLevel(
         setupData.activityLevel,
         setupData.walkBaseline,
@@ -520,27 +509,14 @@ export default function CoachSetupScreen() {
         useRunProgressStore.getState().setLevel(placement.level);
       }
 
-      markSetupComplete();
-      // Persist onboarding to the server immediately for real authenticated
-      // users (not guests). Without this, users who sign in with Google or
-      // email/password and complete setup only have the data locally — the
-      // moment they sign out, all setup data is lost, and the next sign-in
-      // doesn't find anything on the server (server-wins path can't fire),
-      // so they're sent through CoachSetup AGAIN with empty fields.
-      // Guest users skip this branch; their data is migrated later by
-      // setSession's resolver when they actually sign up.
-      const { user, isGuest, session } = useAuthStore.getState();
-      if (session && user && !isGuest) {
-        try {
-          const { authService } = require('../../services/authService');
-          await authService.syncLocalDataToSupabase(user.id);
-        } catch (err) {
-          console.warn('Failed to sync onboarding to server:', err);
-          // Non-fatal — local state is already saved. The user can still
-          // use the app; their data will just not persist across re-signin
-          // until the next sync opportunity.
-        }
-      }
+      // Navigate to the end-of-onboarding paywall. From there, the user can
+      // either subscribe or skip — both paths call markSetupComplete() +
+      // syncLocalDataToSupabase(), which is what AppNavigator watches to
+      // hand off to MainTabNavigator. We intentionally do NOT call
+      // markSetupComplete here; otherwise AppNavigator would unmount the
+      // OnboardingNavigator mid-transition and the paywall screen would
+      // never render.
+      navigation.navigate('OnboardingPaywall');
     });
   };
 
@@ -564,10 +540,7 @@ export default function CoachSetupScreen() {
 
   const renderBackButton = () => (
     <Pressable
-      style={({ pressed }) => [
-        styles.backBtn,
-        pressed && styles.backBtnPressed,
-      ]}
+      style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
       onPress={goBack}
       hitSlop={12}
     >
@@ -644,10 +617,7 @@ export default function CoachSetupScreen() {
         {options.map((opt) => (
           <Pressable
             key={opt.value}
-            style={({ pressed }) => [
-              styles.optionCard,
-              pressed && styles.optionCardActive,
-            ]}
+            style={({ pressed }) => [styles.optionCard, pressed && styles.optionCardActive]}
             onPress={() => onSelect(opt)}
           >
             <Text style={styles.optionLabel}>{opt.label}</Text>
@@ -697,10 +667,7 @@ export default function CoachSetupScreen() {
         </View>
         <View style={styles.footer}>
           <Pressable
-            style={({ pressed }) => [
-              styles.primaryBtn,
-              pressed && styles.primaryBtnPressed,
-            ]}
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.primaryBtnPressed]}
             onPress={handleReady}
           >
             <Text style={styles.primaryBtnLabel}>Let's Go</Text>
@@ -716,55 +683,53 @@ export default function CoachSetupScreen() {
     if (isGeneratingReply) return renderThinking();
 
     switch (currentStep) {
-      case "name":
+      case 'name':
         return renderNameInput();
-      case "activity":
+      case 'activity':
         return renderOptionCards(
-          "Your starting point",
-          "How active are you right now?",
+          'Your starting point',
+          'How active are you right now?',
           ACTIVITY_OPTIONS,
           handleActivitySelect,
         );
-      case "walk-baseline":
+      case 'walk-baseline':
         return renderOptionCards(
-          "Your walking baseline",
-          "How long can you walk comfortably without stopping?",
+          'Your walking baseline',
+          'How long can you walk comfortably without stopping?',
           WALK_BASELINE_OPTIONS,
           handleWalkBaselineSelect,
         );
-      case "run-readiness":
+      case 'run-readiness':
         return renderOptionCards(
-          "One quick check",
-          "Could you jog for at least a minute right now?",
+          'One quick check',
+          'Could you jog for at least a minute right now?',
           RUN_READINESS_OPTIONS,
           handleRunReadinessSelect,
         );
-      case "coach-reply":
+      case 'coach-reply':
         return renderCoachReply();
-      case "time":
+      case 'time':
         return renderOptionCards(
-          "Your schedule",
-          "When do you prefer to move?",
+          'Your schedule',
+          'When do you prefer to move?',
           TIME_OPTIONS,
           handleTimeSelect,
         );
-      case "frequency":
+      case 'frequency':
         return renderOptionCards(
-          "Your weekly goal",
-          "How many days a week do you want to train?",
+          'Your weekly goal',
+          'How many days a week do you want to train?',
           FREQUENCY_OPTIONS,
           handleFrequencySelect,
         );
-      case "ready":
+      case 'ready':
         return renderReady();
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <Animated.View
-        style={[styles.flex, { opacity, transform: [{ translateY }] }]}
-      >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <Animated.View style={[styles.flex, { opacity, transform: [{ translateY }] }]}>
         {renderCurrentStep()}
       </Animated.View>
     </SafeAreaView>
@@ -783,18 +748,18 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 2,
     marginHorizontal: SIDE_PAD,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   progressFill: {
     height: 2,
-    backgroundColor: "rgba(255,255,255,0.85)",
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
 
   // ── Thinking state ──
   thinkingContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 20,
   },
   thinkingLabel: {
@@ -837,7 +802,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     letterSpacing: 1.0,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
     marginBottom: 12,
   },
   question: {
@@ -858,7 +823,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
     minHeight: 62,
-    justifyContent: "center",
+    justifyContent: 'center',
   },
   optionCardActive: {
     backgroundColor: colors.primaryDim,
@@ -875,7 +840,7 @@ const styles = StyleSheet.create({
   // ── Coach reply & transitions ──
   replyTapArea: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
     paddingBottom: 40,
   },
   quoteBlock: {
@@ -907,7 +872,7 @@ const styles = StyleSheet.create({
   },
 
   // ── Back button ──
-  backBtn: { alignSelf: "flex-start", marginLeft: -6, marginBottom: 16 },
+  backBtn: { alignSelf: 'flex-start', marginLeft: -6, marginBottom: 16 },
   backBtnPressed: { opacity: 0.5 },
 
   // ── Primary CTA ──
@@ -915,15 +880,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 14,
     height: touchTarget.button,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryBtnDisabled: { backgroundColor: colors.dotInactive },
   primaryBtnPressed: { opacity: 0.84 },
   primaryBtnLabel: {
     fontFamily: fonts.semiBold,
     fontSize: 16,
-    color: "#fff",
+    color: '#fff',
     letterSpacing: 0.3,
   },
 

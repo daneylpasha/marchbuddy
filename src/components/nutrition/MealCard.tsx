@@ -7,7 +7,12 @@ import { estimateSwapNutrition } from '../../services/aiService';
 
 interface MealCardProps {
   meal: Meal;
-  onFeedback: (mealId: string, feedback: Meal['feedback'], swapDescription?: string, swapNutrition?: { calories: number; protein: number; carbs: number; fat: number }) => void;
+  onFeedback: (
+    mealId: string,
+    feedback: Meal['feedback'],
+    swapDescription?: string,
+    swapNutrition?: { calories: number; protein: number; carbs: number; fat: number },
+  ) => void;
 }
 
 const MEAL_EMOJI: Record<Meal['type'], string> = {
@@ -31,10 +36,14 @@ const FEEDBACK_OPTIONS: FeedbackOption[] = [
 
 function getFeedbackStyle(feedback: Meal['feedback']) {
   switch (feedback) {
-    case 'ate-it': return { bg: colors.successDim, border: 'rgba(0,230,118,0.2)' };
-    case 'swapped': return { bg: colors.warningDim, border: 'rgba(255,152,0,0.2)' };
-    case 'skipped': return { bg: 'rgba(136,136,136,0.08)', border: 'rgba(136,136,136,0.15)' };
-    default: return { bg: 'transparent', border: 'transparent' };
+    case 'ate-it':
+      return { bg: colors.successDim, border: 'rgba(0,230,118,0.2)' };
+    case 'swapped':
+      return { bg: colors.warningDim, border: 'rgba(255,152,0,0.2)' };
+    case 'skipped':
+      return { bg: 'rgba(136,136,136,0.08)', border: 'rgba(136,136,136,0.15)' };
+    default:
+      return { bg: 'transparent', border: 'transparent' };
   }
 }
 
@@ -71,14 +80,28 @@ export default function MealCard({ meal, onFeedback }: MealCardProps) {
   const displayFat = isSwapped && meal.swapFat != null ? meal.swapFat : meal.fat;
 
   return (
-    <View style={[styles.card, { backgroundColor: meal.feedback ? undefined : colors.surfaceElevated, borderColor: fbStyle.border }]}>
-      {meal.feedback && <View style={[StyleSheet.absoluteFill, styles.feedbackOverlay, { backgroundColor: fbStyle.bg }]} />}
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: meal.feedback ? undefined : colors.surfaceElevated,
+          borderColor: fbStyle.border,
+        },
+      ]}
+    >
+      {meal.feedback && (
+        <View
+          style={[StyleSheet.absoluteFill, styles.feedbackOverlay, { backgroundColor: fbStyle.bg }]}
+        />
+      )}
 
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.emoji}>{MEAL_EMOJI[meal.type]}</Text>
         <View style={styles.headerInfo}>
-          <Text style={styles.mealType}>{meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}</Text>
+          <Text style={styles.mealType}>
+            {meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
+          </Text>
           <Text style={[styles.mealName, meal.feedback === 'skipped' && styles.mealNameSkipped]}>
             {meal.name}
           </Text>
@@ -108,7 +131,11 @@ export default function MealCard({ meal, onFeedback }: MealCardProps) {
               style={[styles.feedbackBtn, isSelected && styles.feedbackBtnSelected]}
               onPress={() => handleFeedback(opt.value)}
             >
-              <Ionicons name={opt.icon} size={16} color={isSelected ? '#fff' : colors.textSecondary} />
+              <Ionicons
+                name={opt.icon}
+                size={16}
+                color={isSelected ? '#fff' : colors.textSecondary}
+              />
               <Text style={[styles.feedbackLabel, isSelected && styles.feedbackLabelSelected]}>
                 {opt.label}
               </Text>

@@ -8,8 +8,8 @@ export interface OnboardingStage {
   id: string;
   messages: string[];
   inputType: InputType;
-  options?: string[];        // for 'select' type
-  numberUnit?: string;       // for 'number' type (display label)
+  options?: string[]; // for 'select' type
+  numberUnit?: string; // for 'number' type (display label)
   numberMin?: number;
   numberMax?: number;
   field: keyof PartialProfile | null; // which profile field this updates
@@ -17,16 +17,21 @@ export interface OnboardingStage {
   parse: (input: string) => any; // converts raw input to profile value
 }
 
-type PartialProfile = Omit<UserProfile, 'userId' | 'createdAt' | 'updatedAt' | 'onboardingCompleted'>;
+type PartialProfile = Omit<
+  UserProfile,
+  'userId' | 'createdAt' | 'updatedAt' | 'onboardingCompleted'
+>;
 
 const noValidation = () => null;
-const textNotEmpty = (input: string) => input.trim() ? null : 'Please enter a response.';
-const parseNumber = (min: number, max: number) => (input: string): string | null => {
-  const n = Number(input);
-  if (isNaN(n)) return 'Please enter a valid number.';
-  if (n < min || n > max) return `Please enter a value between ${min} and ${max}.`;
-  return null;
-};
+const textNotEmpty = (input: string) => (input.trim() ? null : 'Please enter a response.');
+const parseNumber =
+  (min: number, max: number) =>
+  (input: string): string | null => {
+    const n = Number(input);
+    if (isNaN(n)) return 'Please enter a valid number.';
+    if (n < min || n > max) return `Please enter a value between ${min} and ${max}.`;
+    return null;
+  };
 
 // ─── Trimmed stages (8 essential questions) ─────────────────────────────────
 
@@ -111,7 +116,7 @@ export const ONBOARDING_STAGES: OnboardingStage[] = [
   // Stage 7: Current activity level
   {
     id: 'currentActivityLevel',
-    messages: ["Last one — how active are you right now?"],
+    messages: ['Last one — how active are you right now?'],
     inputType: 'select',
     options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
     field: 'currentActivityLevel',
@@ -148,7 +153,11 @@ export function getEmptyOnboardingData(): OnboardingData {
 
 // ─── Smart acknowledgments ───────────────────────────────────────────────────
 
-export function generateSmartAcknowledgment(stageId: string, userResponse: string, data: OnboardingData): string | null {
+export function generateSmartAcknowledgment(
+  stageId: string,
+  userResponse: string,
+  data: OnboardingData,
+): string | null {
   const response = userResponse.toLowerCase();
 
   switch (stageId) {
@@ -171,18 +180,21 @@ export function generateSmartAcknowledgment(stageId: string, userResponse: strin
 
     case 'targetWeight': {
       const gap = Math.abs(data.currentWeight - Number(userResponse));
-      if (gap > 20) return `That's an ambitious goal — I like it. We'll build a realistic plan for that ${gap}kg shift.`;
+      if (gap > 20)
+        return `That's an ambitious goal — I like it. We'll build a realistic plan for that ${gap}kg shift.`;
       return null;
     }
 
     case 'primaryGoal':
-      if (response.includes('weight loss')) return 'Weight loss it is. Smart nutrition + right training.';
-      if (response.includes('muscle')) return 'Muscle building — let\'s get you growing.';
-      if (response.includes('stamina')) return 'Endurance focus — we\'ll build that cardio base.';
+      if (response.includes('weight loss'))
+        return 'Weight loss it is. Smart nutrition + right training.';
+      if (response.includes('muscle')) return "Muscle building — let's get you growing.";
+      if (response.includes('stamina')) return "Endurance focus — we'll build that cardio base.";
       return null;
 
     case 'currentActivityLevel':
-      if (response.includes('sedentary')) return 'Honest answer — I respect that. We\'ll start gentle.';
+      if (response.includes('sedentary'))
+        return "Honest answer — I respect that. We'll start gentle.";
       return null;
 
     default:
@@ -204,13 +216,51 @@ export interface SummaryField {
 
 export const SUMMARY_FIELDS: SummaryField[] = [
   { key: 'name', label: 'Name', inputType: 'text' },
-  { key: 'age', label: 'Age', inputType: 'number', numberUnit: 'years', numberMin: 13, numberMax: 100 },
+  {
+    key: 'age',
+    label: 'Age',
+    inputType: 'number',
+    numberUnit: 'years',
+    numberMin: 13,
+    numberMax: 100,
+  },
   { key: 'gender', label: 'Gender', inputType: 'select', options: ['Male', 'Female', 'Other'] },
-  { key: 'height', label: 'Height', inputType: 'number', numberUnit: 'cm', numberMin: 100, numberMax: 250 },
-  { key: 'currentWeight', label: 'Current Weight', inputType: 'number', numberUnit: 'kg', numberMin: 30, numberMax: 300 },
-  { key: 'targetWeight', label: 'Target Weight', inputType: 'number', numberUnit: 'kg', numberMin: 30, numberMax: 300 },
-  { key: 'primaryGoal', label: 'Main Goal', inputType: 'select', options: ['Weight Loss', 'Muscle Building', 'General Fitness', 'Stamina & Endurance'] },
-  { key: 'currentActivityLevel', label: 'Activity Level', inputType: 'select', options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'] },
+  {
+    key: 'height',
+    label: 'Height',
+    inputType: 'number',
+    numberUnit: 'cm',
+    numberMin: 100,
+    numberMax: 250,
+  },
+  {
+    key: 'currentWeight',
+    label: 'Current Weight',
+    inputType: 'number',
+    numberUnit: 'kg',
+    numberMin: 30,
+    numberMax: 300,
+  },
+  {
+    key: 'targetWeight',
+    label: 'Target Weight',
+    inputType: 'number',
+    numberUnit: 'kg',
+    numberMin: 30,
+    numberMax: 300,
+  },
+  {
+    key: 'primaryGoal',
+    label: 'Main Goal',
+    inputType: 'select',
+    options: ['Weight Loss', 'Muscle Building', 'General Fitness', 'Stamina & Endurance'],
+  },
+  {
+    key: 'currentActivityLevel',
+    label: 'Activity Level',
+    inputType: 'select',
+    options: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
+  },
 ];
 
 // ─── Display value formatter ────────────────────────────────────────────────
@@ -218,12 +268,17 @@ export const SUMMARY_FIELDS: SummaryField[] = [
 export function formatDisplayValue(key: keyof OnboardingData, value: any): string {
   if (value === '' || value === 0) return '—';
   switch (key) {
-    case 'age': return `${value} years`;
-    case 'height': return `${value} cm`;
+    case 'age':
+      return `${value} years`;
+    case 'height':
+      return `${value} cm`;
     case 'currentWeight':
-    case 'targetWeight': return `${value} kg`;
-    case 'gender': return String(value).charAt(0).toUpperCase() + String(value).slice(1);
-    default: return String(value);
+    case 'targetWeight':
+      return `${value} kg`;
+    case 'gender':
+      return String(value).charAt(0).toUpperCase() + String(value).slice(1);
+    default:
+      return String(value);
   }
 }
 
@@ -274,9 +329,9 @@ export const TOTAL_USER_STEPS = 4;
 
 // Map stage index to the user-facing step number (1-4)
 export function getStepNumber(stageIndex: number): number {
-  if (stageIndex <= 0) return 1;  // name
-  if (stageIndex <= 5) return 2;  // age, gender, height, weight, target
-  if (stageIndex <= 7) return 3;  // goal, activity level
+  if (stageIndex <= 0) return 1; // name
+  if (stageIndex <= 5) return 2; // age, gender, height, weight, target
+  if (stageIndex <= 7) return 3; // goal, activity level
   return 4; // summary (shouldn't be reached via stages)
 }
 

@@ -7,16 +7,25 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/env';
 
 const secureStoreAdapter = {
   getItem: async (key: string) => {
-    try { return await SecureStore.getItemAsync(key); }
-    catch { return null; }
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch {
+      return null;
+    }
   },
   setItem: async (key: string, value: string) => {
-    try { await SecureStore.setItemAsync(key, value); }
-    catch { /* keychain unavailable */ }
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch {
+      /* keychain unavailable */
+    }
   },
   removeItem: async (key: string) => {
-    try { await SecureStore.deleteItemAsync(key); }
-    catch { /* keychain unavailable */ }
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      /* keychain unavailable */
+    }
   },
 };
 

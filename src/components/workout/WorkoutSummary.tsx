@@ -11,7 +11,13 @@ interface WorkoutSummaryProps {
   total: number;
 }
 
-export default function WorkoutSummary({ completed, skipped, tooEasy, tooHard, total }: WorkoutSummaryProps) {
+export default function WorkoutSummary({
+  completed,
+  skipped,
+  tooEasy,
+  tooHard,
+  total,
+}: WorkoutSummaryProps) {
   const celebrationScale = useRef(new Animated.Value(0)).current;
   const allDone = completed + tooEasy === total;
 
@@ -27,7 +33,7 @@ export default function WorkoutSummary({ completed, skipped, tooEasy, tooHard, t
   const getMessage = () => {
     if (allDone) return 'Crushed it! Every single exercise done.';
     if (completed + tooEasy >= total * 0.8) return 'Great session — almost everything done!';
-    if (skipped >= total * 0.5) return 'Showing up is what counts. We\'ll get after it next time.';
+    if (skipped >= total * 0.5) return "Showing up is what counts. We'll get after it next time.";
     return 'Solid work today. Every rep counts.';
   };
 
@@ -55,18 +61,8 @@ export default function WorkoutSummary({ completed, skipped, tooEasy, tooHard, t
           value={skipped}
           label="Skipped"
         />
-        <StatBox
-          icon="flash"
-          color={colors.warning}
-          value={tooEasy}
-          label="Too Easy"
-        />
-        <StatBox
-          icon="barbell"
-          color={colors.danger}
-          value={tooHard}
-          label="Too Hard"
-        />
+        <StatBox icon="flash" color={colors.warning} value={tooEasy} label="Too Easy" />
+        <StatBox icon="barbell" color={colors.danger} value={tooHard} label="Too Hard" />
       </View>
 
       <View style={styles.noteBox}>
@@ -75,15 +71,20 @@ export default function WorkoutSummary({ completed, skipped, tooEasy, tooHard, t
           {tooEasy > 0
             ? `You found ${tooEasy} exercise${tooEasy > 1 ? 's' : ''} too easy — I'll bump up the intensity next session.`
             : tooHard > 0
-            ? `${tooHard} exercise${tooHard > 1 ? 's were' : ' was'} too hard — I'll adjust the load for next time.`
-            : 'Your feedback helps me fine-tune your plan every session.'}
+              ? `${tooHard} exercise${tooHard > 1 ? 's were' : ' was'} too hard — I'll adjust the load for next time.`
+              : 'Your feedback helps me fine-tune your plan every session.'}
         </Text>
       </View>
     </View>
   );
 }
 
-function StatBox({ icon, color, value, label }: {
+function StatBox({
+  icon,
+  color,
+  value,
+  label,
+}: {
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   value: number;

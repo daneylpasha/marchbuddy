@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Text, Pressable, StyleSheet } from 'react-native';
 import { SessionPlan } from '../../../types/session';
 import { formatDurationMinutes } from '../../../utils/sessionUtils';
 import { colors, fonts } from '../../../theme';
@@ -10,9 +10,9 @@ interface AlternativeSessionCardProps {
 }
 
 const VARIANT_INFO: Record<string, { label: string; sublabel: string }> = {
-  quick:     { label: 'Quick',     sublabel: 'Lighter' },
+  quick: { label: 'Quick', sublabel: 'Lighter' },
   challenge: { label: 'Challenge', sublabel: 'More' },
-  push:      { label: 'Push It',   sublabel: 'Extended' },
+  push: { label: 'Push It', sublabel: 'Extended' },
   recommended: { label: 'Standard', sublabel: '' },
 };
 

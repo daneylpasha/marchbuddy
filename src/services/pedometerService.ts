@@ -3,7 +3,6 @@
 // degrades silently to "no steps" instead of crashing the screen.
 let Pedometer: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   Pedometer = require('expo-sensors').Pedometer ?? null;
 } catch {
   Pedometer = null;
@@ -43,10 +42,7 @@ class PedometerService {
     }
   }
 
-  async startTracking(
-    onSteps: StepListener,
-    initialBaseline = 0,
-  ): Promise<boolean> {
+  async startTracking(onSteps: StepListener, initialBaseline = 0): Promise<boolean> {
     if (this.isTracking) return true;
     if (!Pedometer?.watchStepCount) return false;
 
@@ -112,10 +108,7 @@ class PedometerService {
   // after backfilling missed background steps, so the live subscription's
   // future emissions accumulate on top of the reconciled total instead of
   // being silently dropped by the store's monotonic guard.
-  async restartWithBaseline(
-    baseline: number,
-    onSteps: StepListener,
-  ): Promise<boolean> {
+  async restartWithBaseline(baseline: number, onSteps: StepListener): Promise<boolean> {
     this.stopTracking();
     return this.startTracking(onSteps, baseline);
   }

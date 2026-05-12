@@ -5,7 +5,6 @@ import { useAuthStore } from './authStore';
 import { useNetworkStore } from './networkStore';
 import {
   getTodayWorkout,
-  upsertWorkout,
   updateWorkoutStatus,
   updateExerciseFeedback as dbUpdateExerciseFeedback,
   getRecentExerciseHistory,
@@ -60,12 +59,30 @@ interface WorkoutState {
   dismissPRCelebration: () => void;
   startWorkout: () => void;
   updateExerciseFeedback: (exerciseId: string, feedback: Exercise['feedback']) => void;
-  updateExerciseActuals: (exerciseId: string, actuals: { actualSets?: number; actualReps?: number; actualRepsPerSet?: number[]; actualWeight?: number }) => void;
+  updateExerciseActuals: (
+    exerciseId: string,
+    actuals: {
+      actualSets?: number;
+      actualReps?: number;
+      actualRepsPerSet?: number[];
+      actualWeight?: number;
+    },
+  ) => void;
   setEnergyLevel: (level: 1 | 2 | 3 | 4 | 5) => void;
   setReadiness: (readiness: ReadinessCheck) => void;
   switchToRecovery: () => void;
   applyWorkoutChanges: (changes: WorkoutChange[]) => void;
-  swapExercise: (exerciseId: string, newExercise: { name: string; muscleGroup: string; sets: number; reps: number; weight?: number | null; formCues?: string[] }) => void;
+  swapExercise: (
+    exerciseId: string,
+    newExercise: {
+      name: string;
+      muscleGroup: string;
+      sets: number;
+      reps: number;
+      weight?: number | null;
+      formCues?: string[];
+    },
+  ) => void;
   setSessionRPE: (rpe: number) => void;
   completeWorkout: () => Promise<void>;
   skipWorkout: () => Promise<void>;
@@ -138,12 +155,18 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         // Cache as serializable array
         offlineCache.set(CACHE_KEYS.PERSONAL_RECORDS, Array.from(records.entries()), userId);
       } else {
-        const cached = await offlineCache.get<[string, PersonalRecord][]>(CACHE_KEYS.PERSONAL_RECORDS, userId);
+        const cached = await offlineCache.get<[string, PersonalRecord][]>(
+          CACHE_KEYS.PERSONAL_RECORDS,
+          userId,
+        );
         if (cached) set({ personalRecords: new Map(cached) });
       }
     } catch (e) {
       console.error('[workoutStore] fetchPersonalRecords error:', e);
-      const cached = await offlineCache.get<[string, PersonalRecord][]>(CACHE_KEYS.PERSONAL_RECORDS, userId);
+      const cached = await offlineCache.get<[string, PersonalRecord][]>(
+        CACHE_KEYS.PERSONAL_RECORDS,
+        userId,
+      );
       if (cached) set({ personalRecords: new Map(cached) });
     }
   },
@@ -157,13 +180,19 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     const existing = records.get(exercise.name);
     const today = new Date().toISOString().split('T')[0];
 
-    const isNewPR = !existing
-      || weight > existing.weightKg
-      || (weight === existing.weightKg && reps > existing.reps);
+    const isNewPR =
+      !existing ||
+      weight > existing.weightKg ||
+      (weight === existing.weightKg && reps > existing.reps);
 
     if (!isNewPR) return;
 
-    const newRecord: PersonalRecord = { exerciseName: exercise.name, weightKg: weight, reps, date: today };
+    const newRecord: PersonalRecord = {
+      exerciseName: exercise.name,
+      weightKg: weight,
+      reps,
+      date: today,
+    };
     const updatedRecords = new Map(records);
     updatedRecords.set(exercise.name, newRecord);
 
@@ -204,12 +233,18 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
         set({ exerciseHistory: history });
         offlineCache.set(CACHE_KEYS.EXERCISE_HISTORY, Array.from(history.entries()), userId);
       } else {
-        const cached = await offlineCache.get<[string, ExercisePerformance][]>(CACHE_KEYS.EXERCISE_HISTORY, userId);
+        const cached = await offlineCache.get<[string, ExercisePerformance][]>(
+          CACHE_KEYS.EXERCISE_HISTORY,
+          userId,
+        );
         if (cached) set({ exerciseHistory: new Map(cached) });
       }
     } catch (e) {
       console.error('[workoutStore] fetchExerciseHistory error:', e);
-      const cached = await offlineCache.get<[string, ExercisePerformance][]>(CACHE_KEYS.EXERCISE_HISTORY, userId);
+      const cached = await offlineCache.get<[string, ExercisePerformance][]>(
+        CACHE_KEYS.EXERCISE_HISTORY,
+        userId,
+      );
       if (cached) set({ exerciseHistory: new Map(cached) });
     }
   },
@@ -339,13 +374,17 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     cacheWorkout(updated);
 
     if (!MOCK_MODE) {
-      persistOrQueue('updateWorkoutColumns', [workout.id, { readiness, energy_level: readiness.energyLevel }], async () => {
-        const { error } = await supabase
-          .from('workout_plans')
-          .update({ readiness, energy_level: readiness.energyLevel })
-          .eq('id', workout.id);
-        if (error) throw error;
-      });
+      persistOrQueue(
+        'updateWorkoutColumns',
+        [workout.id, { readiness, energy_level: readiness.energyLevel }],
+        async () => {
+          const { error } = await supabase
+            .from('workout_plans')
+            .update({ readiness, energy_level: readiness.energyLevel })
+            .eq('id', workout.id);
+          if (error) throw error;
+        },
+      );
     }
   },
 
@@ -362,7 +401,8 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     const updated = {
       ...workout,
       exercises,
-      aiNotes: 'Recovery mode — lighter session to match your energy. Focus on form, not intensity.',
+      aiNotes:
+        'Recovery mode — lighter session to match your energy. Focus on form, not intensity.',
     };
     set({ todayWorkout: updated });
     cacheWorkout(updated);
@@ -380,9 +420,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
     if (!workout || changes.length === 0) return;
 
     const exercises = workout.exercises.map((ex) => {
-      const change = changes.find(
-        (c) => c.exerciseName.toLowerCase() === ex.name.toLowerCase(),
-      );
+      const change = changes.find((c) => c.exerciseName.toLowerCase() === ex.name.toLowerCase());
       if (!change) return ex;
       return {
         ...ex,

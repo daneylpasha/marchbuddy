@@ -20,13 +20,8 @@ type NavProp = NativeStackNavigationProp<NutritionStackParamList>;
 export default function NutritionScreen() {
   const navigation = useNavigation<NavProp>();
   const user = useAuthStore((s) => s.user);
-  const {
-    todayMealPlan,
-    foodSnaps,
-    fetchTodayMealPlan,
-    updateMealFeedback,
-    getConsumedTotals,
-  } = useNutritionStore();
+  const { todayMealPlan, foodSnaps, fetchTodayMealPlan, updateMealFeedback, getConsumedTotals } =
+    useNutritionStore();
 
   useEffect(() => {
     if (!todayMealPlan && user) {
@@ -41,7 +36,12 @@ export default function NutritionScreen() {
   const targetC = plan?.totalCarbs ?? 200;
   const targetF = plan?.totalFat ?? 60;
 
-  const handleFeedback = (mealId: string, feedback: Meal['feedback'], swapDescription?: string, swapNutrition?: { calories: number; protein: number; carbs: number; fat: number }) => {
+  const handleFeedback = (
+    mealId: string,
+    feedback: Meal['feedback'],
+    swapDescription?: string,
+    swapNutrition?: { calories: number; protein: number; carbs: number; fat: number },
+  ) => {
     updateMealFeedback(mealId, feedback, swapDescription, swapNutrition);
   };
 
@@ -49,17 +49,30 @@ export default function NutritionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── Header ─────────────────────────────────────────── */}
         <BebasText>Today's Nutrition</BebasText>
         <Text style={styles.date}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+          })}
         </Text>
 
         {/* ── Calorie overview ───────────────────────────────── */}
         <View style={styles.calorieSection}>
-          <ProgressRing current={consumed.calories} total={targetCal} size={130} strokeWidth={10} label="cal" />
+          <ProgressRing
+            current={consumed.calories}
+            total={targetCal}
+            size={130}
+            strokeWidth={10}
+            label="cal"
+          />
           <View style={styles.calorieInfo}>
             <Text style={styles.calorieConsumed}>{consumed.calories}</Text>
             <Text style={styles.calorieTarget}>/ {targetCal} cal</Text>
@@ -71,7 +84,12 @@ export default function NutritionScreen() {
 
         {/* ── Macro bars ─────────────────────────────────────── */}
         <View style={styles.macroSection}>
-          <MacroBar label="Protein" current={consumed.protein} total={targetP} color={colors.protein} />
+          <MacroBar
+            label="Protein"
+            current={consumed.protein}
+            total={targetP}
+            color={colors.protein}
+          />
           <MacroBar label="Carbs" current={consumed.carbs} total={targetC} color={colors.carbs} />
           <MacroBar label="Fat" current={consumed.fat} total={targetF} color={colors.fat} />
         </View>
@@ -124,7 +142,14 @@ const styles = StyleSheet.create({
   content: { padding: spacing.screenPadding },
 
   title: {},
-  date: { color: colors.textSecondary, fontSize: 14, marginTop: 3, marginBottom: 22, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  date: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 3,
+    marginBottom: 22,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Calorie section
   calorieSection: {
@@ -139,9 +164,29 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
   },
   calorieInfo: { flex: 1 },
-  calorieConsumed: { color: colors.textPrimary, fontSize: 42, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: fonts.bold, letterSpacing: 0.3 },
-  calorieTarget: { color: colors.textSecondary, fontSize: 16, marginTop: -2, fontFamily: fonts.regular, letterSpacing: 0.3 },
-  calorieRemaining: { color: colors.primary, fontSize: 14, fontWeight: '500', marginTop: 8, fontFamily: fonts.medium, letterSpacing: 0.3 },
+  calorieConsumed: {
+    color: colors.textPrimary,
+    fontSize: 42,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+  calorieTarget: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    marginTop: -2,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
+  calorieRemaining: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
   calorieGoalHit: { color: colors.success },
 
   // Macros
@@ -174,7 +219,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  emptyText: { color: colors.textSecondary, fontSize: 14, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Snap card
   snapCard: {
@@ -200,8 +250,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   snapInfo: { flex: 1 },
-  snapTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
-  snapSubtitle: { color: colors.textSecondary, fontSize: 12, marginTop: 2, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  snapTitle: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
+  snapSubtitle: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   bottomSpacer: { height: 20 },
 });
