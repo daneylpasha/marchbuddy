@@ -299,20 +299,21 @@ export const authService = {
 
   /**
    * Push the local subscription state to the server's user_subscriptions
-   * table. Call this whenever the local store mutates (upgrade, setStartingLevel,
-   * future RevenueCat restore). Without this, Pro status and free-funnel
-   * boundaries live only in AsyncStorage — wiped on logout, invisible on a
-   * second device.
+   * table.
    *
-   * Safe for guests: if there's no Supabase session we early-return. The
-   * row gets created automatically by the on_auth_user_created_subscription
-   * trigger when the user first signs up, so this is always an UPDATE on an
-   * existing row (we still upsert for safety on legacy accounts).
+   * IMPORTANT — only writes free-funnel fields, NOT entitlement fields.
+   *   tier, expires_at, started_at, platform, revenuecat_user_id are all
+   *   server-authoritative. They're written EXCLUSIVELY by the RevenueCat
+   *   webhook (supabase/functions/revenuecat-webhook). The RLS policy on
+   *   user_subscriptions enforces this — attempting to write `tier` from
+   *   the client now returns a column-level permission error.
    *
-   * Entitlement fields (started_at, expires_at, platform, revenuecat_user_id)
-   * are server-authoritative once RevenueCat is wired — we leave them
-   * untouched here. Free-funnel fields (tier, starting_level, free_until_level)
-   * are mirrored from the local store.
+   * What this method DOES write:
+   *   • starting_level — captured once when user first lands on TodayScreen
+   *   • free_until_level — derived from starting_level
+   *   • updated_at — bumped on every push
+   *
+   * Safe for guests: no Supabase session → early return.
    */
   async pushSubscription(): Promise<void> {
     try {
@@ -324,18 +325,22 @@ export const authService = {
       const { useSubscriptionStore } = require('../store/subscriptionStore');
       const s = useSubscriptionStore.getState();
 
-      const { error } = await supabase.from('user_subscriptions').upsert(
-        {
-          user_id: session.user.id,
-          tier: s.tier,
+      // Use UPDATE (not upsert) — the row is guaranteed to exist via the
+      // on_auth_user_created_subscription trigger that fires at signup.
+      // If the row somehow doesn't exist (legacy accounts predating the
+      // migration), the backfill in the migration handled them already.
+      // Using UPDATE instead of upsert lets us avoid trying to INSERT
+      // `tier` (which the new RLS forbids).
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({
           starting_level: s.startingLevel,
           free_until_level: s.freeUntilLevel,
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' },
-      );
+        })
+        .eq('user_id', session.user.id);
 
-      if (error) console.error('pushSubscription upsert error:', error);
+      if (error) console.error('pushSubscription update error:', error);
     } catch (err) {
       console.error('pushSubscription failed:', err);
     }
