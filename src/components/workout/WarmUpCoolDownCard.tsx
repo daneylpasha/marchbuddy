@@ -11,7 +11,12 @@ interface WarmUpCoolDownCardProps {
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-export default function WarmUpCoolDownCard({ title, exercises, accentColor, icon }: WarmUpCoolDownCardProps) {
+export default function WarmUpCoolDownCard({
+  title,
+  exercises,
+  accentColor,
+  icon,
+}: WarmUpCoolDownCardProps) {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
   if (exercises.length === 0) return null;
@@ -36,26 +41,32 @@ export default function WarmUpCoolDownCard({ title, exercises, accentColor, icon
         <Ionicons name={icon} size={16} color={accentColor} />
         <Text style={[styles.title, { color: accentColor }]}>{title}</Text>
         {allDone && (
-          <Ionicons name="checkmark-circle" size={16} color={colors.success} style={styles.allDoneIcon} />
+          <Ionicons
+            name="checkmark-circle"
+            size={16}
+            color={colors.success}
+            style={styles.allDoneIcon}
+          />
         )}
       </View>
       {exercises.map((ex) => {
         const isDone = checkedIds.has(ex.id);
         return (
           <Pressable key={ex.id} style={styles.item} onPress={() => toggleCheck(ex.id)}>
-            <View style={[styles.checkbox, isDone && { backgroundColor: accentColor, borderColor: accentColor }]}>
+            <View
+              style={[
+                styles.checkbox,
+                isDone && { backgroundColor: accentColor, borderColor: accentColor },
+              ]}
+            >
               {isDone && <Ionicons name="checkmark" size={12} color="#fff" />}
             </View>
             <View style={[styles.itemInfo, isDone && styles.itemInfoDone]}>
               <View style={styles.nameRow}>
                 <Text style={[styles.name, isDone && styles.nameDone]}>{ex.name}</Text>
-                {ex.duration ? (
-                  <Text style={styles.duration}>{ex.duration}</Text>
-                ) : null}
+                {ex.duration ? <Text style={styles.duration}>{ex.duration}</Text> : null}
               </View>
-              {ex.description ? (
-                <Text style={styles.description}>{ex.description}</Text>
-              ) : null}
+              {ex.description ? <Text style={styles.description}>{ex.description}</Text> : null}
             </View>
           </Pressable>
         );

@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, TextInput, UIManager, View } from 'react-native';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  UIManager,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../theme';
 import type { Exercise } from '../../types';
@@ -11,7 +20,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface ExerciseCardProps {
   exercise: Exercise;
   onFeedback: (exerciseId: string, feedback: Exercise['feedback']) => void;
-  onActualsChange?: (exerciseId: string, actuals: { actualSets?: number; actualReps?: number; actualRepsPerSet?: number[]; actualWeight?: number }) => void;
+  onActualsChange?: (
+    exerciseId: string,
+    actuals: {
+      actualSets?: number;
+      actualReps?: number;
+      actualRepsPerSet?: number[];
+      actualWeight?: number;
+    },
+  ) => void;
   onSwap?: (exerciseId: string) => void;
   previousPerformance?: { weight?: number; reps?: number; sets?: number; date: string } | null;
   personalRecord?: { weightKg: number; reps: number } | null;
@@ -39,7 +56,14 @@ const FEEDBACK_OPTIONS: FeedbackOption[] = [
   { value: 'too-hard', icon: 'barbell', label: 'Hard' },
 ];
 
-export default function ExerciseCard({ exercise, onFeedback, onActualsChange, onSwap, previousPerformance, personalRecord }: ExerciseCardProps) {
+export default function ExerciseCard({
+  exercise,
+  onFeedback,
+  onActualsChange,
+  onSwap,
+  previousPerformance,
+  personalRecord,
+}: ExerciseCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [restSeconds, setRestSeconds] = useState(0);
   const [isResting, setIsResting] = useState(false);
@@ -92,19 +116,27 @@ export default function ExerciseCard({ exercise, onFeedback, onActualsChange, on
           <Text style={styles.orderNum}>{exercise.order}</Text>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.name} numberOfLines={2}>{exercise.name}</Text>
-              {personalRecord && exercise.weight != null && exercise.weight >= personalRecord.weightKg * 0.95 && (
-                <View style={styles.prBadge}>
-                  <Ionicons name="trophy" size={10} color="#FFD700" />
-                  <Text style={styles.prBadgeText}>PR</Text>
-                </View>
-              )}
+              <Text style={styles.name} numberOfLines={2}>
+                {exercise.name}
+              </Text>
+              {personalRecord &&
+                exercise.weight != null &&
+                exercise.weight >= personalRecord.weightKg * 0.95 && (
+                  <View style={styles.prBadge}>
+                    <Ionicons name="trophy" size={10} color="#FFD700" />
+                    <Text style={styles.prBadgeText}>PR</Text>
+                  </View>
+                )}
             </View>
             <View style={styles.metaRow}>
               <View style={[styles.muscleChip, { backgroundColor: muscleColor + '22' }]}>
-                <Text style={[styles.muscleText, { color: muscleColor }]}>{exercise.muscleGroup}</Text>
+                <Text style={[styles.muscleText, { color: muscleColor }]}>
+                  {exercise.muscleGroup}
+                </Text>
               </View>
-              <Text style={styles.setsReps}>{exercise.sets} × {exercise.reps}</Text>
+              <Text style={styles.setsReps}>
+                {exercise.sets} × {exercise.reps}
+              </Text>
             </View>
           </View>
         </View>
@@ -112,15 +144,16 @@ export default function ExerciseCard({ exercise, onFeedback, onActualsChange, on
           {!hasFeedback && onSwap && (
             <Pressable
               style={styles.swapBtn}
-              onPress={(e) => { e.stopPropagation(); onSwap(exercise.id); }}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSwap(exercise.id);
+              }}
               hitSlop={8}
             >
               <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
             </Pressable>
           )}
-          {hasFeedback && (
-            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-          )}
+          {hasFeedback && <Ionicons name="checkmark-circle" size={18} color={colors.success} />}
           <Ionicons
             name={expanded ? 'chevron-up' : 'chevron-down'}
             size={20}
@@ -137,7 +170,8 @@ export default function ExerciseCard({ exercise, onFeedback, onActualsChange, on
             <View style={styles.lastTimeRow}>
               <Ionicons name="time-outline" size={14} color={colors.textTertiary} />
               <Text style={styles.lastTimeText}>
-                Last time: {previousPerformance.weight}kg × {previousPerformance.reps} ({previousPerformance.date})
+                Last time: {previousPerformance.weight}kg × {previousPerformance.reps} (
+                {previousPerformance.date})
               </Text>
             </View>
           )}
@@ -214,7 +248,10 @@ export default function ExerciseCard({ exercise, onFeedback, onActualsChange, on
                         placeholderTextColor={colors.textMuted}
                         value={val != null ? String(val) : ''}
                         onChangeText={(text) => {
-                          const current = [...(exercise.actualRepsPerSet ?? Array(exercise.sets).fill(exercise.reps))];
+                          const current = [
+                            ...(exercise.actualRepsPerSet ??
+                              Array(exercise.sets).fill(exercise.reps)),
+                          ];
                           const parsed = parseInt(text, 10);
                           current[i] = isNaN(parsed) ? exercise.reps : parsed;
                           onActualsChange?.(exercise.id, { actualRepsPerSet: current });
@@ -243,9 +280,7 @@ export default function ExerciseCard({ exercise, onFeedback, onActualsChange, on
             </View>
           )}
 
-          {exercise.notes ? (
-            <Text style={styles.notes}>{exercise.notes}</Text>
-          ) : null}
+          {exercise.notes ? <Text style={styles.notes}>{exercise.notes}</Text> : null}
 
           {/* Feedback row */}
           <View style={styles.feedbackRow}>

@@ -248,7 +248,7 @@ export const detectMilestone = (
   if (currentStreakDays === 60) return 'streak_60';
 
   // Distance milestones (threshold crossed this session)
-  const distanceThresholds: Array<{ km: number; id: string }> = [
+  const distanceThresholds: { km: number; id: string }[] = [
     { km: 5, id: 'distance_5km' },
     { km: 25, id: 'distance_25km' },
     { km: 50, id: 'distance_50km' },

@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../theme';
 
@@ -44,10 +38,7 @@ export default function ConfirmDialog({
         <Pressable style={styles.card} onPress={() => {}}>
           {icon && (
             <View
-              style={[
-                styles.iconWrap,
-                destructive && { backgroundColor: 'rgba(239,68,68,0.12)' },
-              ]}
+              style={[styles.iconWrap, destructive && { backgroundColor: 'rgba(239,68,68,0.12)' }]}
             >
               <Ionicons
                 name={icon}
@@ -78,9 +69,7 @@ export default function ConfirmDialog({
               ]}
               onPress={onConfirm}
             >
-              <Text
-                style={destructive ? styles.destructiveText : styles.confirmTextSecondary}
-              >
+              <Text style={destructive ? styles.destructiveText : styles.confirmTextSecondary}>
                 {confirmLabel}
               </Text>
             </Pressable>

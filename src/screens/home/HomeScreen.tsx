@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -73,19 +65,27 @@ function estimateDuration(workout: WorkoutPlan): number {
 
 function getStatusColor(status: WorkoutPlan['status']): string {
   switch (status) {
-    case 'completed': return colors.success;
-    case 'in-progress': return colors.warning;
-    case 'skipped': return colors.textSecondary;
-    default: return colors.primary;
+    case 'completed':
+      return colors.success;
+    case 'in-progress':
+      return colors.warning;
+    case 'skipped':
+      return colors.textSecondary;
+    default:
+      return colors.primary;
   }
 }
 
 function getMealFeedbackColor(feedback: Meal['feedback']): string {
   switch (feedback) {
-    case 'ate-it': return colors.success;
-    case 'swapped': return colors.warning;
-    case 'skipped': return colors.danger;
-    default: return colors.textTertiary;
+    case 'ate-it':
+      return colors.success;
+    case 'swapped':
+      return colors.warning;
+    case 'skipped':
+      return colors.danger;
+    default:
+      return colors.textTertiary;
   }
 }
 
@@ -230,10 +230,7 @@ export default function HomeScreen() {
     setInitialized(true);
     setLoading(true);
 
-    Promise.all([
-      generateTodaysPlan(userId),
-      fetchStreak(userId),
-    ])
+    Promise.all([generateTodaysPlan(userId), fetchStreak(userId)])
       .then(([result]) => {
         useWorkoutStore.setState({ todayWorkout: result.workout });
         useNutritionStore.setState({ todayMealPlan: result.mealPlan });
@@ -275,37 +272,33 @@ export default function HomeScreen() {
       return;
     }
 
-    Alert.alert(
-      'Refresh Plan',
-      'This will regenerate your daily plan. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Refresh',
-          onPress: async () => {
-            setRefreshing(true);
-            try {
-              // Clear local state and delete from Supabase so plans are regenerated
-              useWorkoutStore.setState({ todayWorkout: null });
-              useNutritionStore.setState({ todayMealPlan: null });
+    Alert.alert('Refresh Plan', 'This will regenerate your daily plan. Continue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Refresh',
+        onPress: async () => {
+          setRefreshing(true);
+          try {
+            // Clear local state and delete from Supabase so plans are regenerated
+            useWorkoutStore.setState({ todayWorkout: null });
+            useNutritionStore.setState({ todayMealPlan: null });
 
-              await deleteTodayPlans(userId, getToday());
+            await deleteTodayPlans(userId, getToday());
 
-              const result = await generateTodaysPlan(userId);
-              useWorkoutStore.setState({ todayWorkout: result.workout });
-              useNutritionStore.setState({ todayMealPlan: result.mealPlan });
-              useWaterStore.setState({ todayWaterLog: result.waterLog });
-              setPlanFailed(result.status === 'failed');
-              await fetchStreak(userId);
-            } catch (e) {
-              console.error('[HomeScreen] refresh failed:', e);
-            } finally {
-              setRefreshing(false);
-            }
-          },
+            const result = await generateTodaysPlan(userId);
+            useWorkoutStore.setState({ todayWorkout: result.workout });
+            useNutritionStore.setState({ todayMealPlan: result.mealPlan });
+            useWaterStore.setState({ todayWaterLog: result.waterLog });
+            setPlanFailed(result.status === 'failed');
+            await fetchStreak(userId);
+          } catch (e) {
+            console.error('[HomeScreen] refresh failed:', e);
+          } finally {
+            setRefreshing(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
     // If user cancels, stop the refreshing spinner
     setTimeout(() => setRefreshing(false), 500);
   }, [userId]);
@@ -319,21 +312,32 @@ export default function HomeScreen() {
   // Use first ever weight entry as starting point for journey
   const totalGap = startingWeight != null ? Math.abs(startingWeight - targetWeight) : 0;
   const progressMade = totalGap > 0 ? totalGap - weightDiff : 0;
-  const journeyPercent = totalGap > 0 && currentWeight !== targetWeight
-    ? Math.min(Math.max(Math.round((progressMade / totalGap) * 100), 0), 99)
-    : currentWeight === targetWeight && totalGap > 0 ? 100 : 0;
+  const journeyPercent =
+    totalGap > 0 && currentWeight !== targetWeight
+      ? Math.min(Math.max(Math.round((progressMade / totalGap) * 100), 0), 99)
+      : currentWeight === targetWeight && totalGap > 0
+        ? 100
+        : 0;
 
   const consumedCals = todayMealPlan
     ? todayMealPlan.meals
         .filter((m) => m.feedback === 'ate-it' || m.feedback === 'swapped')
-        .reduce((sum, m) => sum + (m.feedback === 'swapped' && m.swapCalories != null ? m.swapCalories : m.calories), 0)
+        .reduce(
+          (sum, m) =>
+            sum +
+            (m.feedback === 'swapped' && m.swapCalories != null ? m.swapCalories : m.calories),
+          0,
+        )
     : 0;
 
   // Loading state
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <LoadingScreen message="Setting up your day..." submessage="Generating your personalized plan" />
+        <LoadingScreen
+          message="Setting up your day..."
+          submessage="Generating your personalized plan"
+        />
       </SafeAreaView>
     );
   }
@@ -352,14 +356,20 @@ export default function HomeScreen() {
           />
         }
       >
-
         {/* ── Header ───────────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <BebasText size={28}>{getGreeting()}, {name}</BebasText>
+            <BebasText size={28}>
+              {getGreeting()}, {name}
+            </BebasText>
             <Text style={styles.date}>{formatDate()}</Text>
           </View>
-          <Pressable style={styles.settingsBtn} onPress={() => navigation.navigate('Settings')} accessibilityRole="button" accessibilityLabel="Settings">
+          <Pressable
+            style={styles.settingsBtn}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
             <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
           </Pressable>
         </View>
@@ -367,7 +377,12 @@ export default function HomeScreen() {
         {/* ── Stats Summary Bar ───────────────────────────────── */}
         <View style={styles.statsSummary}>
           <View style={styles.summaryItem}>
-            <Ionicons name="scale-outline" size={14} color={colors.textTertiary} style={styles.summaryIcon} />
+            <Ionicons
+              name="scale-outline"
+              size={14}
+              color={colors.textTertiary}
+              style={styles.summaryIcon}
+            />
             <Text style={styles.summaryValue}>
               {profile?.currentWeight ? `${profile.currentWeight}` : '--'}
               <Text style={styles.summaryUnit}> kg</Text>
@@ -379,16 +394,29 @@ export default function HomeScreen() {
                   size={12}
                   color={weightChange <= 0 ? colors.success : colors.warning}
                 />
-                <Text style={[styles.summaryTrend, { color: weightChange <= 0 ? colors.success : colors.warning }]}>
-                  {weightChange > 0 ? '+' : ''}{weightChange}
+                <Text
+                  style={[
+                    styles.summaryTrend,
+                    { color: weightChange <= 0 ? colors.success : colors.warning },
+                  ]}
+                >
+                  {weightChange > 0 ? '+' : ''}
+                  {weightChange}
                 </Text>
               </View>
             )}
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Ionicons name="barbell-outline" size={14} color={colors.textTertiary} style={styles.summaryIcon} />
-            <Text style={styles.summaryValue}>{weeklyWorkouts}/{profile?.workoutSchedule?.daysPerWeek ?? '7'}</Text>
+            <Ionicons
+              name="barbell-outline"
+              size={14}
+              color={colors.textTertiary}
+              style={styles.summaryIcon}
+            />
+            <Text style={styles.summaryValue}>
+              {weeklyWorkouts}/{profile?.workoutSchedule?.daysPerWeek ?? '7'}
+            </Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
@@ -451,7 +479,12 @@ export default function HomeScreen() {
               <Text style={styles.weekStatLabel}>workouts</Text>
             </View>
             <View style={styles.weekStatItem}>
-              <Text style={styles.weekStatValue}>{weeklyWorkouts > 0 ? Math.round(weeklyWorkouts * 3.5 * (todayWorkout?.exercises?.length ?? 4)) : 0}m</Text>
+              <Text style={styles.weekStatValue}>
+                {weeklyWorkouts > 0
+                  ? Math.round(weeklyWorkouts * 3.5 * (todayWorkout?.exercises?.length ?? 4))
+                  : 0}
+                m
+              </Text>
               <Text style={styles.weekStatLabel}>total time</Text>
             </View>
             <View style={styles.weekStatItem}>
@@ -465,8 +498,16 @@ export default function HomeScreen() {
               const isActive = activeDays.includes(dayIndex);
               return (
                 <View key={i} style={styles.weekBarCol}>
-                  <View style={[styles.weekBar, { height: isActive ? 28 : 8 }, isActive && styles.weekBarActive]} />
-                  <Text style={[styles.weekBarDay, isActive && styles.weekBarDayActive]}>{day}</Text>
+                  <View
+                    style={[
+                      styles.weekBar,
+                      { height: isActive ? 28 : 8 },
+                      isActive && styles.weekBarActive,
+                    ]}
+                  />
+                  <Text style={[styles.weekBarDay, isActive && styles.weekBarDayActive]}>
+                    {day}
+                  </Text>
                 </View>
               );
             })}
@@ -477,7 +518,9 @@ export default function HomeScreen() {
         {!isConnected && (
           <View style={styles.offlineBanner}>
             <Ionicons name="cloud-offline-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.offlineText}>You're offline — changes will sync when connected</Text>
+            <Text style={styles.offlineText}>
+              You're offline — changes will sync when connected
+            </Text>
           </View>
         )}
 
@@ -502,7 +545,9 @@ export default function HomeScreen() {
             {profile?.goals?.primaryGoal ? (
               <View style={styles.streakGoalInfo}>
                 <Text style={styles.streakGoalLabel}>GOAL</Text>
-                <Text style={styles.streakGoalText} numberOfLines={1}>{profile.goals.primaryGoal}</Text>
+                <Text style={styles.streakGoalText} numberOfLines={1}>
+                  {profile.goals.primaryGoal}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -513,7 +558,9 @@ export default function HomeScreen() {
               return (
                 <View key={i} style={styles.dotHeroWrapper}>
                   <View style={[styles.dotHero, isActive && styles.dotHeroActive]} />
-                  <Text style={[styles.dotDayLabel, isActive && styles.dotDayLabelActive]}>{day}</Text>
+                  <Text style={[styles.dotDayLabel, isActive && styles.dotDayLabelActive]}>
+                    {day}
+                  </Text>
                 </View>
               );
             })}
@@ -522,10 +569,7 @@ export default function HomeScreen() {
 
         {/* ── Welcome Back Card ────────────────────────────────── */}
         {showWelcomeBack && missedDays >= 1 && (
-          <WelcomeBackCard
-            missedDays={missedDays}
-            onDismiss={() => setShowWelcomeBack(false)}
-          />
+          <WelcomeBackCard missedDays={missedDays} onDismiss={() => setShowWelcomeBack(false)} />
         )}
 
         {/* ── Workout Card ─────────────────────────────────────── */}
@@ -539,7 +583,12 @@ export default function HomeScreen() {
               </View>
             </View>
             {todayWorkout && (
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(todayWorkout.status) + '33' }]}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: getStatusColor(todayWorkout.status) + '33' },
+                ]}
+              >
                 <Text style={[styles.statusText, { color: getStatusColor(todayWorkout.status) }]}>
                   {todayWorkout.status}
                 </Text>
@@ -561,22 +610,47 @@ export default function HomeScreen() {
             <>
               <View style={styles.workoutStats}>
                 <View style={styles.statItem}>
-                  <Ionicons name="list-outline" size={14} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                  <Ionicons
+                    name="list-outline"
+                    size={14}
+                    color={colors.textTertiary}
+                    style={{ marginBottom: 4 }}
+                  />
                   <Text style={styles.statValueLarge}>{todayWorkout.exercises.length}</Text>
                   <Text style={styles.statLabel}>exercises</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Ionicons name="time-outline" size={14} color={colors.textTertiary} style={{ marginBottom: 4 }} />
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color={colors.textTertiary}
+                    style={{ marginBottom: 4 }}
+                  />
                   <Text style={styles.statValueLarge}>{estimateDuration(todayWorkout)}m</Text>
                   <Text style={styles.statLabel}>duration</Text>
                 </View>
               </View>
               <View style={styles.muscleGroupBadges}>
                 {getMuscleGroupsArray(todayWorkout).map((group) => (
-                  <View key={group} style={[styles.muscleGroupBadge, { backgroundColor: getMuscleGroupColor(group) + '22' }]}>
-                    <View style={[styles.muscleGroupDot, { backgroundColor: getMuscleGroupColor(group) }]} />
-                    <Text style={[styles.muscleGroupBadgeText, { color: getMuscleGroupColor(group) }]}>{group}</Text>
+                  <View
+                    key={group}
+                    style={[
+                      styles.muscleGroupBadge,
+                      { backgroundColor: getMuscleGroupColor(group) + '22' },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.muscleGroupDot,
+                        { backgroundColor: getMuscleGroupColor(group) },
+                      ]}
+                    />
+                    <Text
+                      style={[styles.muscleGroupBadgeText, { color: getMuscleGroupColor(group) }]}
+                    >
+                      {group}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -617,19 +691,50 @@ export default function HomeScreen() {
                   <View style={styles.macroRow}>
                     <View style={[styles.macroDot, { backgroundColor: colors.protein }]} />
                     <Text style={styles.macroLabel}>Protein</Text>
-                    <ProgressBar current={consumedCals > 0 ? todayMealPlan.totalProtein * (consumedCals / todayMealPlan.totalCalories) : 0} total={todayMealPlan.totalProtein} color={colors.protein} height={8} style={styles.macroBar} />
+                    <ProgressBar
+                      current={
+                        consumedCals > 0
+                          ? todayMealPlan.totalProtein *
+                            (consumedCals / todayMealPlan.totalCalories)
+                          : 0
+                      }
+                      total={todayMealPlan.totalProtein}
+                      color={colors.protein}
+                      height={8}
+                      style={styles.macroBar}
+                    />
                     <Text style={styles.macroValue}>{todayMealPlan.totalProtein}g</Text>
                   </View>
                   <View style={styles.macroRow}>
                     <View style={[styles.macroDot, { backgroundColor: colors.carbs }]} />
                     <Text style={styles.macroLabel}>Carbs</Text>
-                    <ProgressBar current={consumedCals > 0 ? todayMealPlan.totalCarbs * (consumedCals / todayMealPlan.totalCalories) : 0} total={todayMealPlan.totalCarbs} color={colors.carbs} height={8} style={styles.macroBar} />
+                    <ProgressBar
+                      current={
+                        consumedCals > 0
+                          ? todayMealPlan.totalCarbs * (consumedCals / todayMealPlan.totalCalories)
+                          : 0
+                      }
+                      total={todayMealPlan.totalCarbs}
+                      color={colors.carbs}
+                      height={8}
+                      style={styles.macroBar}
+                    />
                     <Text style={styles.macroValue}>{todayMealPlan.totalCarbs}g</Text>
                   </View>
                   <View style={styles.macroRow}>
                     <View style={[styles.macroDot, { backgroundColor: colors.fat }]} />
                     <Text style={styles.macroLabel}>Fat</Text>
-                    <ProgressBar current={consumedCals > 0 ? todayMealPlan.totalFat * (consumedCals / todayMealPlan.totalCalories) : 0} total={todayMealPlan.totalFat} color={colors.fat} height={8} style={styles.macroBar} />
+                    <ProgressBar
+                      current={
+                        consumedCals > 0
+                          ? todayMealPlan.totalFat * (consumedCals / todayMealPlan.totalCalories)
+                          : 0
+                      }
+                      total={todayMealPlan.totalFat}
+                      color={colors.fat}
+                      height={8}
+                      style={styles.macroBar}
+                    />
                     <Text style={styles.macroValue}>{todayMealPlan.totalFat}g</Text>
                   </View>
                 </View>
@@ -638,8 +743,15 @@ export default function HomeScreen() {
               <View style={styles.mealCompactList}>
                 {todayMealPlan.meals.map((meal) => (
                   <View key={meal.id} style={styles.mealCompactRow}>
-                    <View style={[styles.mealStatusDot, { backgroundColor: getMealFeedbackColor(meal.feedback) }]} />
-                    <Text style={styles.mealCompactName} numberOfLines={1}>{meal.name}</Text>
+                    <View
+                      style={[
+                        styles.mealStatusDot,
+                        { backgroundColor: getMealFeedbackColor(meal.feedback) },
+                      ]}
+                    />
+                    <Text style={styles.mealCompactName} numberOfLines={1}>
+                      {meal.name}
+                    </Text>
                     <Text style={styles.mealCompactCal}>{meal.calories} cal</Text>
                   </View>
                 ))}
@@ -700,7 +812,10 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.quickBtnText}>Talk to coach</Text>
           </Pressable>
-          <Pressable style={styles.quickBtn} onPress={() => navigation.navigate('Nutrition' as any)}>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => navigation.navigate('Nutrition' as any)}
+          >
             <View style={[styles.quickBtnIcon, { backgroundColor: 'rgba(255,152,0,0.15)' }]}>
               <Ionicons name="camera" size={18} color={colors.warning} />
             </View>
@@ -729,9 +844,20 @@ const styles = StyleSheet.create({
   content: { padding: spacing.screenPadding },
 
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
   headerLeft: { flex: 1 },
-  date: { color: colors.textSecondary, fontSize: 14, marginTop: 2, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  date: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 2,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   settingsBtn: {
     width: 44,
     height: 44,
@@ -957,7 +1083,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  fallbackText: { color: colors.warning, fontSize: 13, flex: 1, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  fallbackText: {
+    color: colors.warning,
+    fontSize: 13,
+    flex: 1,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Offline banner
   offlineBanner: {
@@ -970,7 +1102,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  offlineText: { color: colors.textSecondary, fontSize: 13, flex: 1, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  offlineText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    flex: 1,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Streak Hero
   streakHero: {
@@ -1069,14 +1207,37 @@ const styles = StyleSheet.create({
   },
 
   // Card header
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  cardTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
-  cardSubtitle: { color: colors.textTertiary, fontSize: 12, fontFamily: fonts.regular, letterSpacing: 0.3, marginTop: 1 },
+  cardTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
+  cardSubtitle: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+    marginTop: 1,
+  },
 
   // Status badge
   statusBadge: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 10 },
-  statusText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize', fontFamily: fonts.semiBold, letterSpacing: 0.5 },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.5,
+  },
 
   // Workout
   workoutStats: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
@@ -1091,7 +1252,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   statDivider: { width: 1, height: 34, backgroundColor: colors.dotInactive },
-  statLabel: { color: colors.textTertiary, fontSize: 11, fontFamily: fonts.medium, letterSpacing: 0.3, marginTop: 2 },
+  statLabel: {
+    color: colors.textTertiary,
+    fontSize: 11,
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
   muscleGroupBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1119,17 +1286,43 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   restDay: { paddingVertical: 8, alignItems: 'center' },
-  restDayTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  restDayTitle: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Nutrition
   nutritionBody: { flexDirection: 'row', alignItems: 'center', gap: 18, marginBottom: 16 },
   nutritionRight: { flex: 1, gap: 12 },
-  mealCountBadge: { color: colors.textTertiary, fontSize: 12, fontFamily: fonts.medium, letterSpacing: 0.3 },
+  mealCountBadge: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
   macroRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   macroDot: { width: 8, height: 8, borderRadius: 4 },
-  macroLabel: { color: colors.textSecondary, fontSize: 11, fontFamily: fonts.medium, width: 46, letterSpacing: 0.3 },
+  macroLabel: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontFamily: fonts.medium,
+    width: 46,
+    letterSpacing: 0.3,
+  },
   macroBar: { flex: 1 },
-  macroValue: { color: colors.textSecondary, fontSize: 13, width: 38, textAlign: 'right', fontFamily: fonts.semiBold, fontWeight: '600', fontVariant: ['tabular-nums'], letterSpacing: 0.3 },
+  macroValue: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    width: 38,
+    textAlign: 'right',
+    fontFamily: fonts.semiBold,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
+  },
   mealsListDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 },
   mealCompactList: { gap: 2 },
   mealCompactRow: {
@@ -1143,11 +1336,29 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  mealCompactName: { color: colors.textPrimary, fontSize: 14, fontFamily: fonts.medium, flex: 1, letterSpacing: 0.3 },
-  mealCompactCal: { color: colors.textTertiary, fontSize: 12, fontFamily: fonts.medium, fontVariant: ['tabular-nums'], letterSpacing: 0.3 },
+  mealCompactName: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    flex: 1,
+    letterSpacing: 0.3,
+  },
+  mealCompactCal: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    fontFamily: fonts.medium,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
+  },
 
   // Water
-  waterSummary: { color: colors.water, fontSize: 15, fontWeight: '700', fontFamily: fonts.bold, letterSpacing: 0.3 },
+  waterSummary: {
+    color: colors.water,
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
   waterBar: { marginBottom: 14 },
   waterButtons: { flexDirection: 'row', gap: 10 },
   waterBtn: {
@@ -1162,7 +1373,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(29,233,182,0.2)',
   },
-  waterBtnText: { color: colors.water, fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  waterBtnText: {
+    color: colors.water,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Quick Actions
   quickActions: { flexDirection: 'row', gap: 12, marginTop: 2 },
@@ -1187,12 +1404,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  quickBtnText: { color: colors.textPrimary, fontSize: 14, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  quickBtnText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Empty state
   emptyCard: { alignItems: 'center', paddingVertical: 18, gap: 6 },
-  emptyCardText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500', fontFamily: fonts.medium, letterSpacing: 0.3 },
-  emptyCardHint: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  emptyCardText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
+  emptyCardHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   bottomSpacer: { height: 20 },
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { colors, fonts } from '../../theme';
 
 export type FilterPeriod =
@@ -49,9 +49,7 @@ export default function DataFilterChips({ selected, onSelect }: DataFilterChipsP
             onPress={() => onSelect(key)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-              {label}
-            </Text>
+            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{label}</Text>
           </TouchableOpacity>
         );
       })}

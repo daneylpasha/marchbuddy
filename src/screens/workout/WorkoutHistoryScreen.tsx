@@ -59,80 +59,129 @@ export default function WorkoutHistoryScreen() {
     setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
-  const renderItem = useCallback(({ item }: { item: WorkoutPlan }) => {
-    const muscles = getMuscleGroups(item);
-    const isExpanded = expandedId === item.id;
-    const completedCount = item.exercises.filter((e) => e.feedback === 'completed' || e.feedback === 'too-easy').length;
+  const renderItem = useCallback(
+    ({ item }: { item: WorkoutPlan }) => {
+      const muscles = getMuscleGroups(item);
+      const isExpanded = expandedId === item.id;
+      const completedCount = item.exercises.filter(
+        (e) => e.feedback === 'completed' || e.feedback === 'too-easy',
+      ).length;
 
-    return (
-      <Pressable style={styles.card} onPress={() => toggleExpand(item.id)}>
-        {/* Header row */}
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderLeft}>
-            <Text style={styles.dateText}>{formatDateLabel(item.date)}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: item.status === 'completed' ? colors.success + '22' : colors.textSecondary + '22' }]}>
-              <Text style={[styles.statusText, { color: item.status === 'completed' ? colors.success : colors.textSecondary }]}>
-                {item.status === 'completed' ? 'Completed' : 'Skipped'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.cardHeaderRight}>
-            {item.sessionRPE != null && (
-              <View style={styles.rpeBadge}>
-                <Text style={styles.rpeText}>RPE {item.sessionRPE}</Text>
+      return (
+        <Pressable style={styles.card} onPress={() => toggleExpand(item.id)}>
+          {/* Header row */}
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderLeft}>
+              <Text style={styles.dateText}>{formatDateLabel(item.date)}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor:
+                      item.status === 'completed'
+                        ? colors.success + '22'
+                        : colors.textSecondary + '22',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    { color: item.status === 'completed' ? colors.success : colors.textSecondary },
+                  ]}
+                >
+                  {item.status === 'completed' ? 'Completed' : 'Skipped'}
+                </Text>
               </View>
-            )}
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textTertiary} />
-          </View>
-        </View>
-
-        {/* Quick stats */}
-        <View style={styles.quickStats}>
-          <Text style={styles.exerciseCount}>{item.exercises.length} exercises</Text>
-          <Text style={styles.completedCount}>{completedCount} done</Text>
-        </View>
-
-        {/* Muscle chips */}
-        <View style={styles.muscleRow}>
-          {muscles.map((group) => (
-            <View key={group} style={[styles.muscleChip, { backgroundColor: (MUSCLE_COLORS[group] ?? colors.textSecondary) + '22' }]}>
-              <Text style={[styles.muscleChipText, { color: MUSCLE_COLORS[group] ?? colors.textSecondary }]}>{group}</Text>
             </View>
-          ))}
-        </View>
+            <View style={styles.cardHeaderRight}>
+              {item.sessionRPE != null && (
+                <View style={styles.rpeBadge}>
+                  <Text style={styles.rpeText}>RPE {item.sessionRPE}</Text>
+                </View>
+              )}
+              <Ionicons
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.textTertiary}
+              />
+            </View>
+          </View>
 
-        {/* Expanded exercise details */}
-        {isExpanded && (
-          <View style={styles.expandedDetails}>
-            {item.exercises.map((ex) => (
-              <View key={ex.id} style={styles.exerciseRow}>
-                <Text style={styles.exerciseOrder}>{ex.order}</Text>
-                <View style={styles.exerciseInfo}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
-                  <Text style={styles.exerciseMeta}>
-                    {ex.sets}×{ex.reps}
-                    {ex.actualWeight != null ? ` @ ${ex.actualWeight}kg` : ex.weight != null ? ` @ ${ex.weight}kg` : ''}
-                  </Text>
-                </View>
-                <View style={styles.feedbackIcon}>
-                  {ex.feedback === 'completed' && <Ionicons name="checkmark-circle" size={16} color={colors.success} />}
-                  {ex.feedback === 'skipped' && <Ionicons name="play-skip-forward" size={16} color={colors.textMuted} />}
-                  {ex.feedback === 'too-easy' && <Ionicons name="flash" size={16} color={colors.warning} />}
-                  {ex.feedback === 'too-hard' && <Ionicons name="barbell" size={16} color={colors.danger} />}
-                </View>
+          {/* Quick stats */}
+          <View style={styles.quickStats}>
+            <Text style={styles.exerciseCount}>{item.exercises.length} exercises</Text>
+            <Text style={styles.completedCount}>{completedCount} done</Text>
+          </View>
+
+          {/* Muscle chips */}
+          <View style={styles.muscleRow}>
+            {muscles.map((group) => (
+              <View
+                key={group}
+                style={[
+                  styles.muscleChip,
+                  { backgroundColor: (MUSCLE_COLORS[group] ?? colors.textSecondary) + '22' },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.muscleChipText,
+                    { color: MUSCLE_COLORS[group] ?? colors.textSecondary },
+                  ]}
+                >
+                  {group}
+                </Text>
               </View>
             ))}
-            {item.aiNotes ? (
-              <View style={styles.aiNotesRow}>
-                <Ionicons name="sparkles" size={12} color={colors.primary} />
-                <Text style={styles.aiNotesText}>{item.aiNotes}</Text>
-              </View>
-            ) : null}
           </View>
-        )}
-      </Pressable>
-    );
-  }, [expandedId, toggleExpand]);
+
+          {/* Expanded exercise details */}
+          {isExpanded && (
+            <View style={styles.expandedDetails}>
+              {item.exercises.map((ex) => (
+                <View key={ex.id} style={styles.exerciseRow}>
+                  <Text style={styles.exerciseOrder}>{ex.order}</Text>
+                  <View style={styles.exerciseInfo}>
+                    <Text style={styles.exerciseName}>{ex.name}</Text>
+                    <Text style={styles.exerciseMeta}>
+                      {ex.sets}×{ex.reps}
+                      {ex.actualWeight != null
+                        ? ` @ ${ex.actualWeight}kg`
+                        : ex.weight != null
+                          ? ` @ ${ex.weight}kg`
+                          : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.feedbackIcon}>
+                    {ex.feedback === 'completed' && (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                    )}
+                    {ex.feedback === 'skipped' && (
+                      <Ionicons name="play-skip-forward" size={16} color={colors.textMuted} />
+                    )}
+                    {ex.feedback === 'too-easy' && (
+                      <Ionicons name="flash" size={16} color={colors.warning} />
+                    )}
+                    {ex.feedback === 'too-hard' && (
+                      <Ionicons name="barbell" size={16} color={colors.danger} />
+                    )}
+                  </View>
+                </View>
+              ))}
+              {item.aiNotes ? (
+                <View style={styles.aiNotesRow}>
+                  <Ionicons name="sparkles" size={12} color={colors.primary} />
+                  <Text style={styles.aiNotesText}>{item.aiNotes}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </Pressable>
+      );
+    },
+    [expandedId, toggleExpand],
+  );
 
   if (historyLoading) {
     return (

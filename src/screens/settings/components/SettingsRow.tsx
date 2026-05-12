@@ -31,7 +31,12 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
           {value ? <Text style={styles.value}>{value}</Text> : null}
           {rightElement}
           {showChevron ? (
-            <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} style={styles.chevron} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.textTertiary}
+              style={styles.chevron}
+            />
           ) : null}
         </View>
       </Pressable>
@@ -45,7 +50,12 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
         {value ? <Text style={styles.value}>{value}</Text> : null}
         {rightElement}
         {showChevron ? (
-          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} style={styles.chevron} />
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={colors.textTertiary}
+            style={styles.chevron}
+          />
         ) : null}
       </View>
     </View>
@@ -74,6 +84,10 @@ const styles = StyleSheet.create({
   right: {
     flexDirection: 'row',
     alignItems: 'center',
+    // Gap between any value text and the rightElement (typically a Switch
+    // or icon). Without this, "On" labels sat flush against toggles and
+    // chevrons crashed into value strings.
+    gap: 10,
   },
   value: {
     fontFamily: fonts.regular,
@@ -81,6 +95,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   chevron: {
-    marginLeft: 6,
+    // marginLeft no longer needed — the parent gap handles spacing now.
+    marginLeft: 0,
   },
 });

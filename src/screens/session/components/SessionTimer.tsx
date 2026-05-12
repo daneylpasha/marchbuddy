@@ -8,10 +8,7 @@ interface SessionTimerProps {
   isPaused: boolean;
 }
 
-export const SessionTimer: React.FC<SessionTimerProps> = ({
-  totalElapsedSeconds,
-  isPaused,
-}) => {
+export const SessionTimer: React.FC<SessionTimerProps> = ({ totalElapsedSeconds, isPaused }) => {
   const { height } = useWindowDimensions();
   const timeSize = height < 700 ? 46 : height < 800 ? 54 : 64;
 

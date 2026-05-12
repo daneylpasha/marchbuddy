@@ -82,8 +82,8 @@ class LocationService {
       this.subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 3000,    // Every 3 seconds
-          distanceInterval: 5,   // Or every 5 meters
+          timeInterval: 3000,
+          distanceInterval: 5,
         },
         (location) => {
           const accuracy = location.coords.accuracy ?? undefined;

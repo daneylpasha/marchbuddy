@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { LayoutAnimation, Modal, Platform, Pressable, StyleSheet, Text, UIManager, View } from 'react-native';
+import {
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import { colors, fonts } from '../../theme';
 import type { ReadinessCheck } from '../../types';
 
@@ -51,13 +60,21 @@ const STEP_LABELS: Record<Step, { title: string; subtitle: string }> = {
   energy: { title: "How's your energy?", subtitle: 'This helps personalize your workout' },
   sleep: { title: 'How did you sleep?', subtitle: 'Sleep affects recovery and performance' },
   stress: { title: 'Stress level today?', subtitle: 'High stress = smarter workout adjustments' },
-  time: { title: 'How much time do you have?', subtitle: "We'll fit your workout to your schedule" },
+  time: {
+    title: 'How much time do you have?',
+    subtitle: "We'll fit your workout to your schedule",
+  },
   lowEnergy: { title: 'Low energy today', subtitle: '' },
 };
 
 const STEP_ORDER: Step[] = ['energy', 'sleep', 'stress', 'time'];
 
-export default function EnergyCheckModal({ visible, onSelect, onRequestRecovery, onDismiss }: EnergyCheckModalProps) {
+export default function EnergyCheckModal({
+  visible,
+  onSelect,
+  onRequestRecovery,
+  onDismiss,
+}: EnergyCheckModalProps) {
   const [step, setStep] = useState<Step>('energy');
   const [energy, setEnergy] = useState<(1 | 2 | 3 | 4 | 5) | null>(null);
   const [sleep, setSleep] = useState<(1 | 2 | 3 | 4 | 5) | null>(null);
@@ -171,10 +188,7 @@ export default function EnergyCheckModal({ visible, onSelect, onRequestRecovery,
           {/* Progress dots */}
           <View style={styles.dotsRow}>
             {STEP_ORDER.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i <= currentStepIdx && styles.dotActive]}
-              />
+              <View key={i} style={[styles.dot, i <= currentStepIdx && styles.dotActive]} />
             ))}
           </View>
 
@@ -210,7 +224,9 @@ export default function EnergyCheckModal({ visible, onSelect, onRequestRecovery,
                       style={[styles.timeBtn, time === opt.minutes && styles.timeBtnSelected]}
                       onPress={() => handleTimeSelect(opt.minutes)}
                     >
-                      <Text style={[styles.timeLabel, time === opt.minutes && styles.timeLabelSelected]}>
+                      <Text
+                        style={[styles.timeLabel, time === opt.minutes && styles.timeLabelSelected]}
+                      >
                         {opt.label}
                       </Text>
                     </Pressable>

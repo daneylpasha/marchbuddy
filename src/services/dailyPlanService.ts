@@ -1,8 +1,8 @@
 // services/dailyPlanService.ts — Orchestrates daily plan generation
 
 import { getToday, getWeekNumber, computeMissedDays } from '../utils/dateUtils';
-import { getProfile } from '../api/database';
 import {
+  getProfile,
   getTodayWorkout,
   upsertWorkout,
   getTodayMealPlan,
@@ -62,7 +62,7 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
     };
   }
 
-  console.log('🏋️ Generating today\'s plan for user:', userId);
+  console.log("🏋️ Generating today's plan for user:", userId);
 
   try {
     // Check if plans already exist
@@ -102,18 +102,17 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
     }
 
     // Extract recent feedback from workouts (enriched with progressive overload data)
-    const recentFeedback = recentWorkouts
-      .flatMap((w) =>
-        (w.exercises ?? [])
-          .filter((e) => e.feedback)
-          .map((e) => ({
-            exerciseName: e.name,
-            feedback: e.feedback as string,
-            prescribedWeight: e.weight,
-            actualWeight: e.actualWeight,
-            actualReps: e.actualReps,
-          })),
-      );
+    const recentFeedback = recentWorkouts.flatMap((w) =>
+      (w.exercises ?? [])
+        .filter((e) => e.feedback)
+        .map((e) => ({
+          exerciseName: e.name,
+          feedback: e.feedback as string,
+          prescribedWeight: e.weight,
+          actualWeight: e.actualWeight,
+          actualReps: e.actualReps,
+        })),
+    );
 
     // Compute context for AI generation
     const weekNumber = getWeekNumber(profile.createdAt);
@@ -133,7 +132,9 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
       getRecentSessionRPE(userId, 7),
     ]);
     const muscleGroupFrequency: Record<string, number> = {};
-    muscleFreqMap.forEach((count, group) => { muscleGroupFrequency[group] = count; });
+    muscleFreqMap.forEach((count, group) => {
+      muscleGroupFrequency[group] = count;
+    });
 
     // ── Generate workout if missing ────────────────────
     let workout = existingWorkout;
@@ -145,7 +146,13 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
           recentWorkouts,
           recentFeedback,
           chatContext,
-          { weekNumber, missedDays, muscleGroupFrequency, recentRPE, equipmentAvailable: profile.equipmentAvailable },
+          {
+            weekNumber,
+            missedDays,
+            muscleGroupFrequency,
+            recentRPE,
+            equipmentAvailable: profile.equipmentAvailable,
+          },
         );
 
         workout = {
@@ -196,12 +203,12 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
             .map((meal) => ({
               mealId: meal.id,
               feedback: meal.feedback as string,
-            }))
+            })),
         );
 
         // Extract recent meal descriptions to avoid repetition
         const recentMealDescriptions = recentMealPlans.flatMap((plan) =>
-          plan.meals.map((meal) => `${meal.name}: ${meal.description}`)
+          plan.meals.map((meal) => `${meal.name}: ${meal.description}`),
         );
 
         console.log('🍽️ Recent meals to avoid:', recentMealDescriptions.slice(0, 5));
@@ -263,12 +270,15 @@ export async function generateTodaysPlan(userId: string): Promise<DailyPlanResul
 
     const hasFailures = !workout || !mealPlan;
     const status = hasFailures ? 'failed' : 'generated';
-    console.log(`🏋️ ${status === 'generated' ? '✅ Plan generated successfully' : '❌ Plan generation partial failure'}`, {
-      hasWorkout: !!workout,
-      hasMealPlan: !!mealPlan,
-      hasWaterLog: !!waterLog,
-      status,
-    });
+    console.log(
+      `🏋️ ${status === 'generated' ? '✅ Plan generated successfully' : '❌ Plan generation partial failure'}`,
+      {
+        hasWorkout: !!workout,
+        hasMealPlan: !!mealPlan,
+        hasWaterLog: !!waterLog,
+        status,
+      },
+    );
     return { workout, mealPlan, waterLog, status };
   } catch (e) {
     console.error('🏋️ ❌ generateTodaysPlan failed:', e);

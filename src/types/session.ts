@@ -8,8 +8,8 @@ export interface SessionSegment {
   id: string;
   type: SegmentType;
   durationSeconds: number;
-  label: string;       // "Easy pace", "Comfortable jog", "Recovery"
-  order: number;       // Position in the session
+  label: string; // "Easy pace", "Comfortable jog", "Recovery"
+  order: number; // Position in the session
 }
 
 // ============================================
@@ -21,23 +21,23 @@ export type SessionVariant = 'recommended' | 'quick' | 'challenge' | 'push';
 
 export interface SessionPlan {
   id: string;
-  level: number;                  // 1-16
+  level: number; // 1-16
   variant: SessionVariant;
-  title: string;                  // "20-min Walk/Run"
-  subtitle: string;               // "Level 4 · Moderate"
+  title: string; // "20-min Walk/Run"
+  subtitle: string; // "Level 4 · Moderate"
   description: string;
   totalDurationMinutes: number;
   difficulty: SessionDifficulty;
   segments: SessionSegment[];
   isRecommended: boolean;
-  summary: string;                // "3 min warmup → 5×(1.5 min run + 2 min walk) → 2 min cooldown"
+  summary: string; // "3 min warmup → 5×(1.5 min run + 2 min walk) → 2 min cooldown"
 }
 
 export interface SessionOptions {
   recommended: SessionPlan;
-  alternatives: SessionPlan[];    // Quick, Challenge, Push options
-  coachMessage: string;           // AI-generated contextual message
-  generatedAt: string;            // ISO timestamp
+  alternatives: SessionPlan[]; // Quick, Challenge, Push options
+  coachMessage: string; // AI-generated contextual message
+  generatedAt: string; // ISO timestamp
 }
 
 // ============================================
@@ -55,8 +55,8 @@ export interface ActiveSession {
   plan: SessionPlan;
   startedAt: Date;
   currentSegmentIndex: number;
-  segmentElapsedSeconds: number;  // Time in current segment
-  totalElapsedSeconds: number;    // Total session time
+  segmentElapsedSeconds: number; // Time in current segment
+  totalElapsedSeconds: number; // Total session time
   isPaused: boolean;
   pausedAt: Date | null;
   route: GeoPoint[];
@@ -84,10 +84,10 @@ export interface CompletedSession {
   // Actual performance
   actualDurationMinutes: number;
   actualDistanceKm: number;
-  actualSteps: number;            // From pedometer; 0 if pedometer unavailable
-  completedSegments: number;      // How many segments they finished
+  actualSteps: number; // From pedometer; 0 if pedometer unavailable
+  completedSegments: number; // How many segments they finished
   endedEarly: boolean;
-  pacePerKm: number | null;       // Minutes per km
+  pacePerKm: number | null; // Minutes per km
 
   // GPS data
   route: GeoPoint[];
@@ -115,12 +115,12 @@ export interface CompletedSession {
 
 export interface UserProgress {
   userId: string;
-  currentLevel: number;           // 1-16
+  currentLevel: number; // 1-16
   sessionsAtCurrentLevel: number; // Sessions completed at this level
   totalSessionsCompleted: number;
   totalDistanceKm: number;
   totalDurationMinutes: number;
-  longestRunMinutes: number;      // Longest continuous run
+  longestRunMinutes: number; // Longest continuous run
   currentStreakDays: number;
   bestStreakDays: number;
   lastSessionDate: string | null; // ISO date string
@@ -128,7 +128,7 @@ export interface UserProgress {
   // This week
   sessionsThisWeek: number;
   minutesThisWeek: number;
-  weekStartDate: string;          // Monday of current week
+  weekStartDate: string; // Monday of current week
 }
 
 // ============================================
@@ -137,7 +137,7 @@ export interface UserProgress {
 
 export interface SessionRecord {
   id: string;
-  date: string;              // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   durationMinutes: number;
   distanceKm: number;
   planTitle: string;
@@ -158,9 +158,9 @@ export interface SessionRecord {
 
 export interface LevelDefinition {
   level: number;
-  week: number;               // Which week of the program
-  name: string;               // "First Steps", "Finding Stride", etc.
-  focus: string;              // What this level is building
+  week: number; // Which week of the program
+  name: string; // "First Steps", "Finding Stride", etc.
+  focus: string; // What this level is building
   description: string;
   unlockCriteria: string;
 
@@ -178,5 +178,5 @@ export interface SessionTemplate {
   difficulty: SessionDifficulty;
   description: string;
   summary: string;
-  segments: Omit<SessionSegment, 'id'>[];  // IDs generated at runtime
+  segments: Omit<SessionSegment, 'id'>[]; // IDs generated at runtime
 }

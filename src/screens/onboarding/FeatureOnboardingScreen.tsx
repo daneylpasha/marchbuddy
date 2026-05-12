@@ -37,7 +37,8 @@ const FEATURES: Feature[] = [
   {
     icon: 'chatbubbles',
     title: 'Your AI Coach',
-    description: 'Get personalized guidance every step of the way. Your coach adapts to your level and keeps you motivated.',
+    description:
+      'Get personalized guidance every step of the way. Your coach adapts to your level and keeps you motivated.',
     accentWord: 'personalized',
     accent: colors.primary,
     gradient: ['#0A0A0A', '#0A0A0A', '#091A13'],
@@ -45,7 +46,8 @@ const FEATURES: Feature[] = [
   {
     icon: 'flame',
     title: 'Streaks & Rest Days',
-    description: 'Build consistency with streaks. Need a break? Declare a rest day and your streak stays safe.',
+    description:
+      'Build consistency with streaks. Need a break? Declare a rest day and your streak stays safe.',
     accentWord: 'consistency',
     accent: colors.streak,
     gradient: ['#0A0A0A', '#0A0A0A', '#1A0F00'],
@@ -53,7 +55,8 @@ const FEATURES: Feature[] = [
   {
     icon: 'stats-chart',
     title: 'Track Your Journey',
-    description: 'Watch yourself grow with detailed progress tracking. Levels, milestones, and history — all in one place.',
+    description:
+      'Watch yourself grow with detailed progress tracking. Levels, milestones, and history — all in one place.',
     accentWord: 'grow',
     accent: '#60A5FA',
     gradient: ['#0A0A0A', '#0A0A0A', '#050D1A'],
@@ -61,7 +64,11 @@ const FEATURES: Feature[] = [
 ];
 
 // Render description with one accent-colored word
-function AccentDescription({ text, accentWord, accentColor }: {
+function AccentDescription({
+  text,
+  accentWord,
+  accentColor,
+}: {
   text: string;
   accentWord: string;
   accentColor: string;
@@ -170,7 +177,11 @@ export default function FeatureOnboardingScreen() {
     <View style={styles.container}>
       {/* Per-page ambient gradient */}
       <LinearGradient
-        colors={[currentFeature.gradient[0], currentFeature.gradient[1], currentFeature.gradient[2]]}
+        colors={[
+          currentFeature.gradient[0],
+          currentFeature.gradient[1],
+          currentFeature.gradient[2],
+        ]}
         locations={[0, 0.6, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
@@ -209,12 +220,7 @@ export default function FeatureOnboardingScreen() {
                   />
                 </View>
                 {/* Icon ring */}
-                <View
-                  style={[
-                    styles.iconOuterRing,
-                    { borderColor: feature.accent + '4D' },
-                  ]}
-                >
+                <View style={[styles.iconOuterRing, { borderColor: feature.accent + '4D' }]}>
                   <View
                     style={[
                       styles.iconCircle,
@@ -302,9 +308,7 @@ export default function FeatureOnboardingScreen() {
                   isLast ? styles.ctaGradientFull : styles.ctaGradientPill,
                 ]}
               >
-                <Text style={styles.ctaText}>
-                  {isLast ? 'Get Started' : 'Next'}
-                </Text>
+                <Text style={styles.ctaText}>{isLast ? 'Get Started' : 'Next'}</Text>
                 <Ionicons
                   name={isLast ? 'arrow-forward' : 'chevron-forward'}
                   size={18}

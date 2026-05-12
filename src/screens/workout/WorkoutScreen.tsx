@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useWorkoutStore } from '../../store/workoutStore';
 import { useAuthStore } from '../../store/authStore';
@@ -25,22 +25,32 @@ import { colors, spacing, fonts } from '../../theme';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(): string {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 function getStatusColor(status: WorkoutPlan['status']): string {
   switch (status) {
-    case 'completed': return colors.success;
-    case 'in-progress': return colors.warning;
-    case 'skipped': return colors.textSecondary;
-    default: return colors.primary;
+    case 'completed':
+      return colors.success;
+    case 'in-progress':
+      return colors.warning;
+    case 'skipped':
+      return colors.textSecondary;
+    default:
+      return colors.primary;
   }
 }
 
 function getStatusLabel(status: WorkoutPlan['status']): string {
   switch (status) {
-    case 'in-progress': return 'In Progress';
-    default: return status.charAt(0).toUpperCase() + status.slice(1);
+    case 'in-progress':
+      return 'In Progress';
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
 
@@ -64,7 +74,6 @@ const MUSCLE_COLORS: Record<string, string> = {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function WorkoutScreen() {
-  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const {
     todayWorkout,
@@ -76,7 +85,6 @@ export default function WorkoutScreen() {
     startWorkout,
     updateExerciseFeedback,
     updateExerciseActuals,
-    setEnergyLevel,
     setReadiness,
     switchToRecovery,
     setSessionRPE,
@@ -110,7 +118,9 @@ export default function WorkoutScreen() {
       };
       update();
       timerRef.current = setInterval(update, 30000);
-      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+      return () => {
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
     } else {
       setElapsedMin(0);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -130,13 +140,22 @@ export default function WorkoutScreen() {
     }
   }, [user, fetchExerciseHistory, fetchPersonalRecords]);
 
-  const handleFeedback = useCallback((exerciseId: string, feedback: Exercise['feedback']) => {
-    updateExerciseFeedback(exerciseId, feedback);
-  }, [updateExerciseFeedback]);
+  const handleFeedback = useCallback(
+    (exerciseId: string, feedback: Exercise['feedback']) => {
+      updateExerciseFeedback(exerciseId, feedback);
+    },
+    [updateExerciseFeedback],
+  );
 
-  const handleActualsChange = useCallback((exerciseId: string, actuals: { actualSets?: number; actualReps?: number; actualWeight?: number }) => {
-    updateExerciseActuals(exerciseId, actuals);
-  }, [updateExerciseActuals]);
+  const handleActualsChange = useCallback(
+    (
+      exerciseId: string,
+      actuals: { actualSets?: number; actualReps?: number; actualWeight?: number },
+    ) => {
+      updateExerciseActuals(exerciseId, actuals);
+    },
+    [updateExerciseActuals],
+  );
 
   const handleStartWorkout = useCallback(() => {
     const workout = todayWorkout;
@@ -148,14 +167,17 @@ export default function WorkoutScreen() {
     }
   }, [todayWorkout, startWorkout]);
 
-  const handleReadinessSelect = useCallback((readiness: ReadinessCheck) => {
-    setReadiness(readiness);
-    setShowEnergyCheck(false);
-    if (readiness.energyLevel > 2) {
-      startWorkout();
-    }
-    // levels 1-2: recovery handler starts workout
-  }, [setReadiness, startWorkout]);
+  const handleReadinessSelect = useCallback(
+    (readiness: ReadinessCheck) => {
+      setReadiness(readiness);
+      setShowEnergyCheck(false);
+      if (readiness.energyLevel > 2) {
+        startWorkout();
+      }
+      // levels 1-2: recovery handler starts workout
+    },
+    [setReadiness, startWorkout],
+  );
 
   const handleEnergyRecovery = useCallback(() => {
     setShowEnergyCheck(false);
@@ -168,43 +190,49 @@ export default function WorkoutScreen() {
     startWorkout();
   }, [startWorkout]);
 
-  const handleSwapRequest = useCallback(async (exerciseId: string) => {
-    const exercise = todayWorkout?.exercises.find((e) => e.id === exerciseId);
-    if (!exercise) return;
+  const handleSwapRequest = useCallback(
+    async (exerciseId: string) => {
+      const exercise = todayWorkout?.exercises.find((e) => e.id === exerciseId);
+      if (!exercise) return;
 
-    setSwapTargetId(exerciseId);
-    setSwapLoading(true);
-    setSwapAlternatives([]);
+      setSwapTargetId(exerciseId);
+      setSwapLoading(true);
+      setSwapAlternatives([]);
 
-    try {
-      const result = await suggestExerciseSwap(
-        exercise.name,
-        exercise.muscleGroup,
-        profile?.equipmentAvailable ?? ['Bodyweight'],
-        todayWorkout?.exercises.map((e) => e.name) ?? [],
-      );
-      setSwapAlternatives(result.alternatives ?? []);
-    } catch (e) {
-      console.error('[WorkoutScreen] swap request failed:', e);
+      try {
+        const result = await suggestExerciseSwap(
+          exercise.name,
+          exercise.muscleGroup,
+          profile?.equipmentAvailable ?? ['Bodyweight'],
+          todayWorkout?.exercises.map((e) => e.name) ?? [],
+        );
+        setSwapAlternatives(result.alternatives ?? []);
+      } catch (e) {
+        console.error('[WorkoutScreen] swap request failed:', e);
+        setSwapTargetId(null);
+      } finally {
+        setSwapLoading(false);
+      }
+    },
+    [todayWorkout, profile],
+  );
+
+  const handleSwapSelect = useCallback(
+    (alt: SwapAlternative) => {
+      if (!swapTargetId) return;
+      swapExercise(swapTargetId, {
+        name: alt.name,
+        muscleGroup: alt.muscleGroup,
+        sets: alt.sets,
+        reps: alt.reps,
+        weight: alt.weight,
+        formCues: alt.formCues,
+      });
       setSwapTargetId(null);
-    } finally {
-      setSwapLoading(false);
-    }
-  }, [todayWorkout, profile]);
-
-  const handleSwapSelect = useCallback((alt: SwapAlternative) => {
-    if (!swapTargetId) return;
-    swapExercise(swapTargetId, {
-      name: alt.name,
-      muscleGroup: alt.muscleGroup,
-      sets: alt.sets,
-      reps: alt.reps,
-      weight: alt.weight,
-      formCues: alt.formCues,
-    });
-    setSwapTargetId(null);
-    setSwapAlternatives([]);
-  }, [swapTargetId, swapExercise]);
+      setSwapAlternatives([]);
+    },
+    [swapTargetId, swapExercise],
+  );
 
   if (isLoading || !todayWorkout) {
     return (
@@ -252,7 +280,11 @@ export default function WorkoutScreen() {
           <BebasText>Today's Workout</BebasText>
           <Text style={styles.date}>{formatDate()}</Text>
         </View>
-        <ScrollView style={styles.summaryScroll} contentContainerStyle={styles.summaryContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.summaryScroll}
+          contentContainerStyle={styles.summaryContent}
+          showsVerticalScrollIndicator={false}
+        >
           <WorkoutSummary
             completed={summary.completed}
             skipped={summary.skipped}
@@ -285,7 +317,9 @@ export default function WorkoutScreen() {
         <View style={styles.skippedContainer}>
           <Text style={styles.skippedEmoji}>&#x1F614;</Text>
           <Text style={styles.skippedTitle}>Workout Skipped</Text>
-          <Text style={styles.skippedText}>No worries — rest today and come back stronger tomorrow.</Text>
+          <Text style={styles.skippedText}>
+            No worries — rest today and come back stronger tomorrow.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -297,7 +331,9 @@ export default function WorkoutScreen() {
     <View>
       {/* Status badge */}
       <View style={styles.statusRow}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(workout.status) + '22' }]}>
+        <View
+          style={[styles.statusBadge, { backgroundColor: getStatusColor(workout.status) + '22' }]}
+        >
           <Text style={[styles.statusText, { color: getStatusColor(workout.status) }]}>
             {getStatusLabel(workout.status)}
           </Text>
@@ -324,8 +360,21 @@ export default function WorkoutScreen() {
       {/* Muscle group chips */}
       <View style={styles.muscleChips}>
         {muscleGroups.map((group) => (
-          <View key={group} style={[styles.muscleChip, { backgroundColor: (MUSCLE_COLORS[group] ?? colors.textSecondary) + '22' }]}>
-            <Text style={[styles.muscleChipText, { color: MUSCLE_COLORS[group] ?? colors.textSecondary }]}>{group}</Text>
+          <View
+            key={group}
+            style={[
+              styles.muscleChip,
+              { backgroundColor: (MUSCLE_COLORS[group] ?? colors.textSecondary) + '22' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.muscleChipText,
+                { color: MUSCLE_COLORS[group] ?? colors.textSecondary },
+              ]}
+            >
+              {group}
+            </Text>
           </View>
         ))}
       </View>
@@ -385,7 +434,12 @@ export default function WorkoutScreen() {
               <Ionicons name="checkmark-done" size={20} color="#fff" />
               <Text style={styles.primaryBtnText}>COMPLETE WORKOUT</Text>
             </Pressable>
-            <Pressable style={styles.secondaryBtn} onPress={skipWorkout} accessibilityRole="button" accessibilityLabel="Skip workout">
+            <Pressable
+              style={styles.secondaryBtn}
+              onPress={skipWorkout}
+              accessibilityRole="button"
+              accessibilityLabel="Skip workout"
+            >
               <Text style={styles.secondaryBtnText}>Skip Workout</Text>
             </Pressable>
           </View>
@@ -423,7 +477,10 @@ export default function WorkoutScreen() {
           exerciseName={workout.exercises.find((e) => e.id === swapTargetId)?.name ?? ''}
           alternatives={swapAlternatives}
           onSelect={handleSwapSelect}
-          onDismiss={() => { setSwapTargetId(null); setSwapAlternatives([]); }}
+          onDismiss={() => {
+            setSwapTargetId(null);
+            setSwapAlternatives([]);
+          }}
         />
       </SafeAreaView>
     );
@@ -470,7 +527,12 @@ export default function WorkoutScreen() {
       {/* Bottom controls */}
       <View style={[styles.bottomBar, { paddingBottom: 5 }]}>
         {workout.status === 'pending' && (
-          <Pressable style={styles.primaryBtn} onPress={handleStartWorkout} accessibilityRole="button" accessibilityLabel="Start workout">
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={handleStartWorkout}
+            accessibilityRole="button"
+            accessibilityLabel="Start workout"
+          >
             <Ionicons name="play" size={20} color="#fff" />
             <Text style={styles.primaryBtnText}>START WORKOUT</Text>
           </Pressable>
@@ -494,7 +556,12 @@ export default function WorkoutScreen() {
               <Ionicons name="checkmark-done" size={20} color="#fff" />
               <Text style={styles.primaryBtnText}>COMPLETE WORKOUT</Text>
             </Pressable>
-            <Pressable style={styles.secondaryBtn} onPress={skipWorkout} accessibilityRole="button" accessibilityLabel="Skip workout">
+            <Pressable
+              style={styles.secondaryBtn}
+              onPress={skipWorkout}
+              accessibilityRole="button"
+              accessibilityLabel="Skip workout"
+            >
               <Text style={styles.secondaryBtnText}>Skip Workout</Text>
             </Pressable>
           </View>
@@ -541,7 +608,10 @@ export default function WorkoutScreen() {
         exerciseName={workout.exercises.find((e) => e.id === swapTargetId)?.name ?? ''}
         alternatives={swapAlternatives}
         onSelect={handleSwapSelect}
-        onDismiss={() => { setSwapTargetId(null); setSwapAlternatives([]); }}
+        onDismiss={() => {
+          setSwapTargetId(null);
+          setSwapAlternatives([]);
+        }}
       />
     </SafeAreaView>
   );
@@ -559,12 +629,24 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   title: {},
-  date: { color: colors.textSecondary, fontSize: 14, marginTop: 3, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  date: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    marginTop: 3,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Status
   statusRow: { flexDirection: 'row', marginBottom: 12 },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
-  statusText: { fontSize: 13, fontWeight: '600', textTransform: 'capitalize', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // Summary bar
   summaryBar: {
@@ -574,13 +656,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  summaryValue: { color: colors.textSecondary, fontSize: 14, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  summaryValue: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   summaryDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted },
 
   // Muscle chips
   muscleChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   muscleChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, minHeight: 32 },
-  muscleChipText: { fontSize: 13, fontWeight: '600', fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  muscleChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
 
   // AI notes
   aiNotesBox: {
@@ -594,10 +686,25 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 18,
   },
-  aiNotesText: { color: colors.textSecondary, fontSize: 13, flex: 1, lineHeight: 20, fontStyle: 'italic', fontFamily: fonts.regular, letterSpacing: 0.3 },
+  aiNotesText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 
   // Exercises
-  exercisesHeader: { color: colors.textPrimary, fontSize: 17, fontWeight: '600', marginBottom: 12, fontFamily: fonts.semiBold, letterSpacing: 0.3 },
+  exercisesHeader: {
+    color: colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 12,
+    fontFamily: fonts.semiBold,
+    letterSpacing: 0.3,
+  },
   listContent: { paddingHorizontal: spacing.screenPadding, paddingBottom: 16 },
 
   // Bottom bar
@@ -630,17 +737,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
     elevation: 0,
   },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.8, fontFamily: fonts.bold },
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    fontFamily: fonts.bold,
+  },
   secondaryBtn: {
     alignItems: 'center',
     paddingVertical: 8,
     minHeight: 40,
     justifyContent: 'center',
   },
-  secondaryBtnText: { color: colors.textSecondary, fontSize: 14, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  secondaryBtnText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
   viewToggleRow: { alignItems: 'center', marginBottom: 8 },
   viewToggleBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
-  viewToggleBtnText: { color: colors.primary, fontSize: 13, fontFamily: fonts.medium, letterSpacing: 0.3 },
+  viewToggleBtnText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
 
   // Rest day
   restContainer: { flex: 1, padding: spacing.screenPadding },
@@ -653,6 +776,20 @@ const styles = StyleSheet.create({
   // Skipped
   skippedContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   skippedEmoji: { fontSize: 48, marginBottom: 12 },
-  skippedTitle: { color: colors.textPrimary, fontSize: 24, fontWeight: '700', marginBottom: 8, fontFamily: fonts.bold, letterSpacing: 0.3 },
-  skippedText: { color: colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22, fontFamily: fonts.regular, letterSpacing: 0.3 },
+  skippedTitle: {
+    color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+  },
+  skippedText: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: fonts.regular,
+    letterSpacing: 0.3,
+  },
 });

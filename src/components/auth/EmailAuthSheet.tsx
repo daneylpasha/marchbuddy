@@ -52,8 +52,7 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
 
   // Snap sheet back down when keyboard hides
   useEffect(() => {
-    const hideEvent =
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const onHide = () => {
       modalRef.current?.snapToIndex(0);
@@ -123,9 +122,7 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
         await signUp(email.trim(), password);
         const session = useAuthStore.getState().session;
         if (!session) {
-          setSuccessMessage(
-            'Account created! Check your email to confirm, then sign in.',
-          );
+          setSuccessMessage('Account created! Check your email to confirm, then sign in.');
           setMode('login');
           setPassword('');
           setConfirmPassword('');
@@ -168,13 +165,9 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <Text style={styles.title}>
-          {isLogin ? 'Welcome Back' : 'Create Account'}
-        </Text>
+        <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
         <Text style={styles.subtitle}>
-          {isLogin
-            ? 'Sign in with your email and password'
-            : 'Start your fitness journey today'}
+          {isLogin ? 'Sign in with your email and password' : 'Start your fitness journey today'}
         </Text>
 
         {/* Success message */}
@@ -286,9 +279,7 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.ctaText}>
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Text>
+            <Text style={styles.ctaText}>{isLogin ? 'Sign In' : 'Create Account'}</Text>
           )}
         </TouchableOpacity>
 
@@ -301,9 +292,7 @@ const EmailAuthSheet = forwardRef<EmailAuthSheetRef>((_, forwardedRef) => {
         >
           <Text style={styles.toggleText}>
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
-            <Text style={styles.toggleHighlight}>
-              {isLogin ? 'Register' : 'Sign In'}
-            </Text>
+            <Text style={styles.toggleHighlight}>{isLogin ? 'Register' : 'Sign In'}</Text>
           </Text>
         </TouchableOpacity>
       </BottomSheetScrollView>

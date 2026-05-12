@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -41,8 +35,7 @@ function GuestGate() {
 
         <Text style={styles.gateTitle}>Join the Community</Text>
         <Text style={styles.gateSub}>
-          Bench March your friends, form a team, and challenge other squads —
-          all in real life.
+          Bench March your friends, form a team, and challenge other squads — all in real life.
         </Text>
 
         <View style={styles.featureList}>
@@ -52,9 +45,7 @@ function GuestGate() {
           <FeatureRow icon="flash-outline" label="Challenge rival teams. Outdoor only." />
         </View>
 
-        <Text style={styles.migrationNote}>
-          Your streak and sessions come with you.
-        </Text>
+        <Text style={styles.migrationNote}>Your streak and sessions come with you.</Text>
 
         <Pressable
           style={({ pressed }) => [styles.signUpBtn, pressed && { opacity: 0.85 }]}
@@ -80,27 +71,17 @@ function FeatureRow({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; lab
 
 // ─── Community hub (authenticated) ───────────────────────────────────────────
 
-function CommunityHub({
-  level,
-  navigation,
-}: {
-  level: number;
-  navigation: Props['navigation'];
-}) {
+function CommunityHub({ level, navigation }: { level: number; navigation: Props['navigation'] }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.hubContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.hubContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.hubTitle}>COMMUNITY</Text>
 
         {level < 2 && (
           <View style={styles.levelGateCard}>
             <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
             <Text style={styles.levelGateText}>
-              Reach Level 2 to unlock Bench March, Buddies, and Challenges.
-              Keep showing up.
+              Reach Level 2 to unlock Bench March, Buddies, and Challenges. Keep showing up.
             </Text>
           </View>
         )}
@@ -124,7 +105,11 @@ function CommunityHub({
         <SectionCard
           icon="shield-outline"
           title="My Team"
-          subtitle={level >= 5 ? 'Create or manage your squad' : `Unlocks at Level 5 — you're Level ${level}`}
+          subtitle={
+            level >= 5
+              ? 'Create or manage your squad'
+              : `Unlocks at Level 5 — you're Level ${level}`
+          }
           locked={level < 5}
           onPress={() => navigation.navigate('MyTeam')}
         />
@@ -187,9 +172,7 @@ function SectionCard({
         <Text style={[styles.sectionCardSub, locked && styles.textDimmed]}>{subtitle}</Text>
       </View>
 
-      {!locked && (
-        <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-      )}
+      {!locked && <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />}
     </Pressable>
   );
 }

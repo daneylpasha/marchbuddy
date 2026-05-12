@@ -75,7 +75,10 @@ export interface ScheduleInput {
  */
 export async function cancelByIds(notificationIds: string | null | undefined): Promise<void> {
   if (!notificationIds) return;
-  const ids = notificationIds.split(',').map((s) => s.trim()).filter(Boolean);
+  const ids = notificationIds
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   await Promise.all(
     ids.map((id) =>
       Notifications.cancelScheduledNotificationAsync(id).catch((err) => {
@@ -92,7 +95,10 @@ export async function cancelByIds(notificationIds: string | null | undefined): P
  * cancels any whose `data.sessionKey` matches. Fixes the race where
  * a prior schedule was persisted without an ID.
  */
-export async function cancelForSession(sessionKey: string, storedIds?: string | null): Promise<void> {
+export async function cancelForSession(
+  sessionKey: string,
+  storedIds?: string | null,
+): Promise<void> {
   if (storedIds) {
     await cancelByIds(storedIds);
   }

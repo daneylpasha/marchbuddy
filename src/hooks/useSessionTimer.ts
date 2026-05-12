@@ -17,7 +17,9 @@ interface UseSessionTimerReturn {
   progress: number; // 0–1 for current segment
 }
 
-export const useSessionTimer = ({ onComplete }: UseSessionTimerOptions = {}): UseSessionTimerReturn => {
+export const useSessionTimer = ({
+  onComplete,
+}: UseSessionTimerOptions = {}): UseSessionTimerReturn => {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasAnnouncedRef = useRef<Set<number>>(new Set());
   const hasAnnouncedAdvanceRef = useRef<Set<number>>(new Set());

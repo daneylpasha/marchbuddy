@@ -42,7 +42,9 @@ export default function MyTeamScreen({ navigation }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleCreate = async () => {
     if (teamName.trim().length < 3) {
@@ -62,22 +64,18 @@ export default function MyTeamScreen({ navigation }: Props) {
   };
 
   const handleRemove = (member: TeamMember) => {
-    Alert.alert(
-      'Remove Member',
-      `Remove ${member.profile.name} from your team?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            if (!team) return;
-            await removeMember(team.id, member.userId);
-            load();
-          },
+    Alert.alert('Remove Member', `Remove ${member.profile.name} from your team?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          if (!team) return;
+          await removeMember(team.id, member.userId);
+          load();
         },
-      ],
-    );
+      },
+    ]);
   };
 
   if (loading) {
@@ -121,7 +119,10 @@ export default function MyTeamScreen({ navigation }: Props) {
             placeholder="Team name (min 3 chars)"
             placeholderTextColor={colors.textSecondary}
             value={teamName}
-            onChangeText={(t) => { setTeamName(t); setCreateError(''); }}
+            onChangeText={(t) => {
+              setTeamName(t);
+              setCreateError('');
+            }}
             maxLength={32}
             autoCapitalize="words"
           />
@@ -131,10 +132,11 @@ export default function MyTeamScreen({ navigation }: Props) {
             onPress={handleCreate}
             disabled={creating}
           >
-            {creating
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.createBtnText}>Create Team</Text>
-            }
+            {creating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.createBtnText}>Create Team</Text>
+            )}
           </Pressable>
         </View>
       </SafeAreaView>
@@ -187,7 +189,10 @@ export default function MyTeamScreen({ navigation }: Props) {
         <InviteOverlay
           teamId={team.id}
           existingMemberIds={team.members.map((m) => m.userId)}
-          onClose={() => { setShowInvite(false); load(); }}
+          onClose={() => {
+            setShowInvite(false);
+            load();
+          }}
         />
       )}
     </SafeAreaView>
@@ -210,7 +215,10 @@ function InviteOverlay({
   const [inviting, setInviting] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
     const t = setTimeout(async () => {
       const found = await searchUsers(query);
       setResults(found.filter((u) => !existingMemberIds.includes(u.id)));
@@ -260,16 +268,15 @@ function InviteOverlay({
               onPress={() => invite(u.id)}
               disabled={inviting === u.id}
             >
-              {inviting === u.id
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.inviteSmBtnText}>Invite</Text>
-              }
+              {inviting === u.id ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.inviteSmBtnText}>Invite</Text>
+              )}
             </Pressable>
           </View>
         ))}
-        {query.trim() && !results.length && (
-          <Text style={styles.noResults}>No runners found</Text>
-        )}
+        {query.trim() && !results.length && <Text style={styles.noResults}>No runners found</Text>}
       </View>
     </View>
   );
@@ -308,13 +315,13 @@ function MemberRow({
       onPress={onPress}
     >
       <View style={styles.memberAvatar}>
-        <Text style={styles.memberAvatarLetter}>
-          {member.profile.name.charAt(0).toUpperCase()}
-        </Text>
+        <Text style={styles.memberAvatarLetter}>{member.profile.name.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.memberBody}>
         <View style={styles.memberNameRow}>
-          <Text style={styles.memberName} numberOfLines={1}>{member.profile.name}</Text>
+          <Text style={styles.memberName} numberOfLines={1}>
+            {member.profile.name}
+          </Text>
           {isCaptain && (
             <View style={styles.captBadge}>
               <Text style={styles.captBadgeText}>CAPT</Text>

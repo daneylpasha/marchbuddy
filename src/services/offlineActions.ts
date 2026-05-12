@@ -21,8 +21,10 @@ export function registerOfflineActions() {
     upsertProfile(userId, data).then(() => {}),
   );
 
-  offlineQueue.registerAction('updateWorkoutStatus', (workoutId: string, status: string, summary?: any) =>
-    updateWorkoutStatus(workoutId, status as any, summary),
+  offlineQueue.registerAction(
+    'updateWorkoutStatus',
+    (workoutId: string, status: string, summary?: any) =>
+      updateWorkoutStatus(workoutId, status as any, summary),
   );
 
   offlineQueue.registerAction('updateExerciseFeedback', (workoutId: string, exercises: any) =>
@@ -49,27 +51,34 @@ export function registerOfflineActions() {
     saveMeasurement(userId, measurement).then(() => {}),
   );
 
-  offlineQueue.registerAction('saveWeeklySummary', (userId: string, weekStart: string, text: string, insights: string[]) =>
-    saveWeeklySummary(userId, weekStart, text, insights).then(() => {}),
+  offlineQueue.registerAction(
+    'saveWeeklySummary',
+    (userId: string, weekStart: string, text: string, insights: string[]) =>
+      saveWeeklySummary(userId, weekStart, text, insights).then(() => {}),
   );
 
-  offlineQueue.registerAction('upsertPersonalRecord', (userId: string, exerciseName: string, weight: number, reps: number, date: string) =>
-    upsertPersonalRecord(userId, exerciseName, weight, reps, date),
+  offlineQueue.registerAction(
+    'upsertPersonalRecord',
+    (userId: string, exerciseName: string, weight: number, reps: number, date: string) =>
+      upsertPersonalRecord(userId, exerciseName, weight, reps, date),
   );
 
-  offlineQueue.registerAction('updateWorkoutColumn', async (workoutId: string, column: string, value: any) => {
-    const { error } = await supabase
-      .from('workout_plans')
-      .update({ [column]: value })
-      .eq('id', workoutId);
-    if (error) throw error;
-  });
+  offlineQueue.registerAction(
+    'updateWorkoutColumn',
+    async (workoutId: string, column: string, value: any) => {
+      const { error } = await supabase
+        .from('workout_plans')
+        .update({ [column]: value })
+        .eq('id', workoutId);
+      if (error) throw error;
+    },
+  );
 
-  offlineQueue.registerAction('updateWorkoutColumns', async (workoutId: string, updates: Record<string, any>) => {
-    const { error } = await supabase
-      .from('workout_plans')
-      .update(updates)
-      .eq('id', workoutId);
-    if (error) throw error;
-  });
+  offlineQueue.registerAction(
+    'updateWorkoutColumns',
+    async (workoutId: string, updates: Record<string, any>) => {
+      const { error } = await supabase.from('workout_plans').update(updates).eq('id', workoutId);
+      if (error) throw error;
+    },
+  );
 }

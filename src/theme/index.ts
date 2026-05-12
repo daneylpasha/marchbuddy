@@ -6,78 +6,78 @@
 
 export const fonts = {
   // Display / Titles — Bebas Neue (all-caps, high-impact)
-  titleRegular: "BebasNeue_400Regular",
+  titleRegular: 'BebasNeue_400Regular',
 
   // Body / UI — Montserrat
-  regular: "Montserrat_400Regular",
-  medium: "Montserrat_500Medium",
-  semiBold: "Montserrat_600SemiBold",
-  bold: "Montserrat_700Bold",
+  regular: 'Montserrat_400Regular',
+  medium: 'Montserrat_500Medium',
+  semiBold: 'Montserrat_600SemiBold',
+  bold: 'Montserrat_700Bold',
 } as const;
 
 // ─── Colors ───────────────────────────────────────────────────────────────
 
 export const colors = {
   // Backgrounds — slightly off-black for warmth on all screen types
-  background: "#0A0A0A",
-  surface: "#0A0A0A",
-  surfaceElevated: "#1A1A1A",
-  surfaceBorder: "rgba(255,255,255,0.08)",
+  background: '#0A0A0A',
+  surface: '#0A0A0A',
+  surfaceElevated: '#1A1A1A',
+  surfaceBorder: 'rgba(255,255,255,0.08)',
 
   // Primary accent — warmer, more energetic green
-  primary: "#10B981",
-  primaryBright: "#34D399",
-  primaryDim: "rgba(16,185,129,0.15)",
-  primaryGlow: "rgba(16,185,129,0.45)",
+  primary: '#10B981',
+  primaryBright: '#34D399',
+  primaryDim: 'rgba(16,185,129,0.15)',
+  primaryGlow: 'rgba(16,185,129,0.45)',
 
   // Secondary accents
-  success: "#34D399",
-  successDim: "rgba(52,211,153,0.15)",
+  success: '#34D399',
+  successDim: 'rgba(52,211,153,0.15)',
 
   // Gradient colors for buttons
-  gradientStart: "#10B981",
-  gradientEnd: "#34D399",
-  warning: "#FBBF24",
-  warningDim: "rgba(251,191,36,0.15)",
-  danger: "#F43F5E",
-  dangerDim: "rgba(244,63,94,0.15)",
+  gradientStart: '#10B981',
+  gradientEnd: '#34D399',
+  warning: '#FBBF24',
+  warningDim: 'rgba(251,191,36,0.15)',
+  danger: '#F43F5E',
+  dangerDim: 'rgba(244,63,94,0.15)',
 
   // Macro colors
-  protein: "#10B981",
-  carbs: "#FBBF24",
-  fat: "#F43F5E",
+  protein: '#10B981',
+  carbs: '#FBBF24',
+  fat: '#F43F5E',
 
   // Muscle group colors
-  muscleLegs: "#34D399",
-  muscleChest: "#10B981",
-  muscleBack: "#FB923C",
-  muscleShoulders: "#A78BFA",
-  muscleCore: "#FBBF24",
-  muscleArms: "#F43F5E",
+  muscleLegs: '#34D399',
+  muscleChest: '#10B981',
+  muscleBack: '#FB923C',
+  muscleShoulders: '#A78BFA',
+  muscleCore: '#FBBF24',
+  muscleArms: '#F43F5E',
 
   // Text — improved contrast for dark backgrounds
-  textPrimary: "#FFFFFF",
-  textSecondary: "#A1A1AA",
-  textTertiary: "#71717A",
-  textMuted: "#52525B",
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A1A1AA',
+  textTertiary: '#71717A',
+  textMuted: '#52525B',
 
   // Specific
-  water: "#2DD4BF",
-  waterDim: "rgba(45,212,191,0.15)",
-  streak: "#FB923C",
-  divider: "#1A1A1A",
-  dotInactive: "#3F3F46",
+  water: '#2DD4BF',
+  waterDim: 'rgba(45,212,191,0.15)',
+  streak: '#FB923C',
+  divider: '#1A1A1A',
+  dotInactive: '#3F3F46',
 
   // Segment colors — used during active sessions
-  segmentWarmup: "rgba(16,185,129,0.06)",
-  segmentWalk: "rgba(56,189,248,0.10)",
-  segmentRun: "rgba(16,185,129,0.14)",
-  segmentCooldown: "rgba(167,139,250,0.08)",
+  segmentWarmup: 'rgba(16,185,129,0.06)',
+  segmentWalk: 'rgba(56,189,248,0.10)',
+  segmentRun: 'rgba(16,185,129,0.14)',
+  segmentCooldown: 'rgba(167,139,250,0.08)',
 
   // Gradients (used as overlay backgrounds)
-  streakGradientStart: "rgba(16,185,129,0.08)",
-  streakGradientEnd: "rgba(244,63,94,0.06)",
-  cardGlow: "rgba(16,185,129,0.08)",
+  streakGradientStart: 'rgba(16,185,129,0.08)',
+  streakGradientEnd: 'rgba(244,63,94,0.06)',
+  cardGlow: 'rgba(16,185,129,0.08)',
 } as const;
 
 // ─── Typography ───────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export const typography = {
     fontSize: 40,
     color: colors.textPrimary,
     letterSpacing: 0.8,
-    textTransform: "uppercase" as const,
+    textTransform: 'uppercase' as const,
   },
   // Screen titles — Montserrat SemiBold (reserve Bebas for hero moments)
   screenTitle: {
@@ -102,7 +102,7 @@ export const typography = {
   sectionTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 18,
-    fontWeight: "600" as const,
+    fontWeight: '600' as const,
     color: colors.textPrimary,
     letterSpacing: 0.3,
   },
@@ -110,7 +110,7 @@ export const typography = {
   cardTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: '600' as const,
     color: colors.textPrimary,
     letterSpacing: 0.3,
   },
@@ -118,27 +118,27 @@ export const typography = {
   statHero: {
     fontFamily: fonts.bold,
     fontSize: 48,
-    fontWeight: "700" as const,
+    fontWeight: '700' as const,
     color: colors.textPrimary,
-    fontVariant: ["tabular-nums" as const],
+    fontVariant: ['tabular-nums' as const],
     letterSpacing: 0.3,
   },
   // Large stat numbers
   statLarge: {
     fontFamily: fonts.bold,
     fontSize: 28,
-    fontWeight: "700" as const,
+    fontWeight: '700' as const,
     color: colors.textPrimary,
-    fontVariant: ["tabular-nums" as const],
+    fontVariant: ['tabular-nums' as const],
     letterSpacing: 0.3,
   },
   // Medium stat numbers
   statMedium: {
     fontFamily: fonts.semiBold,
     fontSize: 20,
-    fontWeight: "600" as const,
+    fontWeight: '600' as const,
     color: colors.textPrimary,
-    fontVariant: ["tabular-nums" as const],
+    fontVariant: ['tabular-nums' as const],
     letterSpacing: 0.3,
   },
   // Large body (emphasis)
@@ -168,22 +168,22 @@ export const typography = {
   button: {
     fontFamily: fonts.bold,
     fontSize: 15,
-    fontWeight: "700" as const,
+    fontWeight: '700' as const,
     letterSpacing: 0.8,
-    textTransform: "uppercase" as const,
+    textTransform: 'uppercase' as const,
   },
   // Button text — secondary
   buttonSecondary: {
     fontFamily: fonts.medium,
     fontSize: 15,
-    fontWeight: "500" as const,
+    fontWeight: '500' as const,
     letterSpacing: 0.3,
   },
   // Small labels
   label: {
     fontFamily: fonts.medium,
     fontSize: 13,
-    fontWeight: "500" as const,
+    fontWeight: '500' as const,
     color: colors.textSecondary,
     letterSpacing: 0.3,
   },
@@ -191,10 +191,10 @@ export const typography = {
   overline: {
     fontFamily: fonts.bold,
     fontSize: 11,
-    fontWeight: "700" as const,
+    fontWeight: '700' as const,
     color: colors.textSecondary,
     letterSpacing: 1.2,
-    textTransform: "uppercase" as const,
+    textTransform: 'uppercase' as const,
   },
   // Caption / hints
   caption: {
@@ -208,7 +208,7 @@ export const typography = {
   captionBold: {
     fontFamily: fonts.medium,
     fontSize: 12,
-    fontWeight: "500" as const,
+    fontWeight: '500' as const,
     color: colors.textSecondary,
     letterSpacing: 0.3,
   },

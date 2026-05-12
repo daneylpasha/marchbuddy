@@ -88,10 +88,7 @@ export default function RunNavigator() {
     persistedActive.isActive && persistedActive.plan ? 'ActiveSession' : 'Today';
 
   return (
-    <Stack.Navigator
-      initialRouteName={initialRouteName}
-      screenOptions={{ headerShown: false }}
-    >
+    <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Today" component={TodayScreenWithComebackGuard} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
       <Stack.Screen

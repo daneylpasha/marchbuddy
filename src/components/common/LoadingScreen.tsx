@@ -18,7 +18,7 @@ export default function LoadingScreen({ message, submessage }: LoadingScreenProp
         duration: 1200,
         easing: Easing.linear,
         useNativeDriver: true,
-      })
+      }),
     ).start();
 
     Animated.loop(
@@ -33,7 +33,7 @@ export default function LoadingScreen({ message, submessage }: LoadingScreenProp
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, []);
 
@@ -44,7 +44,9 @@ export default function LoadingScreen({ message, submessage }: LoadingScreenProp
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.spinner, { transform: [{ rotate: rotation }], opacity: pulseValue }]}>
+      <Animated.View
+        style={[styles.spinner, { transform: [{ rotate: rotation }], opacity: pulseValue }]}
+      >
         <View style={styles.spinnerDot} />
       </Animated.View>
       {message ? <Text style={styles.message}>{message}</Text> : null}

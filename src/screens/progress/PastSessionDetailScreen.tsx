@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -37,11 +31,16 @@ function formatDate(dateStr: string): string {
 function feedbackLabel(rating: string | null): string | null {
   if (!rating) return null;
   switch (rating) {
-    case 'too_easy':    return 'Too easy';
-    case 'just_right':  return 'Just right';
-    case 'challenging': return 'Challenging';
-    case 'too_hard':    return 'Too hard';
-    default:            return rating;
+    case 'too_easy':
+      return 'Too easy';
+    case 'just_right':
+      return 'Just right';
+    case 'challenging':
+      return 'Challenging';
+    case 'too_hard':
+      return 'Too hard';
+    default:
+      return rating;
   }
 }
 
@@ -65,10 +64,7 @@ export default function PastSessionDetailScreen({ navigation, route }: Props) {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Map (outdoor only) */}
         {hasRoute ? (
           <RouteMap route={session.route!} height={260} style={styles.mapShadow} />
@@ -89,7 +85,9 @@ export default function PastSessionDetailScreen({ navigation, route }: Props) {
 
         {/* Plan title + level */}
         <View style={styles.planHeader}>
-          <Text style={styles.planTitle} numberOfLines={2}>{session.planTitle}</Text>
+          <Text style={styles.planTitle} numberOfLines={2}>
+            {session.planTitle}
+          </Text>
           <View style={styles.planMetaRow}>
             <View style={styles.levelBadge}>
               <Text style={styles.levelBadgeText}>LEVEL {session.planLevel}</Text>

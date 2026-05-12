@@ -9,18 +9,9 @@ interface Props {
   onSkip: () => void;
 }
 
-export default function NotificationPermissionModal({
-  visible,
-  onAllow,
-  onSkip,
-}: Props) {
+export default function NotificationPermissionModal({ visible, onAllow, onSkip }: Props) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-    >
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.iconContainer}>
@@ -29,15 +20,12 @@ export default function NotificationPermissionModal({
 
           <Text style={styles.title}>Stay on track</Text>
           <Text style={styles.body}>
-            Get reminders for scheduled sessions and gentle nudges when you've
-            been away. We'll never spam you.
+            Get reminders for scheduled sessions and gentle nudges when you've been away. We'll
+            never spam you.
           </Text>
 
           <Pressable
-            style={({ pressed }) => [
-              styles.allowButton,
-              pressed && styles.buttonPressed,
-            ]}
+            style={({ pressed }) => [styles.allowButton, pressed && styles.buttonPressed]}
             onPress={onAllow}
           >
             <Text style={styles.allowButtonText}>Enable Notifications</Text>

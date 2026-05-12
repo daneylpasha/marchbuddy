@@ -28,9 +28,7 @@ function persistWaterLog(log: WaterLog) {
 
   const isConnected = useNetworkStore.getState().isConnected;
   if (isConnected) {
-    upsertWaterLog(userId, log).catch((e) =>
-      console.error('[waterStore] persist error:', e),
-    );
+    upsertWaterLog(userId, log).catch((e) => console.error('[waterStore] persist error:', e));
   } else {
     offlineQueue.enqueue('upsertWaterLog', [userId, log]);
   }

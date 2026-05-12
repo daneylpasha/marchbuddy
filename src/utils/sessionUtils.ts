@@ -23,11 +23,16 @@ export const calculateTotalDuration = (segments: SessionSegment[]): number => {
 // Get segment type display name
 export const getSegmentTypeName = (type: SessionSegment['type']): string => {
   switch (type) {
-    case 'warmup':  return 'Warmup';
-    case 'walk':    return 'Walk';
-    case 'run':     return 'Run';
-    case 'cooldown': return 'Cooldown';
-    default:        return 'Walk';
+    case 'warmup':
+      return 'Warmup';
+    case 'walk':
+      return 'Walk';
+    case 'run':
+      return 'Run';
+    case 'cooldown':
+      return 'Cooldown';
+    default:
+      return 'Walk';
   }
 };
 
@@ -77,11 +82,16 @@ export const formatPace = (paceMinPerKm: number | null): string => {
 // Get feedback label
 export const getFeedbackLabel = (rating: FeedbackRating): string => {
   switch (rating) {
-    case 'too_easy':    return 'Too Easy';
-    case 'just_right':  return 'Just Right';
-    case 'challenging': return 'Challenging';
-    case 'too_hard':    return 'Too Hard';
-    default:            return 'Good';
+    case 'too_easy':
+      return 'Too Easy';
+    case 'just_right':
+      return 'Just Right';
+    case 'challenging':
+      return 'Challenging';
+    case 'too_hard':
+      return 'Too Hard';
+    default:
+      return 'Good';
   }
 };
 

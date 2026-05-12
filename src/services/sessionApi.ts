@@ -250,12 +250,16 @@ export const sessionApi = {
   },
 
   async getRecentSessionSignals(limit = 3): Promise<RecentSessionSignal[]> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return [];
 
     const { data, error } = await supabase
       .from('sessions')
-      .select('feedback_rating, ended_early, completed_segments, planned_segments, environment, treadmill_stats')
+      .select(
+        'feedback_rating, ended_early, completed_segments, planned_segments, environment, treadmill_stats',
+      )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(limit);

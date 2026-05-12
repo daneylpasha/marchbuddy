@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -15,7 +8,6 @@ import type { CommunityStackParamList } from '../../navigation/CommunityNavigato
 import {
   getChallengeWithScores,
   subscribeToChallengeProgress,
-  computeScores,
   type ChallengeWithScores,
   type TeamScore,
   type MemberProgress,
@@ -64,13 +56,18 @@ export default function ActiveChallengeScreen({ navigation, route }: Props) {
   const isCompleted = challenge.status === 'completed';
   const didWin = challenge.winnerTeamId === challenge.myTeamId;
 
-  const daysLeft = challenge.endsAt && challenge.status === 'active'
-    ? Math.max(0, Math.ceil((new Date(challenge.endsAt).getTime() - Date.now()) / 86400000))
-    : null;
+  const daysLeft =
+    challenge.endsAt && challenge.status === 'active'
+      ? Math.max(0, Math.ceil((new Date(challenge.endsAt).getTime() - Date.now()) / 86400000))
+      : null;
 
-  const durationDays = challenge.endsAt && challenge.startsAt
-    ? Math.round((new Date(challenge.endsAt).getTime() - new Date(challenge.startsAt).getTime()) / 86400000)
-    : 7;
+  const durationDays =
+    challenge.endsAt && challenge.startsAt
+      ? Math.round(
+          (new Date(challenge.endsAt).getTime() - new Date(challenge.startsAt).getTime()) /
+            86400000,
+        )
+      : 7;
 
   const paramResults = computeParamResults(challenge.teamA, challenge.teamB, durationDays);
 
@@ -81,13 +78,12 @@ export default function ActiveChallengeScreen({ navigation, route }: Props) {
         title={`${challenge.teamAName} vs ${challenge.teamBName}`}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Result banner (completed) */}
         {isCompleted && (
-          <View style={[styles.resultBanner, didWin ? styles.resultBannerWin : styles.resultBannerLoss]}>
+          <View
+            style={[styles.resultBanner, didWin ? styles.resultBannerWin : styles.resultBannerLoss]}
+          >
             <Ionicons
               name={didWin ? 'trophy' : 'close-circle'}
               size={24}
@@ -104,12 +100,8 @@ export default function ActiveChallengeScreen({ navigation, route }: Props) {
           <ScoreCol name={myTeam.teamName} wins={myParamWins} isMe />
           <View style={styles.scoreboardCenter}>
             <Text style={styles.vsBig}>VS</Text>
-            {daysLeft !== null && (
-              <Text style={styles.daysLeftText}>{daysLeft}d left</Text>
-            )}
-            {challenge.status === 'active' && (
-              <View style={styles.liveDot} />
-            )}
+            {daysLeft !== null && <Text style={styles.daysLeftText}>{daysLeft}d left</Text>}
+            {challenge.status === 'active' && <View style={styles.liveDot} />}
           </View>
           <ScoreCol name={theirTeam.teamName} wins={theirParamWins} isMe={false} />
         </View>
@@ -137,7 +129,9 @@ export default function ActiveChallengeScreen({ navigation, route }: Props) {
           <View style={styles.winPointsNote}>
             <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
             <Text style={styles.winPointsNoteText}>
-              {didWin ? 'Your team earned +1 win point each.' : 'The winning team earned +1 win point each.'}
+              {didWin
+                ? 'Your team earned +1 win point each.'
+                : 'The winning team earned +1 win point each.'}
             </Text>
           </View>
         )}
@@ -164,15 +158,16 @@ function computeParamResults(
   const memberCountA = teamA.members.length || 1;
   const memberCountB = teamB.members.length || 1;
 
-  const aCompletion = teamA.members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCountA);
-  const bCompletion = teamB.members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCountB);
+  const aCompletion =
+    teamA.members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCountA);
+  const bCompletion =
+    teamB.members.reduce((s, m) => s + m.sessionsCompleted, 0) / (expectedSessions * memberCountB);
   const aStreak = teamA.members.reduce((s, m) => s + m.currentStreak, 0);
   const bStreak = teamB.members.reduce((s, m) => s + m.currentStreak, 0);
   const aVolume = teamA.members.reduce((s, m) => s + m.totalMinutes, 0);
   const bVolume = teamB.members.reduce((s, m) => s + m.totalMinutes, 0);
 
-  const winner = (a: number, b: number): 'a' | 'b' | 'draw' =>
-    a > b ? 'a' : b > a ? 'b' : 'draw';
+  const winner = (a: number, b: number): 'a' | 'b' | 'draw' => (a > b ? 'a' : b > a ? 'b' : 'draw');
 
   return [
     {
@@ -204,24 +199,20 @@ function Header({ onBack, title }: { onBack: () => void; title: string }) {
       <Pressable onPress={onBack} hitSlop={12}>
         <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
       </Pressable>
-      <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+      <Text style={styles.headerTitle} numberOfLines={1}>
+        {title}
+      </Text>
       <View style={{ width: 24 }} />
     </View>
   );
 }
 
-function ScoreCol({
-  name,
-  wins,
-  isMe,
-}: {
-  name: string;
-  wins: number;
-  isMe: boolean;
-}) {
+function ScoreCol({ name, wins, isMe }: { name: string; wins: number; isMe: boolean }) {
   return (
     <View style={[styles.scoreCol, isMe && styles.scoreColMe]}>
-      <Text style={styles.scoreColName} numberOfLines={2}>{name}</Text>
+      <Text style={styles.scoreColName} numberOfLines={2}>
+        {name}
+      </Text>
       <Text style={styles.scoreColValue}>{wins}</Text>
       <Text style={styles.scoreColSub}>params won</Text>
     </View>
@@ -247,12 +238,12 @@ function MemberRow({ member }: { member: MemberProgress }) {
   return (
     <View style={styles.memberRow}>
       <View style={styles.memberAvatar}>
-        <Text style={styles.memberAvatarLetter}>
-          {member.profile.name.charAt(0).toUpperCase()}
-        </Text>
+        <Text style={styles.memberAvatarLetter}>{member.profile.name.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.memberBody}>
-        <Text style={styles.memberName} numberOfLines={1}>{member.profile.name}</Text>
+        <Text style={styles.memberName} numberOfLines={1}>
+          {member.profile.name}
+        </Text>
         <Text style={styles.memberMeta}>Lvl {member.profile.level}</Text>
       </View>
       <View style={styles.memberStats}>
@@ -335,7 +326,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  scoreColValue: { fontFamily: fonts.bold, fontSize: 48, color: colors.textPrimary, lineHeight: 56 },
+  scoreColValue: {
+    fontFamily: fonts.bold,
+    fontSize: 48,
+    color: colors.textPrimary,
+    lineHeight: 56,
+  },
   scoreColSub: { fontFamily: fonts.regular, fontSize: 11, color: colors.textSecondary },
   scoreboardCenter: { alignItems: 'center', gap: 6, paddingHorizontal: 12 },
   vsBig: { fontFamily: fonts.bold, fontSize: 14, color: colors.textSecondary },
@@ -402,7 +398,13 @@ const styles = StyleSheet.create({
   memberBody: { width: 80, gap: 2 },
   memberName: { fontFamily: fonts.semiBold, fontSize: 13, color: colors.textPrimary },
   memberMeta: { fontFamily: fonts.regular, fontSize: 11, color: colors.textSecondary },
-  memberStats: { flex: 1, flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' },
+  memberStats: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
   statChip: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   statChipText: { fontFamily: fonts.regular, fontSize: 11, color: colors.textSecondary },
 

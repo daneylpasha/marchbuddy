@@ -35,9 +35,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         <View style={styles.container}>
           <Ionicons name="warning-outline" size={56} color={colors.warning} />
           <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.subtitle}>
-            An unexpected error occurred. Please try again.
-          </Text>
+          <Text style={styles.subtitle}>An unexpected error occurred. Please try again.</Text>
           <Pressable style={styles.button} onPress={this.handleReset}>
             <Ionicons name="refresh" size={18} color="#fff" />
             <Text style={styles.buttonText}>Try Again</Text>

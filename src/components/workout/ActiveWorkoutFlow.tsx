@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Dimensions,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import ProgressRing from '../common/ProgressRing';
@@ -12,7 +21,10 @@ const CARD_WIDTH = SCREEN_WIDTH - spacing.screenPadding * 2;
 interface ActiveWorkoutFlowProps {
   exercises: Exercise[];
   onFeedback: (exerciseId: string, feedback: Exercise['feedback']) => void;
-  onActualsChange?: (exerciseId: string, actuals: { actualWeight?: number; actualRepsPerSet?: number[] }) => void;
+  onActualsChange?: (
+    exerciseId: string,
+    actuals: { actualWeight?: number; actualRepsPerSet?: number[] },
+  ) => void;
   onSwapRequest?: (exerciseId: string) => void;
   personalRecords?: Map<string, { weightKg: number; reps: number }>;
   previousPerformances?: Map<string, { weight?: number; reps?: number; date: string }>;
@@ -74,170 +86,182 @@ export default function ActiveWorkoutFlow({
   }, [isResting]);
 
   // Auto-advance to next uncompleted exercise after feedback
-  const handleFeedback = useCallback((exerciseId: string, feedback: Exercise['feedback']) => {
-    onFeedback(exerciseId, feedback);
+  const handleFeedback = useCallback(
+    (exerciseId: string, feedback: Exercise['feedback']) => {
+      onFeedback(exerciseId, feedback);
 
-    // Start rest timer on completion
-    const ex = exercises.find((e) => e.id === exerciseId);
-    if (ex && (feedback === 'completed' || feedback === 'too-easy') && ex.restSeconds > 0) {
-      setRestSeconds(ex.restSeconds);
-      setTotalRestSeconds(ex.restSeconds);
-      setIsResting(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
-
-    // Auto-advance to next uncompleted exercise after a brief delay
-    setTimeout(() => {
-      const nextIdx = exercises.findIndex((e, i) => i > currentIndex && e.feedback === null);
-      if (nextIdx >= 0) {
-        flatListRef.current?.scrollToIndex({ index: nextIdx, animated: true });
-        setCurrentIndex(nextIdx);
+      // Start rest timer on completion
+      const ex = exercises.find((e) => e.id === exerciseId);
+      if (ex && (feedback === 'completed' || feedback === 'too-easy') && ex.restSeconds > 0) {
+        setRestSeconds(ex.restSeconds);
+        setTotalRestSeconds(ex.restSeconds);
+        setIsResting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
-    }, 600);
-  }, [exercises, currentIndex, onFeedback]);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
-    if (viewableItems.length > 0 && viewableItems[0].index != null) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
+      // Auto-advance to next uncompleted exercise after a brief delay
+      setTimeout(() => {
+        const nextIdx = exercises.findIndex((e, i) => i > currentIndex && e.feedback === null);
+        if (nextIdx >= 0) {
+          flatListRef.current?.scrollToIndex({ index: nextIdx, animated: true });
+          setCurrentIndex(nextIdx);
+        }
+      }, 600);
+    },
+    [exercises, currentIndex, onFeedback],
+  );
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
+        setCurrentIndex(viewableItems[0].index);
+      }
+    },
+  ).current;
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
-  const renderItem = useCallback(({ item: exercise }: { item: Exercise }) => {
-    const pr = personalRecords?.get(exercise.name);
-    const prev = previousPerformances?.get(exercise.name);
-    const hasFeedback = exercise.feedback !== null;
-    const isNearPR = pr && exercise.weight != null && exercise.weight >= pr.weightKg * 0.95;
+  const renderItem = useCallback(
+    ({ item: exercise }: { item: Exercise }) => {
+      const pr = personalRecords?.get(exercise.name);
+      const prev = previousPerformances?.get(exercise.name);
+      const hasFeedback = exercise.feedback !== null;
+      const isNearPR = pr && exercise.weight != null && exercise.weight >= pr.weightKg * 0.95;
 
-    return (
-      <View style={[styles.card, { width: CARD_WIDTH }]}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.cardContent}
-          nestedScrollEnabled
-        >
-          {/* Exercise header */}
-          <View style={styles.cardHeader}>
-            <Text style={styles.orderBadge}>{exercise.order}/{exercises.length}</Text>
-            <View style={styles.cardHeaderRight}>
-              {isNearPR && (
-                <View style={styles.prBadge}>
-                  <Ionicons name="trophy" size={12} color="#FFD700" />
-                  <Text style={styles.prBadgeText}>Near PR</Text>
+      return (
+        <View style={[styles.card, { width: CARD_WIDTH }]}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.cardContent}
+            nestedScrollEnabled
+          >
+            {/* Exercise header */}
+            <View style={styles.cardHeader}>
+              <Text style={styles.orderBadge}>
+                {exercise.order}/{exercises.length}
+              </Text>
+              <View style={styles.cardHeaderRight}>
+                {isNearPR && (
+                  <View style={styles.prBadge}>
+                    <Ionicons name="trophy" size={12} color="#FFD700" />
+                    <Text style={styles.prBadgeText}>Near PR</Text>
+                  </View>
+                )}
+                {!hasFeedback && onSwapRequest && (
+                  <Pressable style={styles.swapBtn} onPress={() => onSwapRequest(exercise.id)}>
+                    <Ionicons name="swap-horizontal" size={14} color={colors.primary} />
+                  </Pressable>
+                )}
+              </View>
+            </View>
+
+            <Text style={styles.exerciseName}>{exercise.name}</Text>
+            <Text style={styles.muscleGroup}>{exercise.muscleGroup}</Text>
+
+            {/* Main stats */}
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{exercise.sets}</Text>
+                <Text style={styles.statLabel}>Sets</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{exercise.reps}</Text>
+                <Text style={styles.statLabel}>Reps</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{exercise.restSeconds}s</Text>
+                <Text style={styles.statLabel}>Rest</Text>
+              </View>
+              {exercise.weight != null && (
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{exercise.weight}kg</Text>
+                  <Text style={styles.statLabel}>Weight</Text>
                 </View>
               )}
-              {!hasFeedback && onSwapRequest && (
-                <Pressable style={styles.swapBtn} onPress={() => onSwapRequest(exercise.id)}>
-                  <Ionicons name="swap-horizontal" size={14} color={colors.primary} />
-                </Pressable>
-              )}
             </View>
-          </View>
 
-          <Text style={styles.exerciseName}>{exercise.name}</Text>
-          <Text style={styles.muscleGroup}>{exercise.muscleGroup}</Text>
-
-          {/* Main stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{exercise.sets}</Text>
-              <Text style={styles.statLabel}>Sets</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{exercise.reps}</Text>
-              <Text style={styles.statLabel}>Reps</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{exercise.restSeconds}s</Text>
-              <Text style={styles.statLabel}>Rest</Text>
-            </View>
-            {exercise.weight != null && (
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{exercise.weight}kg</Text>
-                <Text style={styles.statLabel}>Weight</Text>
+            {/* Previous performance */}
+            {prev && prev.weight != null && (
+              <View style={styles.prevRow}>
+                <Ionicons name="time-outline" size={13} color={colors.textTertiary} />
+                <Text style={styles.prevText}>
+                  Last: {prev.weight}kg x {prev.reps} ({prev.date})
+                </Text>
               </View>
             )}
-          </View>
 
-          {/* Previous performance */}
-          {prev && prev.weight != null && (
-            <View style={styles.prevRow}>
-              <Ionicons name="time-outline" size={13} color={colors.textTertiary} />
-              <Text style={styles.prevText}>
-                Last: {prev.weight}kg x {prev.reps} ({prev.date})
-              </Text>
-            </View>
-          )}
+            {/* Weight input */}
+            {exercise.weight != null && (
+              <View style={styles.weightInputRow}>
+                <Text style={styles.weightLabel}>Actual weight:</Text>
+                <TextInput
+                  style={styles.weightInput}
+                  keyboardType="numeric"
+                  placeholder={String(exercise.weight)}
+                  placeholderTextColor={colors.textMuted}
+                  value={exercise.actualWeight != null ? String(exercise.actualWeight) : ''}
+                  onChangeText={(text) => {
+                    const val = parseFloat(text);
+                    if (!isNaN(val) && val > 0) {
+                      onActualsChange?.(exercise.id, { actualWeight: val });
+                    } else if (text === '') {
+                      onActualsChange?.(exercise.id, { actualWeight: undefined });
+                    }
+                  }}
+                />
+                <Text style={styles.weightUnit}>kg</Text>
+              </View>
+            )}
 
-          {/* Weight input */}
-          {exercise.weight != null && (
-            <View style={styles.weightInputRow}>
-              <Text style={styles.weightLabel}>Actual weight:</Text>
-              <TextInput
-                style={styles.weightInput}
-                keyboardType="numeric"
-                placeholder={String(exercise.weight)}
-                placeholderTextColor={colors.textMuted}
-                value={exercise.actualWeight != null ? String(exercise.actualWeight) : ''}
-                onChangeText={(text) => {
-                  const val = parseFloat(text);
-                  if (!isNaN(val) && val > 0) {
-                    onActualsChange?.(exercise.id, { actualWeight: val });
-                  } else if (text === '') {
-                    onActualsChange?.(exercise.id, { actualWeight: undefined });
-                  }
-                }}
-              />
-              <Text style={styles.weightUnit}>kg</Text>
-            </View>
-          )}
-
-          {/* Form cues */}
-          {exercise.formCues && exercise.formCues.length > 0 && (
-            <View style={styles.cuesBox}>
-              {exercise.formCues.map((cue, i) => (
-                <Text key={i} style={styles.cueText}>{'\u2022'} {cue}</Text>
-              ))}
-            </View>
-          )}
-
-          {/* Feedback buttons */}
-          <View style={styles.feedbackRow}>
-            {FEEDBACK_OPTIONS.map((opt) => {
-              const isSelected = exercise.feedback === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  style={[
-                    styles.feedbackBtn,
-                    isSelected && { backgroundColor: opt.color + '22', borderColor: opt.color },
-                  ]}
-                  onPress={() => handleFeedback(exercise.id, opt.value)}
-                >
-                  <Ionicons
-                    name={opt.icon}
-                    size={20}
-                    color={isSelected ? opt.color : colors.textSecondary}
-                  />
-                  <Text style={[styles.feedbackLabel, isSelected && { color: opt.color }]}>
-                    {opt.label}
+            {/* Form cues */}
+            {exercise.formCues && exercise.formCues.length > 0 && (
+              <View style={styles.cuesBox}>
+                {exercise.formCues.map((cue, i) => (
+                  <Text key={i} style={styles.cueText}>
+                    {'\u2022'} {cue}
                   </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                ))}
+              </View>
+            )}
 
-          {hasFeedback && (
-            <View style={styles.doneOverlay}>
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-              <Text style={styles.doneText}>Logged</Text>
+            {/* Feedback buttons */}
+            <View style={styles.feedbackRow}>
+              {FEEDBACK_OPTIONS.map((opt) => {
+                const isSelected = exercise.feedback === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    style={[
+                      styles.feedbackBtn,
+                      isSelected && { backgroundColor: opt.color + '22', borderColor: opt.color },
+                    ]}
+                    onPress={() => handleFeedback(exercise.id, opt.value)}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={20}
+                      color={isSelected ? opt.color : colors.textSecondary}
+                    />
+                    <Text style={[styles.feedbackLabel, isSelected && { color: opt.color }]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          )}
-        </ScrollView>
-      </View>
-    );
-  }, [exercises, personalRecords, previousPerformances, handleFeedback, onActualsChange]);
+
+            {hasFeedback && (
+              <View style={styles.doneOverlay}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.doneText}>Logged</Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      );
+    },
+    [exercises, personalRecords, previousPerformances, handleFeedback, onActualsChange],
+  );
 
   return (
     <View style={styles.container}>
@@ -252,7 +276,9 @@ export default function ActiveWorkoutFlow({
           label={`/${exercises.length}`}
         />
         <View style={styles.topBarCenter}>
-          <Text style={styles.progressText}>{completedCount} of {exercises.length} done</Text>
+          <Text style={styles.progressText}>
+            {completedCount} of {exercises.length} done
+          </Text>
           <Text style={styles.progressPercent}>
             {exercises.length > 0 ? Math.round((completedCount / exercises.length) * 100) : 0}%
           </Text>
@@ -272,12 +298,16 @@ export default function ActiveWorkoutFlow({
             strokeWidth={6}
             color={colors.primary}
             label="s"
-            customCenter={
-              <Text style={styles.restRingText}>{restSeconds}</Text>
-            }
+            customCenter={<Text style={styles.restRingText}>{restSeconds}</Text>}
           />
           <Text style={styles.restLabel}>Rest Time</Text>
-          <Pressable style={styles.skipRestBtn} onPress={() => { setIsResting(false); setRestSeconds(0); }}>
+          <Pressable
+            style={styles.skipRestBtn}
+            onPress={() => {
+              setIsResting(false);
+              setRestSeconds(0);
+            }}
+          >
             <Text style={styles.skipRestText}>Skip Rest</Text>
           </Pressable>
         </View>

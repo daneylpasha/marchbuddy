@@ -55,12 +55,12 @@ export interface Exercise {
   reps: number;
   restSeconds: number;
   order: number;
-  weight?: number;           // AI-prescribed weight in kg (null for bodyweight)
-  actualSets?: number;       // What user actually performed
-  actualReps?: number;       // What user actually performed (total or last set)
+  weight?: number; // AI-prescribed weight in kg (null for bodyweight)
+  actualSets?: number; // What user actually performed
+  actualReps?: number; // What user actually performed (total or last set)
   actualRepsPerSet?: number[]; // Per-set reps (e.g., [10, 9, 8] for 3 sets)
-  actualWeight?: number;     // What user actually lifted in kg
-  formCues?: string[];            // AI-generated form tips (e.g. "Keep back straight")
+  actualWeight?: number; // What user actually lifted in kg
+  formCues?: string[]; // AI-generated form tips (e.g. "Keep back straight")
   feedback: 'completed' | 'skipped' | 'too-hard' | 'too-easy' | null;
   notes: string;
 }
@@ -68,7 +68,7 @@ export interface Exercise {
 export interface WarmUpCoolDownExercise {
   id: string;
   name: string;
-  duration?: string;    // e.g., "30 seconds", "10 reps"
+  duration?: string; // e.g., "30 seconds", "10 reps"
   description?: string; // brief instruction/form cue
   order: number;
 }
@@ -93,8 +93,8 @@ export interface WorkoutPlan {
   restDayType: 'active-recovery' | 'complete-rest' | null;
   energyLevel?: 1 | 2 | 3 | 4 | 5;
   readiness?: ReadinessCheck;
-  sessionRPE?: number;          // Post-workout RPE (1-10)
-  workoutStartedAt?: string;    // ISO timestamp when workout started
+  sessionRPE?: number; // Post-workout RPE (1-10)
+  workoutStartedAt?: string; // ISO timestamp when workout started
   aiNotes: string;
   createdAt: string;
 }

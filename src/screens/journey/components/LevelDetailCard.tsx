@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  StyleSheet,
-  Pressable,
-} from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { LevelDefinition } from '../../../types/session';
 import { colors, fonts, spacing } from '../../../theme';
@@ -38,7 +31,11 @@ export const LevelDetailCard: React.FC<LevelDetailCardProps> = ({
               <Text style={styles.levelLabel}>LEVEL {level.level}</Text>
               <Text style={styles.levelName}>{level.name}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -77,7 +74,10 @@ export const LevelDetailCard: React.FC<LevelDetailCardProps> = ({
                   {[0, 1, 2].map((i) => (
                     <View
                       key={i}
-                      style={[styles.dot, i < sessionsCompleted ? styles.dotFilled : styles.dotEmpty]}
+                      style={[
+                        styles.dot,
+                        i < sessionsCompleted ? styles.dotFilled : styles.dotEmpty,
+                      ]}
                     />
                   ))}
                 </View>

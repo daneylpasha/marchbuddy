@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  Platform,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, fonts } from '../../../theme';
@@ -106,11 +99,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           disabled={!canSend}
           activeOpacity={0.8}
         >
-          <Ionicons
-            name="send"
-            size={16}
-            color={canSend ? colors.textPrimary : colors.textMuted}
-          />
+          <Ionicons name="send" size={16} color={canSend ? colors.textPrimary : colors.textMuted} />
         </TouchableOpacity>
       </View>
     </View>

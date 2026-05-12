@@ -1,11 +1,5 @@
 import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -30,7 +24,7 @@ function formatDuration(minutes: number): string {
   return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
 }
 
-function getWeekDays(weekStartDate: string): Array<{ date: string; label: string; isToday: boolean }> {
+function getWeekDays(weekStartDate: string): { date: string; label: string; isToday: boolean }[] {
   const result = [];
   const start = new Date(weekStartDate + 'T00:00:00');
   const todayStr = new Date().toISOString().split('T')[0];
@@ -67,9 +61,7 @@ export default function WeekDetailScreen() {
     weekEnd.setDate(weekEnd.getDate() + 7);
     const endStr = weekEnd.toISOString().split('T')[0];
 
-    return (sessionHistory ?? []).filter(
-      (s) => s.date >= weekStartDate && s.date < endStr,
-    );
+    return (sessionHistory ?? []).filter((s) => s.date >= weekStartDate && s.date < endStr);
   }, [sessionHistory, weekStartDate]);
 
   // Stats
@@ -99,10 +91,7 @@ export default function WeekDetailScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Summary Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -127,7 +116,8 @@ export default function WeekDetailScreen() {
           <View style={styles.barChart}>
             {weekDays.map(({ date, label, isToday }) => {
               const minutes = sessionsByDate[date] || 0;
-              const barH = minutes > 0 ? Math.max(6, Math.round((minutes / maxMinutes) * BAR_HEIGHT)) : 0;
+              const barH =
+                minutes > 0 ? Math.max(6, Math.round((minutes / maxMinutes) * BAR_HEIGHT)) : 0;
               const hasActivity = minutes > 0;
               return (
                 <View key={date} style={styles.barColumn}>
@@ -135,11 +125,7 @@ export default function WeekDetailScreen() {
                     {hasActivity ? (
                       <View style={styles.barTrack}>
                         <View
-                          style={[
-                            styles.barFill,
-                            { height: barH },
-                            isToday && styles.barFillToday,
-                          ]}
+                          style={[styles.barFill, { height: barH }, isToday && styles.barFillToday]}
                         />
                       </View>
                     ) : (
@@ -147,9 +133,7 @@ export default function WeekDetailScreen() {
                     )}
                   </View>
                   <Text style={[styles.barLabel, isToday && styles.barLabelToday]}>{label}</Text>
-                  {hasActivity && (
-                    <Text style={styles.barMinutes}>{Math.round(minutes)}m</Text>
-                  )}
+                  {hasActivity && <Text style={styles.barMinutes}>{Math.round(minutes)}m</Text>}
                 </View>
               );
             })}
@@ -195,7 +179,9 @@ export default function WeekDetailScreen() {
                   <Text style={styles.sessionLevelText}>L{session.planLevel}</Text>
                 </View>
                 <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionTitle} numberOfLines={1}>{session.planTitle}</Text>
+                  <Text style={styles.sessionTitle} numberOfLines={1}>
+                    {session.planTitle}
+                  </Text>
                   <Text style={styles.sessionDate}>
                     {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', {
                       weekday: 'short',
@@ -205,7 +191,9 @@ export default function WeekDetailScreen() {
                   </Text>
                 </View>
                 <View style={styles.sessionRight}>
-                  <Text style={styles.sessionDuration}>{formatDuration(session.durationMinutes)}</Text>
+                  <Text style={styles.sessionDuration}>
+                    {formatDuration(session.durationMinutes)}
+                  </Text>
                   {session.distanceKm > 0 && (
                     <Text style={styles.sessionDistance}>{session.distanceKm.toFixed(2)} km</Text>
                   )}

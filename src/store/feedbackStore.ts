@@ -7,13 +7,13 @@ interface FeedbackState {
   coachBannerDismissed: boolean;
 
   // In-app rating nudge on the Progress screen
-  ratingPromptCompleted: boolean;       // true = never show again
+  ratingPromptCompleted: boolean; // true = never show again
   ratingPromptSnoozedUntil: string | null; // ISO date YYYY-MM-DD
 
   // Actions
   dismissCoachBanner: () => void;
   completeRatingPrompt: () => void;
-  snoozeRatingPrompt: () => void;       // snooze for 14 days
+  snoozeRatingPrompt: () => void; // snooze for 14 days
   shouldShowRatingNudge: (totalSessions: number, onboardingDate: string | null) => boolean;
 }
 
@@ -45,9 +45,7 @@ export const useFeedbackStore = create<FeedbackState>()(
         const now = new Date();
         onboarded.setHours(0, 0, 0, 0);
         now.setHours(0, 0, 0, 0);
-        const daysSince = Math.floor(
-          (now.getTime() - onboarded.getTime()) / (1000 * 60 * 60 * 24),
-        );
+        const daysSince = Math.floor((now.getTime() - onboarded.getTime()) / (1000 * 60 * 60 * 24));
         if (daysSince < 7) return false;
 
         if (ratingPromptSnoozedUntil) {

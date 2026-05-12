@@ -8,5 +8,11 @@ interface MilestoneIconProps {
 }
 
 export const MilestoneIcon: React.FC<MilestoneIconProps> = ({ name, color, size }) => {
-  return <Ionicons name={name as React.ComponentProps<typeof Ionicons>['name']} size={size} color={color} />;
+  return (
+    <Ionicons
+      name={name as React.ComponentProps<typeof Ionicons>['name']}
+      size={size}
+      color={color}
+    />
+  );
 };

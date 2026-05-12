@@ -1,17 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Animated,
-  ScrollView,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, fonts, spacing } from '../../theme';
 import { useRunProgressStore } from '../../store/runProgressStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { ProBanner } from '../../components/upgrade/ProBanner';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'CoachFeedback'>;
@@ -30,7 +25,8 @@ const MAX_LEVEL = 16;
 export default function CoachFeedbackScreen({ navigation, route }: Props) {
   const { coachFeedback, progressUpdate, session, shareAfter, calibration } = route.params;
   const { progress } = useRunProgressStore();
-
+  const { isLevelLocked, openPaywall } = useSubscriptionStore();
+  const justLockedIn = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -43,7 +39,12 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
         Animated.timing(fadeAnim, { toValue: 1, duration: 420, useNativeDriver: true }),
         Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 9, useNativeDriver: true }),
       ]),
-      Animated.spring(checkScaleAnim, { toValue: 1, tension: 80, friction: 7, useNativeDriver: true }),
+      Animated.spring(checkScaleAnim, {
+        toValue: 1,
+        tension: 80,
+        friction: 7,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, [fadeAnim, scaleAnim, checkScaleAnim]);
 
@@ -64,141 +65,169 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
   };
 
   const durationStr = formatDuration(session.actualDurationMinutes);
-  const distanceStr = session.actualDistanceKm > 0
-    ? `${session.actualDistanceKm.toFixed(2)} km`
-    : '—';
+  const distanceStr =
+    session.actualDistanceKm > 0 ? `${session.actualDistanceKm.toFixed(2)} km` : '—';
   const segmentsStr = `${session.completedSegments}/${session.plannedSegments.length}`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Animated.View
+          style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
+        >
           <View style={styles.captureArea}>
-
-          {/* ── Hero checkmark ── */}
-          <View style={styles.heroSection}>
-            <Animated.View style={[styles.glowRing, { transform: [{ scale: checkScaleAnim }] }]}>
-              <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={56} color="#fff" />
-              </View>
-            </Animated.View>
-            <Text style={styles.heroTitle}>Session{'\n'}Complete</Text>
-            <Text style={styles.heroSubtitle}>{session.planTitle}</Text>
-          </View>
-
-          {/* ── Calibration banner (one-time, first-session only) ── */}
-          {calibration && (
-            <View style={styles.calibrationCard}>
-              <View style={styles.calibrationHeader}>
-                <Ionicons
-                  name={calibration.newLevel > calibration.previousLevel ? 'trending-up' : 'pulse'}
-                  size={18}
-                  color={colors.primary}
-                />
-                <Text style={styles.calibrationLabel}>LEVEL ADJUSTED</Text>
-              </View>
-              <Text style={styles.calibrationLevels}>
-                Level {calibration.previousLevel} → Level {calibration.newLevel}
-              </Text>
-              <Text style={styles.calibrationReason}>{calibration.reason}</Text>
-            </View>
-          )}
-
-          {/* ── Session stats ── */}
-          <View style={styles.sessionStatsRow}>
-            <View style={styles.sessionStat}>
-              <Ionicons name="time-outline" size={18} color={colors.primary} />
-              <Text style={styles.sessionStatValue}>{durationStr}</Text>
-              <Text style={styles.sessionStatLabel}>Time</Text>
-            </View>
-            <View style={styles.sessionStatDivider} />
-            <View style={styles.sessionStat}>
-              <Ionicons name="navigate-outline" size={18} color={colors.primary} />
-              <Text style={styles.sessionStatValue}>{distanceStr}</Text>
-              <Text style={styles.sessionStatLabel}>Distance</Text>
-            </View>
-            <View style={styles.sessionStatDivider} />
-            <View style={styles.sessionStat}>
-              <Ionicons name="layers-outline" size={18} color={colors.primary} />
-              <Text style={styles.sessionStatValue}>{segmentsStr}</Text>
-              <Text style={styles.sessionStatLabel}>Segments</Text>
-            </View>
-          </View>
-
-          {/* ── Progress stats ── */}
-          <View style={styles.progressRow}>
-            <View style={styles.progressCard}>
-              <Text style={styles.progressValue}>{progressUpdate.totalSessions}</Text>
-              <Text style={styles.progressLabel}>Total{'\n'}Sessions</Text>
-            </View>
-            <View style={styles.progressCard}>
-              <View style={styles.streakValueRow}>
-                <Text style={styles.progressValue}>{progressUpdate.currentStreak}</Text>
-                <Ionicons name="flame" size={18} color={colors.streak} style={styles.flameIcon} />
-              </View>
-              <Text style={styles.progressLabel}>Day{'\n'}Streak</Text>
-            </View>
-            <View style={[styles.progressCard, progressUpdate.leveledUp && styles.progressCardHighlight]}>
-              <Text style={[styles.progressValue, progressUpdate.leveledUp && styles.progressValueHighlight]}>
-                {progressUpdate.leveledUp ? '↑' : ''}{progressUpdate.newLevel}
-              </Text>
-              <Text style={[styles.progressLabel, progressUpdate.leveledUp && styles.progressLabelHighlight]}>
-                {progressUpdate.leveledUp ? 'Level\nUp!' : 'Current\nLevel'}
-              </Text>
-            </View>
-          </View>
-
-          {/* ── Level progress ── */}
-          {!progressUpdate.leveledUp && progressUpdate.newLevel < MAX_LEVEL && (() => {
-            const sessionsAtLevel = progress?.sessionsAtCurrentLevel ?? 0;
-            const remaining = Math.max(0, SESSIONS_TO_LEVEL_UP - sessionsAtLevel);
-            const fillPct = Math.min(sessionsAtLevel / SESSIONS_TO_LEVEL_UP, 1);
-            return (
-              <View style={styles.levelCard}>
-                <View style={styles.levelCardHeader}>
-                  <Text style={styles.levelCardTitle}>Level {progressUpdate.newLevel}</Text>
-                  <Text style={styles.levelCardNext}>→ Level {progressUpdate.newLevel + 1}</Text>
+            {/* ── Hero checkmark ── */}
+            <View style={styles.heroSection}>
+              <Animated.View style={[styles.glowRing, { transform: [{ scale: checkScaleAnim }] }]}>
+                <View style={styles.checkCircle}>
+                  <Ionicons name="checkmark" size={56} color="#fff" />
                 </View>
+              </Animated.View>
+              <Text style={styles.heroTitle}>Session{'\n'}Complete</Text>
+              <Text style={styles.heroSubtitle}>{session.planTitle}</Text>
+            </View>
 
-                {/* Progress bar */}
-                <View style={styles.levelTrack}>
-                  <View style={[styles.levelFill, { width: `${fillPct * 100}%` }]} />
+            {/* ── Calibration banner (one-time, first-session only) ── */}
+            {calibration && (
+              <View style={styles.calibrationCard}>
+                <View style={styles.calibrationHeader}>
+                  <Ionicons
+                    name={
+                      calibration.newLevel > calibration.previousLevel ? 'trending-up' : 'pulse'
+                    }
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.calibrationLabel}>LEVEL ADJUSTED</Text>
                 </View>
+                <Text style={styles.calibrationLevels}>
+                  Level {calibration.previousLevel} → Level {calibration.newLevel}
+                </Text>
+                <Text style={styles.calibrationReason}>{calibration.reason}</Text>
+              </View>
+            )}
 
-                {/* Session dots */}
-                <View style={styles.levelDots}>
-                  {Array.from({ length: SESSIONS_TO_LEVEL_UP }).map((_, i) => (
-                    <View
-                      key={i}
-                      style={[styles.levelDot, i < sessionsAtLevel && styles.levelDotFilled]}
-                    />
-                  ))}
+            {/* ── Session stats ── */}
+            <View style={styles.sessionStatsRow}>
+              <View style={styles.sessionStat}>
+                <Ionicons name="time-outline" size={18} color={colors.primary} />
+                <Text style={styles.sessionStatValue}>{durationStr}</Text>
+                <Text style={styles.sessionStatLabel}>Time</Text>
+              </View>
+              <View style={styles.sessionStatDivider} />
+              <View style={styles.sessionStat}>
+                <Ionicons name="navigate-outline" size={18} color={colors.primary} />
+                <Text style={styles.sessionStatValue}>{distanceStr}</Text>
+                <Text style={styles.sessionStatLabel}>Distance</Text>
+              </View>
+              <View style={styles.sessionStatDivider} />
+              <View style={styles.sessionStat}>
+                <Ionicons name="layers-outline" size={18} color={colors.primary} />
+                <Text style={styles.sessionStatValue}>{segmentsStr}</Text>
+                <Text style={styles.sessionStatLabel}>Segments</Text>
+              </View>
+            </View>
+
+            {/* ── Progress stats ── */}
+            <View style={styles.progressRow}>
+              <View style={styles.progressCard}>
+                <Text style={styles.progressValue}>{progressUpdate.totalSessions}</Text>
+                <Text style={styles.progressLabel}>Total{'\n'}Sessions</Text>
+              </View>
+              <View style={styles.progressCard}>
+                <View style={styles.streakValueRow}>
+                  <Text style={styles.progressValue}>{progressUpdate.currentStreak}</Text>
+                  <Ionicons name="flame" size={18} color={colors.streak} style={styles.flameIcon} />
                 </View>
-
-                <Text style={styles.levelHint}>
-                  {remaining === 0
-                    ? '🎉 Level up on next session!'
-                    : `${remaining} more session${remaining > 1 ? 's' : ''} to reach Level ${progressUpdate.newLevel + 1}`}
+                <Text style={styles.progressLabel}>Day{'\n'}Streak</Text>
+              </View>
+              <View
+                style={[
+                  styles.progressCard,
+                  progressUpdate.leveledUp && styles.progressCardHighlight,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.progressValue,
+                    progressUpdate.leveledUp && styles.progressValueHighlight,
+                  ]}
+                >
+                  {progressUpdate.leveledUp ? '↑' : ''}
+                  {progressUpdate.newLevel}
+                </Text>
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    progressUpdate.leveledUp && styles.progressLabelHighlight,
+                  ]}
+                >
+                  {progressUpdate.leveledUp ? 'Level\nUp!' : 'Current\nLevel'}
                 </Text>
               </View>
-            );
-          })()}
-
-          {/* ── Coach message ── */}
-          <View style={styles.coachCard}>
-            <View style={styles.coachHeader}>
-              <View style={styles.coachAvatar}>
-                <Ionicons name="person" size={13} color={colors.primary} />
-              </View>
-              <Text style={styles.coachLabel}>YOUR COACH</Text>
             </View>
-            <Text style={styles.coachMessage}>{coachFeedback}</Text>
-          </View>
 
-          </View>{/* end captureArea */}
+            {/* ── Level progress ── */}
+            {!progressUpdate.leveledUp &&
+              progressUpdate.newLevel < MAX_LEVEL &&
+              (() => {
+                const sessionsAtLevel = progress?.sessionsAtCurrentLevel ?? 0;
+                const remaining = Math.max(0, SESSIONS_TO_LEVEL_UP - sessionsAtLevel);
+                const fillPct = Math.min(sessionsAtLevel / SESSIONS_TO_LEVEL_UP, 1);
+                return (
+                  <View style={styles.levelCard}>
+                    <View style={styles.levelCardHeader}>
+                      <Text style={styles.levelCardTitle}>Level {progressUpdate.newLevel}</Text>
+                      <Text style={styles.levelCardNext}>
+                        → Level {progressUpdate.newLevel + 1}
+                      </Text>
+                    </View>
+
+                    {/* Progress bar */}
+                    <View style={styles.levelTrack}>
+                      <View style={[styles.levelFill, { width: `${fillPct * 100}%` }]} />
+                    </View>
+
+                    {/* Session dots */}
+                    <View style={styles.levelDots}>
+                      {Array.from({ length: SESSIONS_TO_LEVEL_UP }).map((_, i) => (
+                        <View
+                          key={i}
+                          style={[styles.levelDot, i < sessionsAtLevel && styles.levelDotFilled]}
+                        />
+                      ))}
+                    </View>
+
+                    <Text style={styles.levelHint}>
+                      {remaining === 0
+                        ? '🎉 Level up on next session!'
+                        : `${remaining} more session${remaining > 1 ? 's' : ''} to reach Level ${progressUpdate.newLevel + 1}`}
+                    </Text>
+                  </View>
+                );
+              })()}
+
+            {/* ── Upgrade CTA — leveled into a Pro-gated level ── */}
+            {justLockedIn && (
+              <ProBanner
+                variant="level_locked"
+                nextLevel={progressUpdate.newLevel}
+                onPress={() => openPaywall('feedback_locked')}
+              />
+            )}
+
+            {/* ── Coach message ── */}
+            <View style={styles.coachCard}>
+              <View style={styles.coachHeader}>
+                <View style={styles.coachAvatar}>
+                  <Ionicons name="person" size={13} color={colors.primary} />
+                </View>
+                <Text style={styles.coachLabel}>YOUR COACH</Text>
+              </View>
+              <Text style={styles.coachMessage}>{coachFeedback}</Text>
+            </View>
+          </View>
+          {/* end captureArea */}
         </Animated.View>
       </ScrollView>
 
@@ -226,7 +255,12 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
               style={({ pressed }) => [styles.doneButton, pressed && styles.doneButtonPressed]}
               onPress={handleDone}
             >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={styles.btnIcon} />
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#fff"
+                style={styles.btnIcon}
+              />
               <Text style={styles.doneButtonText}>Done</Text>
             </Pressable>
             <Pressable

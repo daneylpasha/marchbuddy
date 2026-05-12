@@ -109,9 +109,8 @@ export const authService = {
 
       if (coachSetupStore.setupComplete && coachSetupStore.setupData) {
         const d = coachSetupStore.setupData;
-        const { error: onboardingError } = await supabase
-          .from('user_onboarding')
-          .upsert({
+        const { error: onboardingError } = await supabase.from('user_onboarding').upsert(
+          {
             user_id: userId,
             user_name: d.userName,
             activity_level: d.activityLevel,
@@ -125,7 +124,9 @@ export const authService = {
             start_preference: d.preferredStartDate,
             onboarding_completed_at: d.completedAt,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' });
+          },
+          { onConflict: 'user_id' },
+        );
 
         if (onboardingError) {
           console.error(
@@ -141,16 +142,15 @@ export const authService = {
       // Only upsert run_progress when the local store actually has meaningful
       // data to migrate. Otherwise we'd overwrite existing server data with
       // post-reset defaults.
-      const hasLocalProgress = !!p && (
-        (p.totalSessionsCompleted ?? 0) > 0 ||
-        (p.currentLevel ?? 1) > 1 ||
-        (p.totalDistanceKm ?? 0) > 0 ||
-        (p.currentStreakDays ?? 0) > 0
-      );
+      const hasLocalProgress =
+        !!p &&
+        ((p.totalSessionsCompleted ?? 0) > 0 ||
+          (p.currentLevel ?? 1) > 1 ||
+          (p.totalDistanceKm ?? 0) > 0 ||
+          (p.currentStreakDays ?? 0) > 0);
       if (hasLocalProgress) {
-        const { error: progressError } = await supabase
-          .from('user_run_progress')
-          .upsert({
+        const { error: progressError } = await supabase.from('user_run_progress').upsert(
+          {
             user_id: userId,
             current_level: p.currentLevel ?? 1,
             sessions_at_current_level: p.sessionsAtCurrentLevel ?? 0,
@@ -162,26 +162,24 @@ export const authService = {
             best_streak_days: p.bestStreakDays ?? 0,
             last_session_date: p.lastSessionDate ?? null,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' });
+          },
+          { onConflict: 'user_id' },
+        );
 
         if (progressError) console.error('Error syncing progress:', progressError);
       }
 
       // Sync guest scheduled sessions
       const scheduleStore = useScheduleStore.getState();
-      const guestSessions = scheduleStore.scheduledSessions.filter(
-        (s) => s.user_id === 'guest',
-      );
+      const guestSessions = scheduleStore.scheduledSessions.filter((s) => s.user_id === 'guest');
       for (const session of guestSessions) {
-        const { error: schedError } = await supabase
-          .from('scheduled_sessions')
-          .insert({
-            user_id: userId,
-            session_key: session.session_key,
-            session_title: session.session_title,
-            scheduled_at: session.scheduled_at,
-            notified: session.notified,
-          });
+        const { error: schedError } = await supabase.from('scheduled_sessions').insert({
+          user_id: userId,
+          session_key: session.session_key,
+          session_title: session.session_title,
+          scheduled_at: session.scheduled_at,
+          notified: session.notified,
+        });
         if (schedError) console.error('Error syncing schedule:', schedError);
       }
 
@@ -189,14 +187,12 @@ export const authService = {
       const chatStore = useChatStore.getState();
       if (chatStore.messages.length > 0) {
         for (const msg of chatStore.messages) {
-          const { error: chatError } = await supabase
-            .from('chat_messages')
-            .insert({
-              user_id: userId,
-              role: msg.role,
-              content: msg.content,
-              image_url: msg.imageUri ?? null,
-            });
+          const { error: chatError } = await supabase.from('chat_messages').insert({
+            user_id: userId,
+            role: msg.role,
+            content: msg.content,
+            image_url: msg.imageUri ?? null,
+          });
           if (chatError) console.error('Error syncing chat message:', chatError);
         }
       }
@@ -220,31 +216,31 @@ export const authService = {
    */
   async pushRunProgress(): Promise<void> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.user) return; // Guest or signed-out — skip
 
       const { useRunProgressStore } = require('../store/runProgressStore');
       const p = useRunProgressStore.getState().progress;
       if (!p) return;
 
-      const { error } = await supabase
-        .from('user_run_progress')
-        .upsert(
-          {
-            user_id: session.user.id,
-            current_level: p.currentLevel ?? 1,
-            sessions_at_current_level: p.sessionsAtCurrentLevel ?? 0,
-            total_sessions_completed: p.totalSessionsCompleted ?? 0,
-            total_distance_km: p.totalDistanceKm ?? 0,
-            total_duration_minutes: p.totalDurationMinutes ?? 0,
-            longest_run_minutes: p.longestRunMinutes ?? 0,
-            current_streak_days: p.currentStreakDays ?? 0,
-            best_streak_days: p.bestStreakDays ?? 0,
-            last_session_date: p.lastSessionDate ?? null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id' },
-        );
+      const { error } = await supabase.from('user_run_progress').upsert(
+        {
+          user_id: session.user.id,
+          current_level: p.currentLevel ?? 1,
+          sessions_at_current_level: p.sessionsAtCurrentLevel ?? 0,
+          total_sessions_completed: p.totalSessionsCompleted ?? 0,
+          total_distance_km: p.totalDistanceKm ?? 0,
+          total_duration_minutes: p.totalDurationMinutes ?? 0,
+          longest_run_minutes: p.longestRunMinutes ?? 0,
+          current_streak_days: p.currentStreakDays ?? 0,
+          best_streak_days: p.bestStreakDays ?? 0,
+          last_session_date: p.lastSessionDate ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
 
       if (error) console.error('pushRunProgress upsert error:', error);
 
@@ -269,7 +265,9 @@ export const authService = {
     try {
       const { data, error } = await supabase
         .from('sessions')
-        .select('id, completed_at, actual_duration_minutes, actual_distance_km, plan_title, plan_level, feedback_rating, ended_early, environment, treadmill_stats')
+        .select(
+          'id, completed_at, actual_duration_minutes, actual_distance_km, plan_title, plan_level, feedback_rating, ended_early, environment, treadmill_stats',
+        )
         .eq('user_id', userId)
         .order('completed_at', { ascending: true })
         .limit(100);
@@ -284,7 +282,8 @@ export const authService = {
           id: row.id,
           date: (row.completed_at as string).split('T')[0],
           durationMinutes: row.actual_duration_minutes ?? 0,
-          distanceKm: isIndoor && treadmillDist != null ? treadmillDist : (row.actual_distance_km ?? 0),
+          distanceKm:
+            isIndoor && treadmillDist != null ? treadmillDist : (row.actual_distance_km ?? 0),
           planTitle: row.plan_title ?? '',
           planLevel: row.plan_level ?? 1,
           feedbackRating: row.feedback_rating ?? null,
@@ -298,9 +297,89 @@ export const authService = {
     }
   },
 
+  /**
+   * Push the local subscription state to the server's user_subscriptions
+   * table. Call this whenever the local store mutates (upgrade, setStartingLevel,
+   * future RevenueCat restore). Without this, Pro status and free-funnel
+   * boundaries live only in AsyncStorage — wiped on logout, invisible on a
+   * second device.
+   *
+   * Safe for guests: if there's no Supabase session we early-return. The
+   * row gets created automatically by the on_auth_user_created_subscription
+   * trigger when the user first signs up, so this is always an UPDATE on an
+   * existing row (we still upsert for safety on legacy accounts).
+   *
+   * Entitlement fields (started_at, expires_at, platform, revenuecat_user_id)
+   * are server-authoritative once RevenueCat is wired — we leave them
+   * untouched here. Free-funnel fields (tier, starting_level, free_until_level)
+   * are mirrored from the local store.
+   */
+  async pushSubscription(): Promise<void> {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { useSubscriptionStore } = require('../store/subscriptionStore');
+      const s = useSubscriptionStore.getState();
+
+      const { error } = await supabase.from('user_subscriptions').upsert(
+        {
+          user_id: session.user.id,
+          tier: s.tier,
+          starting_level: s.startingLevel,
+          free_until_level: s.freeUntilLevel,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) console.error('pushSubscription upsert error:', error);
+    } catch (err) {
+      console.error('pushSubscription failed:', err);
+    }
+  },
+
+  /**
+   * Pull the user's subscription row from the server and hydrate the local
+   * store. Called from authStore.setSession after a successful sign-in, so
+   * Pro status and the free funnel are correctly restored on a new device
+   * or after a reinstall. If the row doesn't exist (legacy account predating
+   * this migration), we no-op — the local default 'free' state is correct.
+   */
+  async pullSubscription(userId: string): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('tier, starting_level, free_until_level, expires_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('pullSubscription error:', error);
+        return;
+      }
+      if (!data) return;
+
+      const { useSubscriptionStore } = require('../store/subscriptionStore');
+      useSubscriptionStore.getState().hydrateFromServer({
+        tier: (data.tier as 'free' | 'pro') ?? 'free',
+        startingLevel: data.starting_level ?? 0,
+        freeUntilLevel: data.free_until_level ?? 0,
+        expiresAt: data.expires_at ?? null,
+      });
+    } catch (err) {
+      console.warn('pullSubscription failed:', err);
+    }
+  },
+
   async restoreSession(): Promise<boolean> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
       if (error) throw error;
 
       if (session) {

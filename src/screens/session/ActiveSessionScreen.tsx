@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useRef } from "react";
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,33 +11,30 @@ import {
   useWindowDimensions,
   AppState,
   AppStateStatus,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useKeepAwake } from "expo-keep-awake";
-import * as Haptics from "expo-haptics";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useKeepAwake } from 'expo-keep-awake';
+import * as Haptics from 'expo-haptics';
 
-import {
-  useActiveSessionStore,
-  getSessionReferenceTime,
-} from "../../store/activeSessionStore";
-import { useSessionStore } from "../../store/sessionStore";
-import { useSessionTimer } from "../../hooks/useSessionTimer";
-import { locationService } from "../../services/locationService";
-import { pedometerService } from "../../services/pedometerService";
-import { sessionCueService } from "../../services/sessionCueService";
+import { useActiveSessionStore, getSessionReferenceTime } from '../../store/activeSessionStore';
+import { useSessionStore } from '../../store/sessionStore';
+import { useSessionTimer } from '../../hooks/useSessionTimer';
+import { locationService } from '../../services/locationService';
+import { pedometerService } from '../../services/pedometerService';
+import { sessionCueService } from '../../services/sessionCueService';
 
-import { Ionicons } from "@expo/vector-icons";
-import { CurrentSegmentDisplay } from "./components/CurrentSegmentDisplay";
-import { SessionTimer } from "./components/SessionTimer";
-import { NextSegmentPreview } from "./components/NextSegmentPreview";
-import { SessionStatsBar } from "./components/SessionStatsBar";
-import { SessionControls } from "./components/SessionControls";
+import { Ionicons } from '@expo/vector-icons';
+import { CurrentSegmentDisplay } from './components/CurrentSegmentDisplay';
+import { SessionTimer } from './components/SessionTimer';
+import { NextSegmentPreview } from './components/NextSegmentPreview';
+import { SessionStatsBar } from './components/SessionStatsBar';
+import { SessionControls } from './components/SessionControls';
 
-import { colors, fonts } from "../../theme";
-import type { RunStackParamList } from "../../navigation/RunNavigator";
+import { colors, fonts } from '../../theme';
+import type { RunStackParamList } from '../../navigation/RunNavigator';
 
-type Props = NativeStackScreenProps<RunStackParamList, "ActiveSession">;
+type Props = NativeStackScreenProps<RunStackParamList, 'ActiveSession'>;
 
 // ─── Confirm overlay (absolute — works on native stack) ───────────────────────
 
@@ -52,7 +49,7 @@ interface ConfirmOverlayProps {
   // 'neutral' (default) — gray cancel button.
   // 'primary' — green cancel button, used when the cancel action is the
   // recommended path (e.g. "Resume" on the cold-start prompt).
-  cancelTone?: "neutral" | "primary";
+  cancelTone?: 'neutral' | 'primary';
 }
 
 function ConfirmOverlay({
@@ -63,7 +60,7 @@ function ConfirmOverlay({
   cancelLabel,
   onConfirm,
   onCancel,
-  cancelTone = "neutral",
+  cancelTone = 'neutral',
 }: ConfirmOverlayProps) {
   if (!visible) return null;
   return (
@@ -76,16 +73,14 @@ function ConfirmOverlay({
           <Pressable
             style={({ pressed }) => [
               overlayStyles.btn,
-              cancelTone === "primary"
-                ? overlayStyles.cancelBtnPrimary
-                : overlayStyles.cancelBtn,
+              cancelTone === 'primary' ? overlayStyles.cancelBtnPrimary : overlayStyles.cancelBtn,
               pressed && { opacity: 0.8 },
             ]}
             onPress={onCancel}
           >
             <Text
               style={
-                cancelTone === "primary"
+                cancelTone === 'primary'
                   ? overlayStyles.cancelLabelPrimary
                   : overlayStyles.cancelLabel
               }
@@ -113,23 +108,23 @@ const overlayStyles = StyleSheet.create({
   root: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1000,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 32,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.78)",
+    backgroundColor: 'rgba(0,0,0,0.78)',
   },
   card: {
-    width: "100%",
-    backgroundColor: "#1A1A1A",
+    width: '100%',
+    backgroundColor: '#1A1A1A',
     borderRadius: 20,
     paddingTop: 28,
     paddingHorizontal: 24,
     paddingBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
+    borderColor: 'rgba(255,255,255,0.07)',
     zIndex: 1001,
   },
   title: {
@@ -137,7 +132,7 @@ const overlayStyles = StyleSheet.create({
     fontSize: 20,
     color: colors.textPrimary,
     letterSpacing: 0.3,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 10,
   },
   message: {
@@ -145,24 +140,24 @@ const overlayStyles = StyleSheet.create({
     fontSize: 15,
     color: colors.textSecondary,
     lineHeight: 22,
-    textAlign: "center",
+    textAlign: 'center',
     marginBottom: 24,
     letterSpacing: 0.2,
   },
   btnRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 10,
   },
   btn: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: "center",
+    alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: '#2A2A2A',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   cancelBtnPrimary: {
     backgroundColor: colors.primary,
@@ -179,13 +174,13 @@ const overlayStyles = StyleSheet.create({
   cancelLabelPrimary: {
     fontFamily: fonts.semiBold,
     fontSize: 15,
-    color: "#fff",
+    color: '#fff',
     letterSpacing: 0.3,
   },
   confirmLabel: {
     fontFamily: fonts.semiBold,
     fontSize: 15,
-    color: "#fff",
+    color: '#fff',
     letterSpacing: 0.3,
   },
 });
@@ -200,10 +195,10 @@ const segmentColors = {
 };
 
 const SEGMENT_MESSAGES: Record<string, string[]> = {
-  warmup: ["Warming up...", "Easy does it"],
-  walk: ["Nice pace!", "Recover and breathe", "Walking strong"],
-  run: ["Let's go!", "You've got this!", "Push through!"],
-  cooldown: ["Almost done!", "Great work!", "Cool it down"],
+  warmup: ['Warming up...', 'Easy does it'],
+  walk: ['Nice pace!', 'Recover and breathe', 'Walking strong'],
+  run: ["Let's go!", "You've got this!", 'Push through!'],
+  cooldown: ['Almost done!', 'Great work!', 'Cool it down'],
 };
 
 // Solid accent colors for the cue pill dot — vibrant siblings of the
@@ -218,11 +213,11 @@ const CUE_DOT_COLORS = {
 // Used in the cold-start "Resume your session?" prompt so the user has a
 // concrete sense of how recent the saved session is before deciding.
 function formatSessionAge(ageMs: number): string {
-  if (ageMs < 60_000) return "moments ago";
+  if (ageMs < 60_000) return 'moments ago';
   const minutes = Math.floor(ageMs / 60_000);
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
   const hours = Math.floor(minutes / 60);
-  return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `${hours} hour${hours === 1 ? '' : 's'} ago`;
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -292,7 +287,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      navigation.replace("Today");
+      navigation.replace('Today');
     }
   }, [navigation]);
 
@@ -304,28 +299,23 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     const completed = endSession();
     isActiveRef.current = false; // stop beforeRemove from blocking auto-complete nav
     if (completed) {
-      navigation.replace("PostSession", { session: completed });
+      navigation.replace('PostSession', { session: completed });
     } else {
       exitToToday();
     }
   }, [endSession, navigation, exitToToday]);
 
-  const {
-    totalElapsedSeconds,
-    segmentRemainingSeconds,
-    currentSegment,
-    nextSegment,
-    progress,
-  } = useSessionTimer({ onComplete: handleSessionComplete });
+  const { totalElapsedSeconds, segmentRemainingSeconds, currentSegment, nextSegment, progress } =
+    useSessionTimer({ onComplete: handleSessionComplete });
 
-  const [locationPermissionDenied, setLocationPermissionDenied] =
-    useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [pedometerAvailable, setPedometerAvailable] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
   const [endEarlyModalVisible, setEndEarlyModalVisible] = useState(false);
   const [segmentTransitionMessage, setSegmentTransitionMessage] = useState<string | null>(null);
-  const [transitionSegmentType, setTransitionSegmentType] = useState<keyof typeof CUE_DOT_COLORS>('warmup');
+  const [transitionSegmentType, setTransitionSegmentType] =
+    useState<keyof typeof CUE_DOT_COLORS>('warmup');
   const [showHalfwayMessage, setShowHalfwayMessage] = useState(false);
   const [resumePromptVisible, setResumePromptVisible] = useState(false);
   const [resumePromptAge, setResumePromptAge] = useState('');
@@ -369,11 +359,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
             addRoutePoint(point);
             // First usable fix dismisses the warm-up chip. Use a ref so we
             // don't keep re-firing setState on every subsequent point.
-            if (
-              !gpsAcquiredRef.current &&
-              point.accuracy != null &&
-              point.accuracy <= 25
-            ) {
+            if (!gpsAcquiredRef.current && point.accuracy != null && point.accuracy <= 25) {
               gpsAcquiredRef.current = true;
               setGpsAcquired(true);
             }
@@ -433,20 +419,23 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
   // by the store's monotonic guard.
   useEffect(() => {
     const handleAppStateChange = async (next: AppStateStatus) => {
-      if (next === "background" || next === "inactive") {
+      if (next === 'background' || next === 'inactive') {
         if (isActiveRef.current) {
           backgroundedAtRef.current = new Date();
         }
         return;
       }
 
-      if (next !== "active") return;
+      if (next !== 'active') return;
 
       const bgAt = backgroundedAtRef.current;
       backgroundedAtRef.current = null;
 
-      const { isActive: nowActive, isPaused: nowPaused, stepCount: currentSteps } =
-        useActiveSessionStore.getState();
+      const {
+        isActive: nowActive,
+        isPaused: nowPaused,
+        stepCount: currentSteps,
+      } = useActiveSessionStore.getState();
       // Only reconcile when actively walking — if the user paused before
       // backgrounding, those background "steps" shouldn't be credited.
       if (!bgAt || !nowActive || nowPaused || !pedometerAvailable) return;
@@ -463,7 +452,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
       });
     };
 
-    const sub = AppState.addEventListener("change", handleAppStateChange);
+    const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
   }, [pedometerAvailable, setStepCount]);
 
@@ -507,8 +496,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     };
   }, [gpsAcquired, locationPermissionDenied, isActive, gpsDotPulse]);
 
-  const showGpsChip =
-    isActive && !locationPermissionDenied && !gpsAcquired;
+  const showGpsChip = isActive && !locationPermissionDenied && !gpsAcquired;
 
   // ── Handle segment transitions (message + background color animation) ────────
   useEffect(() => {
@@ -613,7 +601,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
 
   // ── Block back during active session ───────────────────────────────────────
   useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (!isActiveRef.current) return;
       e.preventDefault();
       pendingBackAction.current = e.data.action;
@@ -681,7 +669,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     pedometerService.stopTracking();
     isActiveRef.current = false;
     resetSession();
-    navigation.replace("Today");
+    navigation.replace('Today');
   }, [navigation, resetSession]);
 
   const confirmLeave = useCallback(() => {
@@ -696,7 +684,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     if (pendingBackAction.current && navigation.canGoBack()) {
       navigation.dispatch(pendingBackAction.current);
     } else {
-      navigation.replace("Today");
+      navigation.replace('Today');
     }
   }, [navigation, resetSession]);
 
@@ -712,7 +700,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     }
     const completed = endSession();
     if (completed) {
-      navigation.replace("PostSession", { session: completed });
+      navigation.replace('PostSession', { session: completed });
     } else {
       exitToToday();
     }
@@ -721,7 +709,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isInitializing || !plan || !currentSegment) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -732,7 +720,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
   }
 
   // Get current segment for background color
-  const getCurrentSegmentColor = (): string => {
+  const _getCurrentSegmentColor = (): string => {
     if (!plan || currentSegmentIndex >= plan.segments.length) {
       return colors.background;
     }
@@ -749,15 +737,13 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
     : [colors.background, colors.background];
 
   const segmentInputRange =
-    segmentOutputColors.length <= 1
-      ? [0, 1]
-      : segmentOutputColors.map((_, i) => i);
+    segmentOutputColors.length <= 1 ? [0, 1] : segmentOutputColors.map((_, i) => i);
 
   // Ensure both arrays always match in length
   const bgColor = bgColorAnim.interpolate({
     inputRange: segmentInputRange,
     outputRange: segmentOutputColors,
-    extrapolate: "clamp",
+    extrapolate: 'clamp',
   });
 
   return (
@@ -769,15 +755,12 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
         },
       ]}
     >
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar barStyle="light-content" />
 
         <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [
-              styles.backBtn,
-              pressed && { opacity: 0.6 },
-            ]}
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
             onPress={() => setLeaveModalVisible(true)}
             hitSlop={12}
           >
@@ -786,9 +769,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
 
           {showGpsChip && (
             <View style={styles.gpsChip} pointerEvents="none">
-              <Animated.View
-                style={[styles.gpsDot, { opacity: gpsDotPulse }]}
-              />
+              <Animated.View style={[styles.gpsDot, { opacity: gpsDotPulse }]} />
               <Text style={styles.gpsChipText}>Acquiring GPS…</Text>
             </View>
           )}
@@ -804,10 +785,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.timerSection, isShort && styles.timerSectionShort]}>
-            <SessionTimer
-              totalElapsedSeconds={totalElapsedSeconds}
-              isPaused={isPaused}
-            />
+            <SessionTimer totalElapsedSeconds={totalElapsedSeconds} isPaused={isPaused} />
           </View>
 
           <View style={[styles.segmentSection, isShort && styles.segmentSectionShort]}>
@@ -821,9 +799,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
           <View style={[styles.nextSection, isShort && styles.tightSection]}>
             <NextSegmentPreview
               progress={progress}
-              progressColor={
-                currentSegment.type === "run" ? colors.primary : "#fff"
-              }
+              progressColor={currentSegment.type === 'run' ? colors.primary : '#fff'}
               segment={nextSegment ?? null}
             />
           </View>
@@ -897,10 +873,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
         >
           <View style={styles.cuePill}>
             <View
-              style={[
-                styles.cueDot,
-                { backgroundColor: CUE_DOT_COLORS[transitionSegmentType] },
-              ]}
+              style={[styles.cueDot, { backgroundColor: CUE_DOT_COLORS[transitionSegmentType] }]}
             />
             <Text style={styles.cuePillText} numberOfLines={1}>
               {segmentTransitionMessage}
@@ -943,12 +916,12 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 16,
   },
   loadingText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 16,
     fontFamily: fonts.medium,
   },
@@ -956,33 +929,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 0,
     paddingBottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gpsChip: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginLeft: 12,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   gpsDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#FFB020",
+    backgroundColor: '#FFB020',
     marginRight: 8,
   },
   gpsChipText: {
@@ -996,21 +969,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
+    justifyContent: 'space-between',
     paddingBottom: 8,
   },
   timerSection: {
     paddingTop: 0,
     paddingBottom: 16,
-    alignItems: "center",
+    alignItems: 'center',
   },
   timerSectionShort: {
     paddingTop: 2,
     paddingBottom: 8,
   },
   segmentSection: {
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 28,
   },

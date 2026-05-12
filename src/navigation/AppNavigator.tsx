@@ -8,10 +8,12 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useActiveSessionStore, isSessionStale } from '../store/activeSessionStore';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import FeatureOnboardingScreen from '../screens/onboarding/FeatureOnboardingScreen';
+import OnboardingPaywallScreen from '../screens/onboarding/OnboardingPaywallScreen';
 import CoachSetupScreen from '../screens/onboarding/CoachSetupScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import MainTabNavigator from './MainTabNavigator';
 import SplashAnimated from '../screens/splash/SplashAnimated';
+import { PaywallModal } from '../components/upgrade/PaywallModal';
 
 const restoreIconSource = require('../../assets/splash-logo-transparent.png');
 
@@ -55,6 +57,10 @@ export type IntroStackParamList = {
 
 export type OnboardingStackParamList = {
   OnboardingChat: undefined;
+  // End-of-onboarding paywall — CoachSetup navigates here after the conversational
+  // setup finishes; this screen is responsible for calling markSetupComplete()
+  // (via either the "Start with Pro" or "I'll start free" path).
+  OnboardingPaywall: undefined;
 };
 
 // ─── Intro navigator (first-time users) ──────────────────────────────────────
@@ -80,6 +86,15 @@ function OnboardingNavigator() {
   return (
     <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
       <OnboardingStack.Screen name="OnboardingChat" component={CoachSetupScreen} />
+      <OnboardingStack.Screen
+        name="OnboardingPaywall"
+        component={OnboardingPaywallScreen}
+        // Disable swipe-back from the paywall — the user must finalize via
+        // either the CTA or the skip link. Without this, an iOS edge swipe
+        // would return them to the "ready" step but they'd have already had
+        // setLevel applied, leading to a confusing replay.
+        options={{ gestureEnabled: false, animation: 'slide_from_right' }}
+      />
     </OnboardingStack.Navigator>
   );
 }
@@ -197,9 +212,12 @@ export default function AppNavigator() {
 
   // Initialize auth — restores Supabase session and sets up auth state listener
   useEffect(() => {
-    useAuthStore.getState().initialize().finally(() => {
-      setIsAuthReady(true);
-    });
+    useAuthStore
+      .getState()
+      .initialize()
+      .finally(() => {
+        setIsAuthReady(true);
+      });
   }, []);
 
   // Splash starts hiding only when all stores hydrated + auth ready + min time
@@ -214,12 +232,7 @@ export default function AppNavigator() {
     !isRestoringSession;
 
   if (!splashGone) {
-    return (
-      <SplashAnimated
-        hiding={splashHiding}
-        onHidden={() => setSplashGone(true)}
-      />
-    );
+    return <SplashAnimated hiding={splashHiding} onHidden={() => setSplashGone(true)} />;
   }
 
   // Mid-session sign-in: block navigation decisions until server state restores
@@ -244,6 +257,11 @@ export default function AppNavigator() {
     return <OnboardingNavigator />;
   }
 
-  // Main app
-  return <MainTabNavigator />;
+  // Main app — PaywallModal lives here so any screen can trigger it via subscriptionStore
+  return (
+    <>
+      <MainTabNavigator />
+      <PaywallModal />
+    </>
+  );
 }

@@ -10,8 +10,6 @@
  */
 
 /** Flip this to true to preview the app with populated data. */
-export const MOCK_MODE = false;
-
 import { useAuthStore } from '../store/authStore';
 import { useProfileStore } from '../store/profileStore';
 import { useWorkoutStore } from '../store/workoutStore';
@@ -27,10 +25,16 @@ import { mockWaterLog } from './water';
 import { mockWeightEntries, mockMeasurements, mockWeeklySummaries } from './progress';
 import { mockChatMessages } from './chat';
 
+export const MOCK_MODE = false;
+
 /** Inject mock data into all Zustand stores at once. */
 export function injectMockData() {
   useAuthStore.setState({
-    user: { id: '00000000-0000-0000-0000-000000000001', email: 'alex@example.com', createdAt: '2025-12-01T08:00:00.000Z' },
+    user: {
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'alex@example.com',
+      createdAt: '2025-12-01T08:00:00.000Z',
+    },
     isAuthenticated: true,
     isInitializing: false,
     isLoading: false,
@@ -81,7 +85,12 @@ export function clearMockData() {
   useWorkoutStore.setState({ todayWorkout: null, workoutHistory: [], summary: null });
   useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [] });
   useWaterStore.setState({ todayWaterLog: null });
-  useProgressStore.setState({ weightEntries: [], measurements: [], weeklySummaries: [], loaded: false });
+  useProgressStore.setState({
+    weightEntries: [],
+    measurements: [],
+    weeklySummaries: [],
+    loaded: false,
+  });
   useChatStore.setState({ messages: [], isLoading: false });
 
   console.log('[Mock] All stores cleared');
@@ -92,5 +101,10 @@ export { mockProfile } from './profile';
 export { mockWorkout, mockRestDayWorkout, mockWorkoutHistory } from './workout';
 export { mockMealPlan, mockFoodSnaps } from './nutrition';
 export { mockWaterLog } from './water';
-export { mockWeightEntries, mockMeasurements, mockWeeklySummaries, mockWorkoutDates } from './progress';
+export {
+  mockWeightEntries,
+  mockMeasurements,
+  mockWeeklySummaries,
+  mockWorkoutDates,
+} from './progress';
 export { mockChatMessages } from './chat';

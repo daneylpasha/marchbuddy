@@ -30,22 +30,20 @@ export const WeekProgressBar: React.FC<WeekProgressBarProps> = ({
       </View>
 
       <View style={styles.dotsRow}>
-        {goalReached ? (
-          dots.map((_, i) => (
-            <View key={i} style={[styles.dot, styles.dotFilled]} />
-          ))
-        ) : (
-          Array.from({ length: targetSessions }, (_, i) => (
-            <View key={i} style={[styles.dot, i < sessionsThisWeek ? styles.dotFilled : styles.dotEmpty]} />
-          ))
-        )}
+        {goalReached
+          ? dots.map((_, i) => <View key={i} style={[styles.dot, styles.dotFilled]} />)
+          : Array.from({ length: targetSessions }, (_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i < sessionsThisWeek ? styles.dotFilled : styles.dotEmpty]}
+              />
+            ))}
       </View>
 
       <Text style={styles.stats}>
         {goalReached
           ? `${targetSessions} sessions done${bonus > 0 ? ` · +${bonus} bonus` : ''}${minutesThisWeek > 0 ? ` · ${formatDurationMinutes(minutesThisWeek)} total` : ''}`
-          : `${sessionsThisWeek} of ${targetSessions} sessions${minutesThisWeek > 0 ? ` · ${formatDurationMinutes(minutesThisWeek)} total` : ''}`
-        }
+          : `${sessionsThisWeek} of ${targetSessions} sessions${minutesThisWeek > 0 ? ` · ${formatDurationMinutes(minutesThisWeek)} total` : ''}`}
       </Text>
     </View>
   );
@@ -95,7 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   dotFilled: { backgroundColor: colors.primary },
-  dotEmpty:  { backgroundColor: colors.divider },
+  dotEmpty: { backgroundColor: colors.divider },
   stats: {
     fontFamily: fonts.regular,
     fontSize: 14,

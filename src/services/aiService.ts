@@ -1,10 +1,17 @@
 // services/aiService.ts — AI orchestration layer
 // Calls Supabase Edge Functions for all AI interactions.
 
-import { supabase } from '../api/supabase';
 import { imageUriToBase64 } from '../utils/imageUtils';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config/env';
-import type { ChatMessage, FoodSnap, MealPlan, ReadinessCheck, UserProfile, WaterLog, WorkoutPlan } from '../types';
+import type {
+  ChatMessage,
+  FoodSnap,
+  MealPlan,
+  ReadinessCheck,
+  UserProfile,
+  WaterLog,
+  WorkoutPlan,
+} from '../types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -53,8 +60,8 @@ async function callEdgeFunction<T>(functionName: string, body: object): Promise<
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'apikey': SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
   });
@@ -138,7 +145,9 @@ export interface SwapNutritionEstimate {
   fat: number;
 }
 
-export async function estimateSwapNutrition(foodDescription: string): Promise<SwapNutritionEstimate> {
+export async function estimateSwapNutrition(
+  foodDescription: string,
+): Promise<SwapNutritionEstimate> {
   console.log('🔄 estimateSwapNutrition called:', foodDescription);
   try {
     const result = await callEdgeFunction<SwapNutritionEstimate>('estimate-swap-nutrition', {
@@ -156,11 +165,34 @@ export async function estimateSwapNutrition(foodDescription: string): Promise<Sw
 export async function generateDailyWorkout(
   profile: UserProfile,
   recentWorkouts: WorkoutPlan[],
-  recentFeedback: { exerciseName: string; feedback: string; prescribedWeight?: number; actualWeight?: number; actualReps?: number }[],
+  recentFeedback: {
+    exerciseName: string;
+    feedback: string;
+    prescribedWeight?: number;
+    actualWeight?: number;
+    actualReps?: number;
+  }[],
   chatContext: string[],
-  options?: { weekNumber?: number; missedDays?: number; energyLevel?: number; readiness?: ReadinessCheck; muscleGroupFrequency?: Record<string, number>; recentRPE?: { date: string; rpe: number }[]; equipmentAvailable?: string[] },
+  options?: {
+    weekNumber?: number;
+    missedDays?: number;
+    energyLevel?: number;
+    readiness?: ReadinessCheck;
+    muscleGroupFrequency?: Record<string, number>;
+    recentRPE?: { date: string; rpe: number }[];
+    equipmentAvailable?: string[];
+  },
 ): Promise<{
-  exercises: { name: string; muscleGroup: string; sets: number; reps: number; restSeconds: number; order: number; weight?: number; formCues?: string[] }[];
+  exercises: {
+    name: string;
+    muscleGroup: string;
+    sets: number;
+    reps: number;
+    restSeconds: number;
+    order: number;
+    weight?: number;
+    formCues?: string[];
+  }[];
   warmUp?: { name: string; duration?: string; description?: string; order: number }[];
   coolDown?: { name: string; duration?: string; description?: string; order: number }[];
   isRestDay: boolean;
@@ -193,7 +225,15 @@ export async function generateDailyMealPlan(
   chatContext: string[],
   recentMealDescriptions?: string[], // NEW: To avoid meal repetition
 ): Promise<{
-  meals: { type: string; name: string; description: string; calories: number; protein: number; carbs: number; fat: number }[];
+  meals: {
+    type: string;
+    name: string;
+    description: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }[];
   totalCalories: number;
   totalProtein: number;
   totalCarbs: number;
@@ -251,4 +291,3 @@ export async function generateWeeklySummary(weekData: {
   console.log('📊 generateWeeklySummary called');
   return callEdgeFunction('weekly-summary', weekData);
 }
-

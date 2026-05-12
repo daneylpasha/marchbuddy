@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { SessionOptions, SessionPlan } from '../types/session';
 
 export interface PlanAdjustment {
-  type: string;           // 'reduce_duration' | 'injury_rest' | 'increase_intensity'
+  type: string; // 'reduce_duration' | 'injury_rest' | 'increase_intensity'
   suggestedVariant: string; // 'quick' | 'rest' | 'challenge'
-  validUntil: string;     // ISO timestamp — valid until midnight
+  validUntil: string; // ISO timestamp — valid until midnight
 }
 
 interface SessionState {

@@ -21,7 +21,7 @@ export const TypingIndicator: React.FC = () => {
     animateDot(dot1, 0);
     animateDot(dot2, 150);
     animateDot(dot3, 300);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const dotStyle = (animValue: Animated.Value) => ({

@@ -1,12 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  View,
-  Text,
-} from 'react-native';
+import { FlatList, StyleSheet, KeyboardAvoidingView, Platform, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
@@ -16,6 +9,9 @@ import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSessionStore } from '../../store/sessionStore';
 import { useNetworkStore } from '../../store/networkStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
+import { ProBanner } from '../../components/upgrade/ProBanner';
+import { analytics, EVENTS } from '../../services/analytics';
 import { chatApi } from '../../services/chatApi';
 import { getLevelDefinition } from '../../constants/sessionTemplates';
 import type { ChatMessage as ChatMessageType, ChatContext } from '../../types/chat';
@@ -50,13 +46,16 @@ export const CoachChatScreen: React.FC = () => {
   const progress = useRunProgressStore((state) => state.progress);
   const sessionHistory = useRunProgressStore((state) => state.sessionHistory);
 
+  const { canSendChat, incrementChatCount, openPaywall, tier } = useSubscriptionStore();
+
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [hasUsedQuickAction, setHasUsedQuickAction] = useState(false);
+  const chatBlocked = tier === 'free' && !canSendChat();
 
   useEffect(() => {
     initializeChat(setupData.userName || 'there');
     markAsRead();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -139,6 +138,17 @@ export const CoachChatScreen: React.FC = () => {
 
   const handleSendMessage = async (text: string, imageUri?: string) => {
     if (!text.trim() && !imageUri) return;
+    if (!canSendChat()) {
+      // Record the free-tier exhaustion as its own event (separate from
+      // paywall_shown) so we can answer "how often do free users hit the
+      // chat ceiling?" without being confused by paywall views from other
+      // surfaces. paywall_shown will still fire from PaywallModal.
+      analytics.track(EVENTS.free_chat_limit_hit, {
+        messages_sent_today: useSubscriptionStore.getState().dailyChatCount,
+      });
+      openPaywall('chat_limit');
+      return;
+    }
 
     setShowQuickActions(false);
     setHasUsedQuickAction(true);
@@ -161,6 +171,10 @@ export const CoachChatScreen: React.FC = () => {
       });
 
       addCoachMessage(result.reply);
+      // Only count toward the free-tier quota on a successful reply.
+      // Network failures, server errors, or rate-limit responses don't burn
+      // the user's daily message — they get to try again without penalty.
+      incrementChatCount();
 
       // Handle plan adjustment
       if (result.shouldAdjustPlan && result.adjustment) {
@@ -186,9 +200,7 @@ export const CoachChatScreen: React.FC = () => {
     }
   };
 
-  const renderMessage = ({ item }: { item: ChatMessageType }) => (
-    <ChatMessage message={item} />
-  );
+  const renderMessage = ({ item }: { item: ChatMessageType }) => <ChatMessage message={item} />;
 
   return (
     <KeyboardAvoidingView
@@ -201,7 +213,8 @@ export const CoachChatScreen: React.FC = () => {
         {!isConnected && (
           <View style={styles.offlineBanner}>
             <Text style={styles.offlineBannerText}>
-              You're offline — new plans and coach replies won't be available until you're back online.
+              You're offline — new plans and coach replies won't be available until you're back
+              online.
             </Text>
           </View>
         )}
@@ -223,11 +236,16 @@ export const CoachChatScreen: React.FC = () => {
                   context={quickActionsContext}
                 />
               )}
+              {chatBlocked && (
+                <View style={styles.chatLimitWrap}>
+                  <ProBanner variant="chat_limit" onPress={() => openPaywall('chat_limit')} />
+                </View>
+              )}
             </>
           }
         />
 
-        <ChatInput onSend={handleSendMessage} disabled={isLoading || !isConnected} />
+        <ChatInput onSend={handleSendMessage} disabled={isLoading || !isConnected || chatBlocked} />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -264,5 +282,10 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  chatLimitWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
 });

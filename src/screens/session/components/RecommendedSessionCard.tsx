@@ -24,16 +24,20 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
 }) => {
   const getDifficultyColor = () => {
     switch (plan.difficulty) {
-      case 'easy':        return colors.success;
-      case 'moderate':    return colors.primary;
-      case 'challenging': return colors.warning;
-      case 'hard':        return colors.danger;
-      default:            return colors.primary;
+      case 'easy':
+        return colors.success;
+      case 'moderate':
+        return colors.primary;
+      case 'challenging':
+        return colors.warning;
+      case 'hard':
+        return colors.danger;
+      default:
+        return colors.primary;
     }
   };
 
-  const difficultyLabel =
-    plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1);
+  const difficultyLabel = plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1);
 
   return (
     <Pressable
@@ -44,9 +48,7 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       ]}
       onPress={onPress}
     >
-      {subdued && (
-        <Text style={styles.subduedLabel}>NEXT SESSION</Text>
-      )}
+      {subdued && <Text style={styles.subduedLabel}>NEXT SESSION</Text>}
 
       {/* Title row with schedule icon */}
       <View style={styles.titleRow}>
@@ -71,9 +73,7 @@ export const RecommendedSessionCard: React.FC<RecommendedSessionCardProps> = ({
       <View style={styles.metaRow}>
         <Text style={styles.metaText}>{formatDurationMinutes(plan.totalDurationMinutes)}</Text>
         <View style={styles.dot} />
-        <Text style={[styles.metaText, { color: getDifficultyColor() }]}>
-          {difficultyLabel}
-        </Text>
+        <Text style={[styles.metaText, { color: getDifficultyColor() }]}>{difficultyLabel}</Text>
         <View style={styles.dot} />
         <Text style={styles.metaText}>Level {plan.level}</Text>
       </View>

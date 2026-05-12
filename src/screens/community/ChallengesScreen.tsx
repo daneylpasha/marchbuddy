@@ -44,7 +44,9 @@ export default function ChallengesScreen({ navigation }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleAccept = async (challenge: Challenge) => {
     setRespondingId(challenge.id);
@@ -187,18 +189,20 @@ function ActiveCard({
     >
       <View style={styles.activeCardTop}>
         <Text style={styles.activeLabel}>LIVE</Text>
-        {daysLeft !== null && (
-          <Text style={styles.daysLeft}>{daysLeft}d left</Text>
-        )}
+        {daysLeft !== null && <Text style={styles.daysLeft}>{daysLeft}d left</Text>}
       </View>
       <View style={styles.scoreRow}>
         <View style={styles.scoreTeam}>
-          <Text style={styles.scoreTeamName} numberOfLines={1}>{myName}</Text>
+          <Text style={styles.scoreTeamName} numberOfLines={1}>
+            {myName}
+          </Text>
           <Text style={styles.scoreValue}>{myScore}</Text>
         </View>
         <Text style={styles.scoreVs}>VS</Text>
         <View style={[styles.scoreTeam, { alignItems: 'flex-end' }]}>
-          <Text style={styles.scoreTeamName} numberOfLines={1}>{theirName}</Text>
+          <Text style={styles.scoreTeamName} numberOfLines={1}>
+            {theirName}
+          </Text>
           <Text style={styles.scoreValue}>{theirScore}</Text>
         </View>
       </View>
@@ -232,8 +236,8 @@ function InviteCard({
           </Text>
         </View>
       </View>
-      {!isSender && (
-        loading ? (
+      {!isSender &&
+        (loading ? (
           <ActivityIndicator size="small" color={colors.primary} />
         ) : (
           <View style={styles.inviteActions}>
@@ -250,30 +254,28 @@ function InviteCard({
               <Text style={styles.declineBtnText}>Decline</Text>
             </Pressable>
           </View>
-        )
-      )}
+        ))}
     </View>
   );
 }
 
-function HistoryCard({
-  challenge,
-  onPress,
-}: {
-  challenge: Challenge;
-  onPress: () => void;
-}) {
+function HistoryCard({ challenge, onPress }: { challenge: Challenge; onPress: () => void }) {
   const myName = challenge.isMyTeamA ? challenge.teamAName : challenge.teamBName;
   const opponent = challenge.isMyTeamA ? challenge.teamBName : challenge.teamAName;
   const didWin = challenge.winnerTeamId === challenge.myTeamId;
   const isDraw = challenge.status === 'completed' && !challenge.winnerTeamId;
 
   const resultColor = isDraw ? colors.textSecondary : didWin ? '#10B981' : '#EF4444';
-  const resultLabel = challenge.status === 'declined'
-    ? 'Declined'
-    : challenge.status === 'expired'
-    ? 'Expired'
-    : isDraw ? 'Draw' : didWin ? 'Won' : 'Lost';
+  const resultLabel =
+    challenge.status === 'declined'
+      ? 'Declined'
+      : challenge.status === 'expired'
+        ? 'Expired'
+        : isDraw
+          ? 'Draw'
+          : didWin
+            ? 'Won'
+            : 'Lost';
 
   return (
     <Pressable
@@ -400,7 +402,12 @@ const styles = StyleSheet.create({
   },
   inviteCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   inviteCardName: { fontFamily: fonts.semiBold, fontSize: 14, color: colors.textPrimary },
-  inviteCardSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  inviteCardSub: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   inviteActions: { flexDirection: 'row', gap: 8 },
   acceptBtn: {
     backgroundColor: colors.primary,
@@ -430,7 +437,12 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
   },
   historyOpponent: { fontFamily: fonts.semiBold, fontSize: 14, color: colors.textPrimary },
-  historySub: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  historySub: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   historyResult: { fontFamily: fonts.bold, fontSize: 14 },
 
   // Empty

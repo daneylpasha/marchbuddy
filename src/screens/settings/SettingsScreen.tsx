@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Switch,
-  StyleSheet,
-  Linking,
-  Modal,
-  Pressable,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Linking, Modal, Pressable } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +11,7 @@ import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useAuthStore } from '../../store/authStore';
+import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { registerForPushNotifications } from '../../services/notificationService';
@@ -28,6 +20,7 @@ import { featureFlags } from '../../constants/featureFlags';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { AppSwitch } from '../../components/common/AppSwitch';
 import { colors, fonts, spacing } from '../../theme';
 import { APP_CONFIG } from '../../config/appConfig';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
@@ -44,6 +37,10 @@ export default function SettingsScreen() {
   const setupData = useCoachSetupStore((s) => s.setupData);
   const resetSetup = useCoachSetupStore((s) => s.resetSetup);
   const resetProgress = useRunProgressStore((s) => s.resetProgress);
+
+  const tier = useSubscriptionStore((s) => s.tier);
+  const openPaywall = useSubscriptionStore((s) => s.openPaywall);
+  const isPro = tier === 'pro';
 
   const {
     distanceUnit,
@@ -166,7 +163,7 @@ export default function SettingsScreen() {
     try {
       await useAuthStore.getState().deleteAccount();
       setDeleteAccountFinalVisible(false);
-    } catch (e) {
+    } catch {
       setDeleteAccountFinalVisible(false);
       setErrorDialog({
         title: 'Delete Failed',
@@ -183,7 +180,7 @@ export default function SettingsScreen() {
     try {
       await useAuthStore.getState().signOut();
       setSignOutConfirmVisible(false);
-    } catch (e) {
+    } catch {
       setSignOutConfirmVisible(false);
       setErrorDialog({
         title: 'Sign Out Failed',
@@ -212,10 +209,7 @@ export default function SettingsScreen() {
       >
         {/* Guest Banner */}
         {isGuest && (
-          <Pressable
-            style={styles.guestBanner}
-            onPress={exitGuestMode}
-          >
+          <Pressable style={styles.guestBanner} onPress={exitGuestMode}>
             <LinearGradient
               colors={['rgba(16,185,129,0.15)', 'rgba(16,185,129,0.05)']}
               style={StyleSheet.absoluteFill}
@@ -235,6 +229,49 @@ export default function SettingsScreen() {
           </Pressable>
         )}
 
+        {/* MarchBuddy Pro — always-visible upgrade entry (or status for Pro users) */}
+        <Pressable
+          style={styles.proCard}
+          onPress={() => openPaywall('settings_upgrade_row')}
+          disabled={isPro}
+        >
+          <LinearGradient
+            colors={
+              isPro
+                ? ['rgba(16,185,129,0.18)', 'rgba(16,185,129,0.05)']
+                : ['rgba(16,185,129,0.22)', 'rgba(16,185,129,0.06)']
+            }
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+          <View style={styles.proCardContent}>
+            <View style={styles.proIconRing}>
+              <Ionicons
+                name={isPro ? 'checkmark-circle' : 'flash'}
+                size={20}
+                color={colors.primary}
+              />
+            </View>
+            <View style={styles.proTextBlock}>
+              <View style={styles.proTitleRow}>
+                <Text style={styles.proTitle}>MarchBuddy Pro</Text>
+                <View style={isPro ? styles.proStatusBadge : styles.freeStatusBadge}>
+                  <Text style={isPro ? styles.proStatusText : styles.freeStatusText}>
+                    {isPro ? 'ACTIVE' : 'FREE PLAN'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.proSubtitle}>
+                {isPro
+                  ? 'All levels, unlimited coach, every feature unlocked.'
+                  : 'Unlock all 16 levels, unlimited AI coach & more.'}
+              </Text>
+            </View>
+            {!isPro && <Ionicons name="chevron-forward" size={18} color={colors.primary} />}
+          </View>
+        </Pressable>
+
         {/* Profile */}
         <SettingsSection title="PROFILE">
           <SettingsRow
@@ -243,10 +280,7 @@ export default function SettingsScreen() {
             onPress={() => navigation.navigate('EditName')}
             showChevron
           />
-          <SettingsRow
-            label="Started"
-            value={formatStartDate()}
-          />
+          <SettingsRow label="Started" value={formatStartDate()} />
         </SettingsSection>
 
         {/* Privacy — only relevant when Community is visible to this user */}
@@ -254,13 +288,11 @@ export default function SettingsScreen() {
           <SettingsSection title="PRIVACY">
             <SettingsRow
               label="Show me in Bench March"
-              value={discoverable ? 'On' : 'Off'}
               rightElement={
-                <Switch
+                <AppSwitch
                   value={discoverable}
                   onValueChange={handleDiscoverableToggle}
-                  trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                  thumbColor={discoverable ? colors.primary : colors.textTertiary}
+                  accessibilityLabel="Show me in Bench March"
                 />
               }
             />
@@ -281,33 +313,30 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Notifications"
             rightElement={
-              <Switch
+              <AppSwitch
                 value={notificationPermission === 'granted'}
                 onValueChange={handleNotificationToggle}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={notificationPermission === 'granted' ? colors.primary : colors.textTertiary}
+                accessibilityLabel="Notifications"
               />
             }
           />
           <SettingsRow
             label="Voice Cues"
             rightElement={
-              <Switch
+              <AppSwitch
                 value={voiceCuesEnabled}
                 onValueChange={setVoiceCuesEnabled}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={voiceCuesEnabled ? colors.primary : colors.textTertiary}
+                accessibilityLabel="Voice Cues"
               />
             }
           />
           <SettingsRow
             label="Haptic Feedback"
             rightElement={
-              <Switch
+              <AppSwitch
                 value={hapticFeedbackEnabled}
                 onValueChange={setHapticFeedbackEnabled}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={hapticFeedbackEnabled ? colors.primary : colors.textTertiary}
+                accessibilityLabel="Haptic Feedback"
               />
             }
           />
@@ -317,27 +346,23 @@ export default function SettingsScreen() {
         <SettingsSection title="NOTIFICATION PREFERENCES">
           <SettingsRow
             label="Session Reminders"
-            value={prefs.session_reminders ? 'On' : 'Off'}
             rightElement={
-              <Switch
+              <AppSwitch
                 value={prefs.session_reminders}
                 onValueChange={(v) => setPref('session_reminders', v)}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={prefs.session_reminders ? colors.primary : colors.textTertiary}
                 disabled={!quietHoursGranted}
+                accessibilityLabel="Session Reminders"
               />
             }
           />
           <SettingsRow
             label="Motivational Check-ins"
-            value={prefs.reengagement ? 'On' : 'Off'}
             rightElement={
-              <Switch
+              <AppSwitch
                 value={prefs.reengagement}
                 onValueChange={(v) => setPref('reengagement', v)}
-                trackColor={{ false: colors.dotInactive, true: colors.primaryBright }}
-                thumbColor={prefs.reengagement ? colors.primary : colors.textTertiary}
                 disabled={!quietHoursGranted}
+                accessibilityLabel="Motivational Check-ins"
               />
             }
           />
@@ -355,10 +380,7 @@ export default function SettingsScreen() {
 
         {/* About */}
         <SettingsSection title="ABOUT">
-          <SettingsRow
-            label="Version"
-            value={APP_CONFIG.VERSION}
-          />
+          <SettingsRow label="Version" value={APP_CONFIG.VERSION} />
           <SettingsRow
             label="Privacy Policy"
             onPress={() => openLink('https://marchbuddy.com/privacy')}
@@ -533,10 +555,16 @@ export default function SettingsScreen() {
               <Text style={styles.qhOptionText}>Early night (9 PM – 6 AM)</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.qhOption, styles.qhOptionDanger, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [
+                styles.qhOption,
+                styles.qhOptionDanger,
+                pressed && { opacity: 0.85 },
+              ]}
               onPress={() => handleQuietHoursSelect(0, 0)}
             >
-              <Text style={[styles.qhOptionText, styles.qhOptionTextDanger]}>Always on (disable)</Text>
+              <Text style={[styles.qhOptionText, styles.qhOptionTextDanger]}>
+                Always on (disable)
+              </Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.qhCancel, pressed && { opacity: 0.85 }]}
@@ -589,6 +617,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(16,185,129,0.25)',
     overflow: 'hidden',
+  },
+  proCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 20,
+    borderRadius: spacing.cardRadius,
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.32)',
+    overflow: 'hidden',
+  },
+  proCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  proIconRing: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(16,185,129,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.32)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  proTextBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  proTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  proTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  proSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+    letterSpacing: 0.2,
+  },
+  freeStatusBadge: {
+    backgroundColor: 'rgba(16,185,129,0.22)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  freeStatusText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    color: colors.primary,
+    letterSpacing: 0.8,
+  },
+  proStatusBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  proStatusText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    color: '#fff',
+    letterSpacing: 0.8,
   },
   guestBannerContent: {
     flexDirection: 'row',

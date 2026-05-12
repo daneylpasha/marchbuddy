@@ -12,9 +12,17 @@ interface Props {
   onPress?: () => void;
 }
 
-export default function StatCard({ label, value, trend, trendLabel, color = colors.primary, onPress }: Props) {
+export default function StatCard({
+  label,
+  value,
+  trend,
+  trendLabel,
+  color = colors.primary,
+  onPress,
+}: Props) {
   const trendIcon = trend === 'up' ? 'arrow-up' : trend === 'down' ? 'arrow-down' : 'remove';
-  const trendColor = trend === 'up' ? colors.success : trend === 'down' ? colors.danger : colors.textSecondary;
+  const trendColor =
+    trend === 'up' ? colors.success : trend === 'down' ? colors.danger : colors.textSecondary;
 
   const content = (
     <>
@@ -23,7 +31,9 @@ export default function StatCard({ label, value, trend, trendLabel, color = colo
       {trend && (
         <View style={styles.trendRow}>
           <Ionicons name={trendIcon} size={13} color={trendColor} />
-          {trendLabel ? <Text style={[styles.trendLabel, { color: trendColor }]}>{trendLabel}</Text> : null}
+          {trendLabel ? (
+            <Text style={[styles.trendLabel, { color: trendColor }]}>{trendLabel}</Text>
+          ) : null}
         </View>
       )}
     </>
@@ -31,7 +41,10 @@ export default function StatCard({ label, value, trend, trendLabel, color = colo
 
   if (onPress) {
     return (
-      <Pressable style={({ pressed }) => [styles.container, pressed && styles.pressed]} onPress={onPress}>
+      <Pressable
+        style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+        onPress={onPress}
+      >
         {content}
       </Pressable>
     );
@@ -52,8 +65,20 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
   },
   pressed: { opacity: 0.7 },
-  label: { color: colors.textSecondary, fontSize: 12, fontWeight: '500', fontFamily: fonts.medium, letterSpacing: 0.3 },
-  value: { fontSize: 28, fontWeight: '700', fontFamily: fonts.bold, letterSpacing: 0.3, fontVariant: ['tabular-nums'] },
+  label: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: fonts.medium,
+    letterSpacing: 0.3,
+  },
+  value: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: fonts.bold,
+    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
+  },
   trendRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   trendLabel: { fontSize: 12, fontWeight: '500', fontFamily: fonts.medium, letterSpacing: 0.3 },
 });

@@ -42,10 +42,15 @@ export default function TeamSearchScreen({ navigation }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadInitial(); }, [loadInitial]);
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
     const t = setTimeout(async () => {
       const found = await searchTeams(query, myTeamId ?? undefined);
       setResults(found);
@@ -54,27 +59,23 @@ export default function TeamSearchScreen({ navigation }: Props) {
   }, [query, myTeamId]);
 
   const handleChallenge = (team: TeamSummary) => {
-    Alert.alert(
-      'Send Challenge',
-      `Challenge ${team.name} to a 7-day outdoor session battle?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send',
-          onPress: async () => {
-            setChallengingId(team.id);
-            try {
-              await sendChallenge(team.id);
-              Alert.alert('Challenge Sent!', `${team.name} has been invited to compete.`);
-            } catch (e: unknown) {
-              Alert.alert('Error', e instanceof Error ? e.message : 'Failed to send challenge.');
-            } finally {
-              setChallengingId(null);
-            }
-          },
+    Alert.alert('Send Challenge', `Challenge ${team.name} to a 7-day outdoor session battle?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send',
+        onPress: async () => {
+          setChallengingId(team.id);
+          try {
+            await sendChallenge(team.id);
+            Alert.alert('Challenge Sent!', `${team.name} has been invited to compete.`);
+          } catch (e: unknown) {
+            Alert.alert('Error', e instanceof Error ? e.message : 'Failed to send challenge.');
+          } finally {
+            setChallengingId(null);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const toggleFav = async (team: TeamSummary) => {
@@ -82,11 +83,11 @@ export default function TeamSearchScreen({ navigation }: Props) {
     if (team.isFavorited) {
       await unfavoriteTeam(team.id);
       setFavorites((prev) => prev.filter((t) => t.id !== team.id));
-      setResults((prev) => prev.map((t) => t.id === team.id ? { ...t, isFavorited: false } : t));
+      setResults((prev) => prev.map((t) => (t.id === team.id ? { ...t, isFavorited: false } : t)));
     } else {
       await favoriteTeam(team.id);
       setFavorites((prev) => [...prev, { ...team, isFavorited: true }]);
-      setResults((prev) => prev.map((t) => t.id === team.id ? { ...t, isFavorited: true } : t));
+      setResults((prev) => prev.map((t) => (t.id === team.id ? { ...t, isFavorited: true } : t)));
     }
     setFavToggling(null);
   };
@@ -110,9 +111,7 @@ export default function TeamSearchScreen({ navigation }: Props) {
         <View style={styles.gateWrapper}>
           <Ionicons name="shield-outline" size={36} color={colors.textSecondary} />
           <Text style={styles.gateTitle}>You need a team first</Text>
-          <Text style={styles.gateSub}>
-            Form your squad before searching for opponents.
-          </Text>
+          <Text style={styles.gateSub}>Form your squad before searching for opponents.</Text>
           <Pressable
             style={({ pressed }) => [styles.goBtn, pressed && { opacity: 0.85 }]}
             onPress={() => navigation.navigate('MyTeam')}
@@ -213,9 +212,12 @@ function TeamCard({
           <Ionicons name="shield" size={20} color={colors.primary} />
         </View>
         <View style={styles.teamCardBody}>
-          <Text style={styles.teamCardName} numberOfLines={1}>{team.name}</Text>
+          <Text style={styles.teamCardName} numberOfLines={1}>
+            {team.name}
+          </Text>
           <Text style={styles.teamCardMeta}>
-            {team.memberCount} member{team.memberCount !== 1 ? 's' : ''} · Capt Lvl {team.captainLevel} · {team.winPoints} WP
+            {team.memberCount} member{team.memberCount !== 1 ? 's' : ''} · Capt Lvl{' '}
+            {team.captainLevel} · {team.winPoints} WP
           </Text>
         </View>
       </View>
@@ -225,24 +227,26 @@ function TeamCard({
           onPress={onFav}
           disabled={isFavToggling}
         >
-          {isFavToggling
-            ? <ActivityIndicator size="small" color={colors.textSecondary} />
-            : <Ionicons
-                name={team.isFavorited ? 'bookmark' : 'bookmark-outline'}
-                size={20}
-                color={team.isFavorited ? colors.primary : colors.textSecondary}
-              />
-          }
+          {isFavToggling ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <Ionicons
+              name={team.isFavorited ? 'bookmark' : 'bookmark-outline'}
+              size={20}
+              color={team.isFavorited ? colors.primary : colors.textSecondary}
+            />
+          )}
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.challengeBtn, pressed && { opacity: 0.85 }]}
           onPress={onChallenge}
           disabled={isChallengeing}
         >
-          {isChallengeing
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={styles.challengeBtnText}>Challenge</Text>
-          }
+          {isChallengeing ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.challengeBtnText}>Challenge</Text>
+          )}
         </Pressable>
       </View>
     </View>

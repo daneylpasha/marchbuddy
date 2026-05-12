@@ -36,8 +36,12 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files — .env holds real values per environment (gitignored).
+# .env.example is committed and documents the required variable names with
+# placeholder values; copy to .env locally and fill in.
+.env
+.env.*
+!.env.example
 .env.supabase
 supabase/.temp/
 

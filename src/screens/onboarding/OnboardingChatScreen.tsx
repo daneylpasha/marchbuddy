@@ -182,7 +182,9 @@ export default function OnboardingChatScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Progress bar */}
         <View style={styles.progressContainer}>
-          <Text style={styles.stepText}>Step {TOTAL_USER_STEPS} of {TOTAL_USER_STEPS}</Text>
+          <Text style={styles.stepText}>
+            Step {TOTAL_USER_STEPS} of {TOTAL_USER_STEPS}
+          </Text>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: '100%' }]} />
           </View>
@@ -206,7 +208,11 @@ export default function OnboardingChatScreen() {
     if (stage.inputType === 'select' && stage.options) {
       return (
         <View style={styles.inputArea}>
-          <ChipSelector options={stage.options} onSelect={handleChipSelect} disabled={inputLocked} />
+          <ChipSelector
+            options={stage.options}
+            onSelect={handleChipSelect}
+            disabled={inputLocked}
+          />
         </View>
       );
     }
@@ -236,7 +242,9 @@ export default function OnboardingChatScreen() {
           </Pressable>
         </View>
         {isNumber && stage.numberUnit && (
-          <Text style={styles.unitHint}>{stage.numberUnit} ({stage.numberMin}–{stage.numberMax})</Text>
+          <Text style={styles.unitHint}>
+            {stage.numberUnit} ({stage.numberMin}–{stage.numberMax})
+          </Text>
         )}
       </View>
     );
@@ -246,9 +254,13 @@ export default function OnboardingChatScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Progress bar */}
       <View style={styles.progressContainer}>
-        <Text style={styles.stepText}>Step {stepNumber} of {TOTAL_USER_STEPS}</Text>
+        <Text style={styles.stepText}>
+          Step {stepNumber} of {TOTAL_USER_STEPS}
+        </Text>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${(stepNumber / TOTAL_USER_STEPS) * 100}%` }]} />
+          <View
+            style={[styles.progressFill, { width: `${(stepNumber / TOTAL_USER_STEPS) * 100}%` }]}
+          />
         </View>
       </View>
 
