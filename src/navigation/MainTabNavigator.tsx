@@ -11,6 +11,7 @@ import CommunityNavigator from './CommunityNavigator';
 import CoachChatScreen from '../screens/chat/CoachChatScreen';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';
+import { useActiveSessionStore } from '../store/activeSessionStore';
 import { featureFlags } from '../constants/featureFlags';
 import { colors, fonts } from '../theme';
 
@@ -65,6 +66,13 @@ export default function MainTabNavigator() {
   const showCommunity = featureFlags.community(userEmail);
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) : 0;
+  // Cold-start resume edge case: when RunNavigator's initialRouteName lands
+  // straight on ActiveSession, getFocusedRouteNameFromRoute() returns
+  // undefined until the user navigates, which makes the tab bar flash on
+  // top of the active session. Subscribe to the live "session is running"
+  // flag and treat it as authoritative — if there's an active session,
+  // we're on an immersive screen regardless of what the route hook says.
+  const sessionActive = useActiveSessionStore((s) => s.isActive);
 
   return (
     <Tab.Navigator
@@ -97,8 +105,13 @@ export default function MainTabNavigator() {
         name="Run"
         component={RunNavigator}
         options={({ route }) => {
-          const focused = getFocusedRouteNameFromRoute(route) ?? 'Today';
-          const hidden = IMMERSIVE_SCREENS.has(focused);
+          const focused = getFocusedRouteNameFromRoute(route);
+          // If route detection hasn't resolved yet (cold-start resume into
+          // ActiveSession), trust the activeSessionStore flag instead of
+          // assuming we're on Today.
+          const hidden = focused
+            ? IMMERSIVE_SCREENS.has(focused)
+            : sessionActive;
           return {
             tabBarLabel: 'Today',
             tabBarStyle: hidden

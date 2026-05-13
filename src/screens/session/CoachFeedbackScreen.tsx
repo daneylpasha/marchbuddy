@@ -23,7 +23,7 @@ const SESSIONS_TO_LEVEL_UP = 3;
 const MAX_LEVEL = 16;
 
 export default function CoachFeedbackScreen({ navigation, route }: Props) {
-  const { coachFeedback, progressUpdate, session, shareAfter, calibration } = route.params;
+  const { coachFeedback, progressUpdate, session, shareAfter } = route.params;
   const { progress } = useRunProgressStore();
   const { isLevelLocked, openPaywall } = useSubscriptionStore();
   const justLockedIn = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
@@ -86,26 +86,6 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
               <Text style={styles.heroTitle}>Session{'\n'}Complete</Text>
               <Text style={styles.heroSubtitle}>{session.planTitle}</Text>
             </View>
-
-            {/* ── Calibration banner (one-time, first-session only) ── */}
-            {calibration && (
-              <View style={styles.calibrationCard}>
-                <View style={styles.calibrationHeader}>
-                  <Ionicons
-                    name={
-                      calibration.newLevel > calibration.previousLevel ? 'trending-up' : 'pulse'
-                    }
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.calibrationLabel}>LEVEL ADJUSTED</Text>
-                </View>
-                <Text style={styles.calibrationLevels}>
-                  Level {calibration.previousLevel} → Level {calibration.newLevel}
-                </Text>
-                <Text style={styles.calibrationReason}>{calibration.reason}</Text>
-              </View>
-            )}
 
             {/* ── Session stats ── */}
             <View style={styles.sessionStatsRow}>
@@ -344,42 +324,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 0.5,
     textAlign: 'center',
-  },
-
-  // ── Calibration banner ─────────────────────────────────────────────────────
-  calibrationCard: {
-    backgroundColor: 'rgba(6,138,21,0.10)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(6,138,21,0.4)',
-    gap: 6,
-  },
-  calibrationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  calibrationLabel: {
-    fontFamily: fonts.bold,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
-  calibrationLevels: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    color: colors.textPrimary,
-    letterSpacing: 0.3,
-    marginTop: 2,
-  },
-  calibrationReason: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 19,
-    marginTop: 2,
   },
 
   // ── Session stats ──────────────────────────────────────────────────────────

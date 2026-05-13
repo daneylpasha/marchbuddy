@@ -1,5 +1,4 @@
 import type { ActivityLevel, WalkBaseline, RunReadiness } from '../store/coachSetupStore';
-import type { FeedbackRating } from '../types/session';
 
 export interface PlacementResult {
   level: number;
@@ -13,9 +12,8 @@ export interface PlacementResult {
 // and intensity. activityLevel is a small modifier; runReadiness is what
 // distinguishes "comfortable walker" from "ready to do intervals."
 //
-// We deliberately cap onboarding-derived placement at L6 (out of 16). Going
-// higher requires real-session evidence, which post-session feedback can
-// then provide via calibrateFromFirstSession.
+// We deliberately cap onboarding-derived placement at L6 (out of 16). Beyond
+// L6 is earned purely through natural progression (3 sessions per level).
 export function computeStartingLevel(
   activity: ActivityLevel | null,
   walk: WalkBaseline | null,
@@ -110,51 +108,3 @@ function levelReason(level: number): string {
   }
 }
 
-// One-time post-first-session adjustment. Returns the new level (clamped to
-// 1–16) along with a delta if the level changed. The caller should only
-// invoke this on the user's FIRST completed session — subsequent sessions
-// use the standard time-based progression.
-export interface CalibrationResult {
-  previousLevel: number;
-  newLevel: number;
-  delta: number;
-  reason: string;
-}
-
-export function calibrateFromFirstSession(
-  currentLevel: number,
-  feedback: FeedbackRating | null,
-): CalibrationResult {
-  let delta = 0;
-  let reason = '';
-
-  switch (feedback) {
-    case 'too_easy':
-      delta = 2;
-      reason = 'Too easy on session 1 — bumping you up so the plan matches your fitness.';
-      break;
-    case 'challenging':
-      delta = 1;
-      reason = 'You handled a challenging session — moving you up a level.';
-      break;
-    case 'too_hard':
-      delta = -1;
-      reason = 'Session felt too hard — easing back so we build up sustainably.';
-      break;
-    case 'just_right':
-    default:
-      delta = 0;
-      reason = '';
-      break;
-  }
-
-  const newLevel = Math.max(1, Math.min(16, currentLevel + delta));
-  const actualDelta = newLevel - currentLevel;
-
-  return {
-    previousLevel: currentLevel,
-    newLevel,
-    delta: actualDelta,
-    reason: actualDelta === 0 ? '' : reason,
-  };
-}

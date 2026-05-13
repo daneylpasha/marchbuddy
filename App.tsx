@@ -36,7 +36,30 @@ LogBox.ignoreLogs([
   'Error sending chat message',
   'Failed to generate coach reply',
   'LayoutAnimationEnabledExperimental',
+  // PostHog batches events and retries on failure. Transient network errors
+  // (offline, captive portal, slow Wi-Fi) surface as a redbox "Error while
+  // flushing PostHog" in dev — non-fatal, but disruptive while testing.
+  // Analytics already swallows these via the .on('error') hook; this just
+  // silences PostHog's internal console.error so LogBox stays quiet.
+  'Error while flushing PostHog',
+  'PostHogFetchNetworkError',
 ]);
+
+// PostHog's posthog-react-native SDK calls console.error directly when a
+// flush fails, which also surfaces in the Metro terminal regardless of
+// LogBox. The retries happen automatically and queued events are flushed
+// when the network comes back, so these messages are pure noise. Filter
+// them at the console layer too. Keep the filter narrow — only matching
+// substrings, not blanket-suppressing console.error.
+const POSTHOG_NOISE = ['PostHogFetchNetworkError', 'Error while flushing PostHog'];
+const originalConsoleError = console.error.bind(console);
+console.error = (...args: unknown[]) => {
+  const first = args[0];
+  const firstStr =
+    typeof first === 'string' ? first : first instanceof Error ? first.message : '';
+  if (POSTHOG_NOISE.some((needle) => firstStr.includes(needle))) return;
+  originalConsoleError(...args);
+};
 
 const NAV_THEME = {
   ...DarkTheme,

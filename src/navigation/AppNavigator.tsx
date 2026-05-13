@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useCoachSetupStore } from '../store/coachSetupStore';
@@ -14,6 +14,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import MainTabNavigator from './MainTabNavigator';
 import SplashAnimated from '../screens/splash/SplashAnimated';
 import { PaywallModal } from '../components/upgrade/PaywallModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const restoreIconSource = require('../../assets/splash-logo-transparent.png');
 
@@ -118,36 +119,15 @@ export default function AppNavigator() {
   const hasSeenIntro = useSettingsStore((s) => s.hasSeenIntro);
   const pendingSignInConflict = useAuthStore((s) => s.pendingSignInConflict);
 
-  // Surface sign-in conflict (guest data exists + the email being signed
-  // into already has an account on the server) as a top-level confirmation.
-  // The user picks one of two paths:
+  // Sign-in conflict (guest data exists + the email being signed into already
+  // has an account on the server) is surfaced via the in-app ConfirmDialog —
+  // not Alert.alert — so the typography, button colors and corner radii
+  // match the rest of the app. The user picks one of two paths:
   //   • Use Existing Account → restore previous data, abandon guest progress
   //   • Keep Guest           → cancel sign-in, stay in guest session
   // Both paths land on a coherent state via the dedicated store actions.
-  useEffect(() => {
-    if (!pendingSignInConflict) return;
-    Alert.alert(
-      'Account Already Registered',
-      'This email already has an account. What would you like to do?\n\n' +
-        '• Use Existing Account — your previous progress will be restored. ' +
-        'Your current guest session will be discarded.\n\n' +
-        '• Keep Guest — cancel this sign-in and stay in guest mode with ' +
-        'your current progress.',
-      [
-        {
-          text: 'Keep Guest',
-          style: 'cancel',
-          onPress: () => useAuthStore.getState().resolveConflictKeepGuest(),
-        },
-        {
-          text: 'Use Existing Account',
-          style: 'destructive',
-          onPress: () => useAuthStore.getState().resolveConflictUseExistingAccount(),
-        },
-      ],
-      { cancelable: false },
-    );
-  }, [pendingSignInConflict]);
+  // Rendered alongside the navigator below so it overlays whichever stack
+  // is currently mounted.
 
   // Minimum splash display time
   useEffect(() => {
@@ -235,33 +215,54 @@ export default function AppNavigator() {
     return <SplashAnimated hiding={splashHiding} onHidden={() => setSplashGone(true)} />;
   }
 
-  // Mid-session sign-in: block navigation decisions until server state restores
-  // so we don't briefly render the coach-setup (name) screen before setupComplete
-  // is re-hydrated from the server.
+  // Pick the active stack to render. The sign-in conflict dialog and paywall
+  // modal are appended below so they can overlay any stack.
+  let content: React.ReactNode;
   if (isAuthenticated && isRestoringSession) {
-    return <RestoringSessionView />;
+    // Mid-session sign-in: block navigation decisions until server state
+    // restores so we don't briefly render the coach-setup (name) screen
+    // before setupComplete is re-hydrated from the server.
+    content = <RestoringSessionView />;
+  } else if (!hasSeenIntro) {
+    // First-time user: show welcome → feature onboarding → auth → coach setup
+    content = <IntroNavigator />;
+  } else if (!isAuthenticated) {
+    // Returning user who is not authenticated: show login screen directly
+    content = <LoginScreen />;
+  } else if (!setupComplete) {
+    // Authenticated/guest but hasn't completed coach setup questions
+    content = <OnboardingNavigator />;
+  } else {
+    // Main app — PaywallModal lives here so any screen can trigger it via
+    // subscriptionStore.
+    content = (
+      <>
+        <MainTabNavigator />
+        <PaywallModal />
+      </>
+    );
   }
 
-  // First-time user: show welcome → feature onboarding → auth → coach setup
-  if (!hasSeenIntro) {
-    return <IntroNavigator />;
-  }
-
-  // Returning user who is not authenticated: show login screen directly
-  if (!isAuthenticated) {
-    return <LoginScreen />;
-  }
-
-  // Authenticated/guest but hasn't completed coach setup questions
-  if (!setupComplete) {
-    return <OnboardingNavigator />;
-  }
-
-  // Main app — PaywallModal lives here so any screen can trigger it via subscriptionStore
   return (
     <>
-      <MainTabNavigator />
-      <PaywallModal />
+      {content}
+      <ConfirmDialog
+        visible={!!pendingSignInConflict}
+        icon="person-circle"
+        title="Account already registered"
+        message={
+          'This email already has an account.\n\n' +
+          'Use Existing Account restores your previous progress and discards the current guest session. ' +
+          'Keep Guest cancels this sign-in and keeps your guest progress.'
+        }
+        cancelLabel="Keep Guest"
+        confirmLabel="Use Existing Account"
+        destructive
+        onCancel={() => {
+          void useAuthStore.getState().resolveConflictKeepGuest();
+        }}
+        onConfirm={() => useAuthStore.getState().resolveConflictUseExistingAccount()}
+      />
     </>
   );
 }
