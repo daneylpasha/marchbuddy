@@ -11,6 +11,10 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   destructive?: boolean;
   icon?: keyof typeof Ionicons.glyphMap;
+  // Stack buttons vertically (Apple HIG style: destructive on top, cancel
+  // on bottom). Use when either label is too long to fit comfortably on a
+  // single line in the horizontal layout, e.g. "Use Existing Account".
+  stackButtons?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -23,6 +27,7 @@ export default function ConfirmDialog({
   cancelLabel = 'Cancel',
   destructive = false,
   icon,
+  stackButtons = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -50,10 +55,11 @@ export default function ConfirmDialog({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
 
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, stackButtons && styles.buttonStack]}>
             <Pressable
               style={({ pressed }) => [
                 styles.button,
+                stackButtons ? styles.buttonStacked : styles.buttonRowItem,
                 styles.cancelBtn,
                 pressed && { opacity: 0.85 },
               ]}
@@ -64,6 +70,7 @@ export default function ConfirmDialog({
             <Pressable
               style={({ pressed }) => [
                 styles.button,
+                stackButtons ? styles.buttonStacked : styles.buttonRowItem,
                 destructive ? styles.destructiveBtn : styles.confirmBtnSecondary,
                 pressed && { opacity: 0.85 },
               ]}
@@ -90,19 +97,20 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 340,
     backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 24,
+    borderRadius: 20,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(16,185,129,0.18)',
-    gap: 8,
+    gap: 6,
   },
   iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primaryDim,
     alignItems: 'center',
     justifyContent: 'center',
@@ -110,38 +118,56 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.bold,
-    fontSize: 19,
+    fontSize: 17,
     color: colors.textPrimary,
     textAlign: 'center',
     letterSpacing: 0.2,
   },
   message: {
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 19,
     marginTop: 2,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 10,
     width: '100%',
   },
+  // column-reverse → with the JSX order (cancel, confirm), this puts
+  // confirm/destructive on TOP and cancel on the BOTTOM. Matches Apple HIG
+  // convention for stacked alerts: the primary/destructive action is the
+  // most prominent button, the safe out (Cancel) sits underneath.
+  buttonStack: {
+    flexDirection: 'column-reverse',
+    gap: 8,
+  },
   button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  // Row layout: each button takes equal horizontal share.
+  buttonRowItem: {
+    flex: 1,
+  },
+  // Stacked layout: each button takes full width and only its natural
+  // (padding-driven) height — must NOT use flex:1 here, otherwise the
+  // buttons stretch vertically to fill any column space and balloon into
+  // huge bars.
+  buttonStacked: {
+    width: '100%',
   },
   cancelBtn: {
     backgroundColor: colors.primary,
   },
   cancelText: {
     fontFamily: fonts.semiBold,
-    fontSize: 15,
+    fontSize: 14,
     color: '#fff',
   },
   destructiveBtn: {
@@ -149,7 +175,7 @@ const styles = StyleSheet.create({
   },
   destructiveText: {
     fontFamily: fonts.semiBold,
-    fontSize: 15,
+    fontSize: 14,
     color: '#fff',
   },
   confirmBtnSecondary: {
@@ -159,7 +185,7 @@ const styles = StyleSheet.create({
   },
   confirmTextSecondary: {
     fontFamily: fonts.semiBold,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textPrimary,
   },
 });

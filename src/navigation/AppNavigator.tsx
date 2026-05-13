@@ -251,13 +251,15 @@ export default function AppNavigator() {
         icon="person-circle"
         title="Account already registered"
         message={
-          'This email already has an account.\n\n' +
-          'Use Existing Account restores your previous progress and discards the current guest session. ' +
-          'Keep Guest cancels this sign-in and keeps your guest progress.'
+          'Sign in to restore your previous progress and discard the current guest session, ' +
+          'or stay in guest mode to keep your progress here.'
         }
         cancelLabel="Keep Guest"
         confirmLabel="Use Existing Account"
         destructive
+        // "Use Existing Account" doesn't fit the row layout — stack so
+        // both buttons get full width and equal height (no wrap mismatch).
+        stackButtons
         onCancel={() => {
           void useAuthStore.getState().resolveConflictKeepGuest();
         }}

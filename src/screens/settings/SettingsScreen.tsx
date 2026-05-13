@@ -146,9 +146,45 @@ export default function SettingsScreen() {
   };
 
   const confirmClearData = () => {
+    // Reset every store that holds user-specific state. Previously only
+    // resetSetup / resetProgress / resetSettings were called, which left
+    // stale data in several places — most visibly the cached
+    // sessionStore.todayOptions, so TodayScreen kept rendering the old
+    // level's session plan until the user pulled-to-refresh (loadOptions
+    // bails early when todayOptions is already populated, see
+    // TodayScreen loadOptions: `if (!force && todayOptions) return;`).
+    // subscriptionStore (startingLevel / freeUntilLevel / tier) was also
+    // stale, which can fork future paywall behavior.
+    //
+    // Lazy require pattern matches authStore.signOut so this stays
+    // independent of import order and avoids pulling every store into
+    // SettingsScreen's bundle.
     resetSetup();
     resetProgress();
     resetSettings();
+    const { useSessionStore } = require('../../store/sessionStore');
+    useSessionStore.getState().clearTodayOptions();
+    useSubscriptionStore.getState().reset();
+    const { useActiveSessionStore } = require('../../store/activeSessionStore');
+    useActiveSessionStore.getState().resetSession();
+    const { useChatStore } = require('../../store/chatStore');
+    useChatStore.setState({ messages: [], isAiTyping: false });
+    const { useWorkoutStore } = require('../../store/workoutStore');
+    useWorkoutStore.setState({
+      todayWorkout: null,
+      workoutHistory: [],
+      historyLoading: false,
+      summary: null,
+      isLoading: false,
+    });
+    const { useNutritionStore } = require('../../store/nutritionStore');
+    useNutritionStore.setState({ todayMealPlan: null, foodSnaps: [], isLoading: false });
+    const { useWaterStore } = require('../../store/waterStore');
+    useWaterStore.setState({ todayWaterLog: null });
+    const { useScheduleStore } = require('../../store/scheduleStore');
+    useScheduleStore.setState({ scheduledSessions: [] });
+    const { useProgressStore } = require('../../store/progressStore');
+    useProgressStore.getState().reset();
     setClearDataVisible(false);
   };
 
