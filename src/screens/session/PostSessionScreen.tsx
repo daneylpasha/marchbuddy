@@ -26,7 +26,6 @@ import { useSessionStore } from '../../store/sessionStore';
 import { SessionSummaryCard } from './components/SessionSummaryCard';
 import { FeedbackSelector } from './components/FeedbackSelector';
 import { RouteMap } from '../../components/session/RouteMap';
-import { calibrateFromFirstSession } from '../../utils/levelPlacement';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -79,11 +78,6 @@ export default function PostSessionScreen({ navigation, route }: Props) {
 
     // Snapshot distance BEFORE updating so detectMilestone can check crossings
     const prevDistanceKm = useRunProgressStore.getState().progress?.totalDistanceKm ?? 0;
-    // Snapshot whether this is the user's first completed session BEFORE
-    // updateAfterSession bumps the count. Used below to fire one-time
-    // first-session level calibration based on the user's feedback.
-    const wasFirstSession =
-      (useRunProgressStore.getState().progress?.totalSessionsCompleted ?? 0) === 0;
 
     // Fire-and-forget side effects — never block the user
     if (guestId && feedbackRating) {
@@ -182,25 +176,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       // Sync local level from server result
       if (result.progressUpdate.leveledUp) incrementLevel();
 
-      // First-session calibration: server doesn't know about this concept,
-      // so we apply it client-side after syncing the server's level. Only
-      // fires if it's session #1 AND feedback indicates a misplacement.
-      let calibration: { previousLevel: number; newLevel: number; reason: string } | undefined;
-      let progressUpdate = result.progressUpdate;
-      if (wasFirstSession && feedbackRating) {
-        const currentLevel =
-          useRunProgressStore.getState().progress?.currentLevel ?? progressUpdate.newLevel;
-        const calib = calibrateFromFirstSession(currentLevel, feedbackRating);
-        if (calib.delta !== 0) {
-          useRunProgressStore.getState().setLevel(calib.newLevel);
-          calibration = {
-            previousLevel: calib.previousLevel,
-            newLevel: calib.newLevel,
-            reason: calib.reason,
-          };
-          progressUpdate = { ...progressUpdate, newLevel: calib.newLevel };
-        }
-      }
+      const progressUpdate = result.progressUpdate;
 
       clearTodayOptions();
       // Edge Function persists user_run_progress and sessions, but the public
@@ -225,7 +201,6 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           progressUpdate,
           session: updatedSession,
           shareAfter,
-          calibration,
         });
       }
     } catch (err) {
@@ -254,23 +229,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       });
 
       const finalProgress = useRunProgressStore.getState().progress;
-      let newLevel = finalProgress?.currentLevel ?? session.planLevel;
-
-      // First-session calibration in the offline path mirrors the server-path
-      // logic. Same one-shot rules apply.
-      let calibration: { previousLevel: number; newLevel: number; reason: string } | undefined;
-      if (wasFirstSession && feedbackRating) {
-        const calib = calibrateFromFirstSession(newLevel, feedbackRating);
-        if (calib.delta !== 0) {
-          useRunProgressStore.getState().setLevel(calib.newLevel);
-          calibration = {
-            previousLevel: calib.previousLevel,
-            newLevel: calib.newLevel,
-            reason: calib.reason,
-          };
-          newLevel = calib.newLevel;
-        }
-      }
+      const newLevel = finalProgress?.currentLevel ?? session.planLevel;
 
       const milestoneId = freshProgress
         ? detectMilestone(prevDistanceKm, freshProgress, leveledUp, newLevel)
@@ -298,7 +257,6 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           progressUpdate,
           session: updatedSession,
           shareAfter,
-          calibration,
         });
       }
     }

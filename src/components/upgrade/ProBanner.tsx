@@ -48,15 +48,20 @@ export function ProBanner({ variant, onPress, nextLevel }: Props) {
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={config.icon} size={20} color={colors.primary} />
+      <View style={styles.topRow}>
+        <View style={styles.iconWrap}>
+          <Ionicons name={config.icon} size={20} color={colors.primary} />
+        </View>
+        <View style={styles.textBlock}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.sub}>{config.sub}</Text>
+        </View>
       </View>
-      <View style={styles.textBlock}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.sub}>{config.sub}</Text>
-      </View>
-      <View style={styles.ctaChip}>
-        <Text style={styles.ctaText}>{config.cta}</Text>
+      <View style={styles.ctaRow}>
+        <View style={styles.ctaChip}>
+          <Text style={styles.ctaText}>{config.cta}</Text>
+          <Ionicons name="arrow-forward" size={13} color="#fff" />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -64,14 +69,18 @@ export function ProBanner({ variant, onPress, nextLevel }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     gap: 12,
     backgroundColor: colors.primaryDim,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(16,185,129,0.25)',
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   iconWrap: {
     width: 36,
@@ -88,9 +97,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.semiBold,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textPrimary,
     letterSpacing: 0.2,
+    lineHeight: 19,
   },
   sub: {
     fontFamily: fonts.regular,
@@ -99,16 +109,22 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     letterSpacing: 0.1,
   },
+  ctaRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   ctaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: colors.primary,
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    flexShrink: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   ctaText: {
     fontFamily: fonts.bold,
-    fontSize: 11,
+    fontSize: 12,
     color: '#fff',
     letterSpacing: 0.4,
   },

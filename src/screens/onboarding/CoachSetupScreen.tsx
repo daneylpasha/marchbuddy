@@ -509,13 +509,26 @@ export default function CoachSetupScreen() {
         useRunProgressStore.getState().setLevel(placement.level);
       }
 
-      // Navigate to the end-of-onboarding paywall. From there, the user can
-      // either subscribe or skip — both paths call markSetupComplete() +
-      // syncLocalDataToSupabase(), which is what AppNavigator watches to
-      // hand off to MainTabNavigator. We intentionally do NOT call
-      // markSetupComplete here; otherwise AppNavigator would unmount the
-      // OnboardingNavigator mid-transition and the paywall screen would
-      // never render.
+      // Guests skip the end-of-onboarding paywall. We can't tie a purchase
+      // to an anonymous guest (server-side entitlement needs a real user),
+      // and surfacing it here also feels premature — the user hasn't
+      // experienced enough of the product yet. Guests will instead see a
+      // "Sign in to unlock Pro" prompt the first time they hit a Pro gate
+      // (locked Level 2+, chat limit, etc.). Finalize onboarding directly
+      // so AppNavigator hands off to MainTabNavigator.
+      const { isGuest } = useAuthStore.getState();
+      if (isGuest) {
+        useCoachSetupStore.getState().markSetupComplete();
+        return;
+      }
+
+      // Authenticated users: navigate to the end-of-onboarding paywall.
+      // From there, the user can either subscribe or skip — both paths call
+      // markSetupComplete() + syncLocalDataToSupabase(), which is what
+      // AppNavigator watches to hand off to MainTabNavigator. We
+      // intentionally do NOT call markSetupComplete here; otherwise
+      // AppNavigator would unmount the OnboardingNavigator mid-transition
+      // and the paywall screen would never render.
       navigation.navigate('OnboardingPaywall');
     });
   };

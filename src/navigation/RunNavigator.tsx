@@ -32,14 +32,6 @@ export type RunStackParamList = {
     };
     session: CompletedSession;
     shareAfter: boolean;
-    // One-time level adjustment from first-session feedback. Only present
-    // when the user's first completed session triggered a calibration
-    // delta. Drives an auto-dismissing banner on the feedback screen.
-    calibration?: {
-      previousLevel: number;
-      newLevel: number;
-      reason: string;
-    };
   };
   Celebration: {
     milestoneId: string;

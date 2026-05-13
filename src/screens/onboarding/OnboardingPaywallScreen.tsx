@@ -32,12 +32,29 @@ import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases
 import { useCoachSetupStore } from '../../store/coachSetupStore';
 import { useAuthStore } from '../../store/authStore';
 import { analytics, EVENTS } from '../../services/analytics';
+import { authService } from '../../services/authService';
 import { purchasesService } from '../../services/purchasesService';
 import { colors, fonts, spacing } from '../../theme';
 import type { OnboardingStackParamList } from '../../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OnboardingPaywall'>;
 type Plan = 'monthly' | 'annual';
+
+// Format a number as currency in the store's reported currency, using the
+// device locale for grouping/decimal conventions. Falls back to a plain
+// "CODE 12.34" string if Intl can't handle the currency (older RN engines).
+function formatCurrency(amount: number, currencyCode: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currencyCode} ${amount.toFixed(2)}`;
+  }
+}
 
 const FEATURES = [
   { icon: 'trending-up' as const, text: 'All 16 levels — full running journey to 5K' },
@@ -55,6 +72,17 @@ export default function OnboardingPaywallScreen(_props: Props) {
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const openedAtRef = useRef<number>(Date.now());
+
+  // Defensive: CoachSetupScreen already routes guests past this screen
+  // (markSetupComplete + return). If a guest still lands here somehow
+  // (e.g. a future entry point), finalize immediately so they don't see
+  // a paywall they can't transact on.
+  useEffect(() => {
+    if (useAuthStore.getState().isGuest) {
+      markSetupComplete();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fire paywall_shown once on mount. Source is hardcoded since this screen
   // only exists for the onboarding entry point.
@@ -81,6 +109,16 @@ export default function OnboardingPaywallScreen(_props: Props) {
   const annualPriceString = annualPackage?.product.priceString ?? '$35';
   const monthlyPriceString = monthlyPackage?.product.priceString ?? '$4.99';
 
+  // Derived prices that must match the store's currency (PKR, EUR, INR, etc).
+  // Anchor = monthly × 12 (honest comparison vs paying monthly for a year).
+  // Per-month breakdown = annual ÷ 12.
+  const anchorPriceString = monthlyPackage
+    ? formatCurrency(monthlyPackage.product.price * 12, monthlyPackage.product.currencyCode)
+    : '$59.88';
+  const annualPerMonthString = annualPackage
+    ? formatCurrency(annualPackage.product.price / 12, annualPackage.product.currencyCode)
+    : '$2.92';
+
   // Common path for both subscribe-success and skip — finalize the user
   // into the main app. Without this call, AppNavigator stays on the
   // OnboardingNavigator stack and the user is stuck on this screen.
@@ -92,7 +130,6 @@ export default function OnboardingPaywallScreen(_props: Props) {
     const { user, isGuest, session } = useAuthStore.getState();
     if (session && user && !isGuest) {
       try {
-        const { authService } = require('../../services/authService');
         await authService.syncLocalDataToSupabase(user.id);
       } catch (err) {
         console.warn('Failed to sync onboarding to server:', err);
@@ -226,17 +263,23 @@ export default function OnboardingPaywallScreen(_props: Props) {
                 <Text style={styles.saveBadgeText}>SAVE 42%</Text>
               </View>
             )}
-            <Text style={[styles.planLabel, selectedPlan === 'annual' && styles.planLabelSelected]}>
-              Annual
-            </Text>
-            {/* Anchor price — $4.99 × 12 = $59.88 (honest comparison vs paying
-                monthly for a year). */}
-            <Text style={styles.planAnchor}>$59.88</Text>
-            <Text style={styles.planPrice}>{annualPriceString}</Text>
-            <Text style={styles.planPer}>per year</Text>
-            <Text style={[styles.planSub, selectedPlan === 'annual' && styles.planSubSelected]}>
-              ~$2.92 / month
-            </Text>
+            <View style={styles.planCardLeft}>
+              <Text
+                style={[styles.planLabel, selectedPlan === 'annual' && styles.planLabelSelected]}
+              >
+                Annual
+              </Text>
+              {/* Anchor price — monthly × 12 (honest comparison vs paying
+                  monthly for a year). Currency matches the store locale. */}
+              <Text style={styles.planAnchor}>{anchorPriceString}</Text>
+              <Text style={[styles.planSub, selectedPlan === 'annual' && styles.planSubSelected]}>
+                ~{annualPerMonthString} / month
+              </Text>
+            </View>
+            <View style={styles.planCardRight}>
+              <Text style={styles.planPrice}>{annualPriceString}</Text>
+              <Text style={styles.planPer}>per year</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -244,16 +287,20 @@ export default function OnboardingPaywallScreen(_props: Props) {
             onPress={() => handleSelectPlan('monthly')}
             activeOpacity={0.8}
           >
-            <Text
-              style={[styles.planLabel, selectedPlan === 'monthly' && styles.planLabelSelected]}
-            >
-              Monthly
-            </Text>
-            <Text style={styles.planPrice}>{monthlyPriceString}</Text>
-            <Text style={styles.planPer}>per month</Text>
-            <Text style={[styles.planSub, selectedPlan === 'monthly' && styles.planSubSelected]}>
-              cancel anytime
-            </Text>
+            <View style={styles.planCardLeft}>
+              <Text
+                style={[styles.planLabel, selectedPlan === 'monthly' && styles.planLabelSelected]}
+              >
+                Monthly
+              </Text>
+              <Text style={[styles.planSub, selectedPlan === 'monthly' && styles.planSubSelected]}>
+                cancel anytime
+              </Text>
+            </View>
+            <View style={styles.planCardRight}>
+              <Text style={styles.planPrice}>{monthlyPriceString}</Text>
+              <Text style={styles.planPer}>per month</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -395,26 +442,32 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   planRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
   },
   planCard: {
-    flex: 1,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.surfaceElevated,
     borderRadius: 18,
     // Asymmetric vertical padding — extra top space for the floating
     // "SAVE 42%" badge above the Annual label.
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
     paddingHorizontal: 18,
-    alignItems: 'center',
-    gap: 4,
     borderWidth: 1.5,
     borderColor: colors.surfaceBorder,
-    // Bumped to accommodate the strikethrough anchor row. Both cards
-    // stretch to match the tallest card.
-    minHeight: 160,
-    justifyContent: 'center',
+  },
+  planCardLeft: {
+    flex: 1,
+    gap: 2,
+    alignItems: 'flex-start',
+  },
+  planCardRight: {
+    alignItems: 'flex-end',
+    gap: 2,
   },
   planCardSelected: {
     borderColor: colors.primary,
@@ -423,6 +476,7 @@ const styles = StyleSheet.create({
   saveBadge: {
     position: 'absolute',
     top: -10,
+    right: 16,
     backgroundColor: colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -436,30 +490,29 @@ const styles = StyleSheet.create({
   },
   planLabel: {
     fontFamily: fonts.semiBold,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textTertiary,
     letterSpacing: 0.3,
   },
   planLabelSelected: {
     color: colors.primary,
   },
-  // Strikethrough anchor — small + muted, sits between the plan label and
-  // the discounted price. Honest comparison vs. paying monthly for a year.
+  // Strikethrough anchor — sits under the plan label. Honest comparison
+  // vs. paying monthly for a year.
   planAnchor: {
     fontFamily: fonts.medium,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textMuted,
     letterSpacing: 0.2,
     textDecorationLine: 'line-through',
     textDecorationColor: colors.textMuted,
-    marginBottom: 2,
   },
   planPrice: {
     fontFamily: fonts.bold,
-    fontSize: 32,
+    fontSize: 28,
     color: colors.textPrimary,
     letterSpacing: 0.3,
-    lineHeight: 36,
+    lineHeight: 32,
   },
   planPer: {
     fontFamily: fonts.regular,
