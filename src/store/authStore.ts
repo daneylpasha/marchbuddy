@@ -629,6 +629,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { useWaterStore } = require('./waterStore');
       const { useChatStore } = require('./chatStore');
       const { useScheduleStore } = require('./scheduleStore');
+      const { useSessionStore } = require('./sessionStore');
       const { useSubscriptionStore } = require('./subscriptionStore');
 
       useCoachSetupStore.getState().resetSetup();
@@ -646,6 +647,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useWaterStore.setState({ todayWaterLog: null });
       useChatStore.setState({ messages: [], isAiTyping: false });
       useScheduleStore.setState({ scheduledSessions: [] });
+      // Clear today's AI-generated session options + selected plan so the
+      // next account doesn't briefly see the deleted user's workout card +
+      // coach copy before pull-to-refresh forces a fresh fetch.
+      useSessionStore.getState().clearTodayOptions();
+      useSessionStore.getState().clearPlanAdjustment();
       // Wipe subscription state — the server row is cascaded by the
       // user_subscriptions FK on auth.users(id) ON DELETE CASCADE, but the
       // AsyncStorage cache also needs to be cleared so a fresh sign-in on
