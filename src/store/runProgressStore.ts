@@ -202,9 +202,20 @@ export const useRunProgressStore = create<RunProgressState>()(
           return false;
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        if (comebackHandledToday === today) {
-          return false;
+        // Once the user has handled the comeback (accepted a level
+        // recommendation, chosen to chat, etc.), suppress the modal until
+        // they actually complete a session AFTER that acceptance — only
+        // then has the agreement materialised. Without this, the same
+        // dormancy gap (lastSessionDate is still 7+ days old) would re-
+        // trigger the screen every day until the user runs again.
+        if (comebackHandledToday) {
+          const handled = new Date(comebackHandledToday);
+          const lastSession = new Date(progress.lastSessionDate);
+          handled.setHours(0, 0, 0, 0);
+          lastSession.setHours(0, 0, 0, 0);
+          if (lastSession.getTime() <= handled.getTime()) {
+            return false;
+          }
         }
 
         const lastSession = new Date(progress.lastSessionDate);
