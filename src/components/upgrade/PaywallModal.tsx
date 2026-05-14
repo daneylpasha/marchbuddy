@@ -17,6 +17,7 @@ import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useAuthStore } from '../../store/authStore';
 import { analytics, EVENTS, type PaywallSource } from '../../services/analytics';
 import { purchasesService } from '../../services/purchasesService';
+import ConfirmDialog from '../common/ConfirmDialog';
 import { colors, fonts, spacing } from '../../theme';
 
 // Format a number as currency in the store's reported currency, using the
@@ -53,6 +54,7 @@ export function PaywallModal() {
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [noPurchasesDialog, setNoPurchasesDialog] = useState(false);
 
   // Track the open timestamp + active source for analytics. Use refs so a
   // re-render doesn't fire spurious events; the open event must fire exactly
@@ -229,10 +231,7 @@ export function PaywallModal() {
         [{ text: 'OK', onPress: () => closePaywall() }],
       );
     } else {
-      Alert.alert(
-        'No purchases found',
-        'We could not find any previous MarchBuddy Pro purchases on this account. If you believe this is an error, contact support.',
-      );
+      setNoPurchasesDialog(true);
     }
   };
 
@@ -454,6 +453,16 @@ export function PaywallModal() {
         </View>
         </>
         )}
+        <ConfirmDialog
+          visible={noPurchasesDialog}
+          icon="search-outline"
+          title="No purchases found"
+          message="We could not find any previous MarchBuddy Pro purchases on this account. If you believe this is an error, contact support."
+          confirmLabel="OK"
+          cancelLabel="Close"
+          onCancel={() => setNoPurchasesDialog(false)}
+          onConfirm={() => setNoPurchasesDialog(false)}
+        />
       </SafeAreaView>
     </Modal>
   );

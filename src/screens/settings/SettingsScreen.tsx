@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Linking, Modal, Pressable } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,9 @@ import { featureFlags } from '../../constants/featureFlags';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ContactSupportSheet, {
+  type ContactSupportSheetRef,
+} from '../../components/settings/ContactSupportSheet';
 import { AppSwitch } from '../../components/common/AppSwitch';
 import { colors, fonts, spacing } from '../../theme';
 import { APP_CONFIG } from '../../config/appConfig';
@@ -29,6 +32,7 @@ type NavProp = NativeStackNavigationProp<RunStackParamList>;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NavProp>();
+  const supportSheetRef = useRef<ContactSupportSheetRef>(null);
   const isGuest = useAuthStore((s) => s.isGuest);
   const exitGuestMode = useAuthStore((s) => s.exitGuestMode);
   const userEmail = useAuthStore((s) => s.user?.email);
@@ -419,17 +423,17 @@ export default function SettingsScreen() {
           <SettingsRow label="Version" value={APP_CONFIG.VERSION} />
           <SettingsRow
             label="Privacy Policy"
-            onPress={() => openLink('https://marchbuddy.com/privacy')}
+            onPress={() => navigation.navigate('PrivacyPolicy')}
             showChevron
           />
           <SettingsRow
             label="Terms of Service"
-            onPress={() => openLink('https://marchbuddy.com/terms')}
+            onPress={() => navigation.navigate('TermsOfService')}
             showChevron
           />
           <SettingsRow
             label="Contact Support"
-            onPress={() => openLink('mailto:support@marchbuddy.com')}
+            onPress={() => supportSheetRef.current?.present()}
             showChevron
           />
           <SettingsRow
@@ -612,6 +616,8 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ContactSupportSheet ref={supportSheetRef} />
     </SafeAreaView>
   );
 }
