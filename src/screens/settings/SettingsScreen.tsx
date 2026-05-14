@@ -543,6 +543,7 @@ export default function SettingsScreen() {
         confirmLabel={deletingAccount ? 'Deleting…' : 'Yes, Delete Everything'}
         cancelLabel="Go Back"
         destructive
+        stackButtons
         onCancel={() => !deletingAccount && setDeleteAccountFinalVisible(false)}
         onConfirm={confirmDeleteAccountFinal}
       />
