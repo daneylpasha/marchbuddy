@@ -256,7 +256,7 @@ export default function TodayScreen({ navigation }: Props) {
             )}
           </View>
           <View style={styles.headerActions}>
-            {isFree && (
+            {isFree ? (
               <TouchableOpacity
                 style={styles.freeChip}
                 onPress={() => openPaywall('header_chip_today')}
@@ -265,6 +265,11 @@ export default function TodayScreen({ navigation }: Props) {
                 <Ionicons name="flash" size={11} color={colors.primary} />
                 <Text style={styles.freeChipText}>Free</Text>
               </TouchableOpacity>
+            ) : (
+              <View style={styles.proChip}>
+                <Ionicons name="star" size={11} color="#F5B82E" />
+                <Text style={styles.proChipText}>Pro</Text>
+              </View>
             )}
             <TouchableOpacity
               style={styles.settingsButton}
@@ -633,6 +638,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 10,
     color: colors.primary,
+    letterSpacing: 0.6,
+  },
+  proChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245,184,46,0.14)',
+    borderColor: 'rgba(245,184,46,0.35)',
+    borderWidth: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  proChipText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    color: '#F5B82E',
     letterSpacing: 0.6,
   },
   settingsButton: {

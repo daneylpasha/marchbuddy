@@ -11,6 +11,8 @@ import EditNameScreen from '../screens/settings/EditNameScreen';
 import CelebrationScreen from '../screens/celebration/CelebrationScreen';
 import { WelcomeBackScreen } from '../screens/comeback/WelcomeBackScreen';
 import FeedbackScreen from '../screens/settings/FeedbackScreen';
+import PrivacyPolicyScreen from '../screens/settings/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/settings/TermsOfServiceScreen';
 import { useRunProgressStore } from '../store/runProgressStore';
 import { useActiveSessionStore } from '../store/activeSessionStore';
 import type { CompletedSession } from '../types/session';
@@ -50,6 +52,8 @@ export type RunStackParamList = {
   Settings: undefined;
   EditName: undefined;
   Feedback: undefined;
+  PrivacyPolicy: undefined;
+  TermsOfService: undefined;
 };
 
 const Stack = createNativeStackNavigator<RunStackParamList>();
@@ -107,6 +111,8 @@ export default function RunNavigator() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditName" component={EditNameScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
     </Stack.Navigator>
   );
 }
