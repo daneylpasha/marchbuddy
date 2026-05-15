@@ -21,7 +21,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Linking,
+  Modal,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +36,11 @@ import { authService } from '../../services/authService';
 import { purchasesService } from '../../services/purchasesService';
 import { colors, fonts, spacing } from '../../theme';
 import type { OnboardingStackParamList } from '../../navigation/AppNavigator';
+import PrivacyPolicyScreen from '../settings/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../settings/TermsOfServiceScreen';
+import ContactSupportSheet, {
+  type ContactSupportSheetRef,
+} from '../../components/settings/ContactSupportSheet';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'OnboardingPaywall'>;
 type Plan = 'monthly' | 'annual';
@@ -71,6 +76,8 @@ export default function OnboardingPaywallScreen(_props: Props) {
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [legalScreen, setLegalScreen] = useState<'privacy' | 'terms' | null>(null);
+  const supportSheetRef = useRef<ContactSupportSheetRef>(null);
   const openedAtRef = useRef<number>(Date.now());
 
   // Defensive: CoachSetupScreen already routes guests past this screen
@@ -230,10 +237,6 @@ export default function OnboardingPaywallScreen(_props: Props) {
     }
   };
 
-  const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open link.'));
-  };
-
   const firstName = setupData.userName || 'runner';
 
   return (
@@ -343,21 +346,30 @@ export default function OnboardingPaywallScreen(_props: Props) {
 
         <View style={styles.linkRow}>
           <TouchableOpacity
-            onPress={() => openLink('https://marchbuddy.com/terms')}
+            onPress={() => setLegalScreen('terms')}
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             accessibilityRole="link"
-            accessibilityLabel="Terms of Use"
+            accessibilityLabel="Terms of Service"
           >
-            <Text style={styles.linkText}>Terms of Use</Text>
+            <Text style={styles.linkText}>Terms</Text>
           </TouchableOpacity>
           <Text style={styles.linkSeparator}>·</Text>
           <TouchableOpacity
-            onPress={() => openLink('https://marchbuddy.com/privacy')}
+            onPress={() => setLegalScreen('privacy')}
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             accessibilityRole="link"
             accessibilityLabel="Privacy Policy"
           >
-            <Text style={styles.linkText}>Privacy Policy</Text>
+            <Text style={styles.linkText}>Privacy</Text>
+          </TouchableOpacity>
+          <Text style={styles.linkSeparator}>·</Text>
+          <TouchableOpacity
+            onPress={() => supportSheetRef.current?.present()}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel="Contact Support"
+          >
+            <Text style={styles.linkText}>Support</Text>
           </TouchableOpacity>
           <Text style={styles.linkSeparator}>·</Text>
           <TouchableOpacity
@@ -380,6 +392,26 @@ export default function OnboardingPaywallScreen(_props: Props) {
           <Text style={styles.skipText}>I'll start free ›</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal
+        visible={legalScreen === 'privacy'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <PrivacyPolicyScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <Modal
+        visible={legalScreen === 'terms'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <TermsOfServiceScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <ContactSupportSheet ref={supportSheetRef} />
     </SafeAreaView>
   );
 }

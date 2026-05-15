@@ -1,5 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +18,11 @@ import { colors, fonts } from '../../theme';
 import EmailAuthSheet from '../../components/auth/EmailAuthSheet';
 import type { EmailAuthSheetRef } from '../../components/auth/EmailAuthSheet';
 import type { IntroStackParamList } from '../../navigation/AppNavigator';
+import PrivacyPolicyScreen from '../settings/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../settings/TermsOfServiceScreen';
+import ContactSupportSheet, {
+  type ContactSupportSheetRef,
+} from '../../components/settings/ContactSupportSheet';
 
 interface Props {
   navigation?: NativeStackNavigationProp<IntroStackParamList, 'Auth'>;
@@ -17,8 +30,10 @@ interface Props {
 
 export default function LoginScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
+  const [legalScreen, setLegalScreen] = useState<'privacy' | 'terms' | null>(null);
   const enterGuestMode = useAuthStore((s) => s.enterGuestMode);
   const bottomSheetRef = useRef<EmailAuthSheetRef>(null);
+  const supportSheetRef = useRef<ContactSupportSheetRef>(null);
 
   const isIntroFlow = !!navigation;
 
@@ -113,14 +128,63 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             <Text style={styles.privacyText}>
-              By signing in, you agree to our Terms of Service and Privacy Policy
+              By signing in, you accept our terms below.
             </Text>
+
+            <View style={styles.legalRow}>
+              <TouchableOpacity
+                onPress={() => setLegalScreen('terms')}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                accessibilityRole="link"
+                accessibilityLabel="Terms of Service"
+              >
+                <Text style={styles.legalLink}>Terms of Service</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>·</Text>
+              <TouchableOpacity
+                onPress={() => setLegalScreen('privacy')}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                accessibilityRole="link"
+                accessibilityLabel="Privacy Policy"
+              >
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>·</Text>
+              <TouchableOpacity
+                onPress={() => supportSheetRef.current?.present()}
+                hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                accessibilityRole="button"
+                accessibilityLabel="Contact Support"
+              >
+                <Text style={styles.legalLink}>Support</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </SafeAreaView>
 
       {/* Email auth bottom sheet */}
       <EmailAuthSheet ref={bottomSheetRef} />
+
+      <Modal
+        visible={legalScreen === 'privacy'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <PrivacyPolicyScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <Modal
+        visible={legalScreen === 'terms'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <TermsOfServiceScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <ContactSupportSheet ref={supportSheetRef} />
     </View>
   );
 }
@@ -224,5 +288,25 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 20,
     lineHeight: 18,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  legalLink: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.primary,
+    letterSpacing: 0.2,
+  },
+  legalSeparator: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginHorizontal: 2,
   },
 });

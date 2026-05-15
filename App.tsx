@@ -52,12 +52,34 @@ LogBox.ignoreLogs([
 // them at the console layer too. Keep the filter narrow — only matching
 // substrings, not blanket-suppressing console.error.
 const POSTHOG_NOISE = ['PostHogFetchNetworkError', 'Error while flushing PostHog'];
+
+// RevenueCat logs at ERROR level when Google Play Billing isn't available —
+// which is always the case on Android emulators without Play Services + a
+// signed-in Play Store account. Real devices in production have Play Store,
+// so this error never fires there. Filter ONLY in dev to keep the emulator
+// console clean; in production we always surface real billing errors.
+const RC_DEV_NOISE = __DEV__
+  ? [
+      'BILLING_UNAVAILABLE',
+      'Billing is not available in this device',
+      'Billing service unavailable on device',
+    ]
+  : [];
+
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
   const first = args[0];
   const firstStr =
     typeof first === 'string' ? first : first instanceof Error ? first.message : '';
   if (POSTHOG_NOISE.some((needle) => firstStr.includes(needle))) return;
+  if (RC_DEV_NOISE.some((needle) => firstStr.includes(needle))) return;
+  // Also check across all args — RC sometimes splits message + payload
+  if (__DEV__ && args.length > 1) {
+    const joined = args
+      .map((a) => (typeof a === 'string' ? a : a instanceof Error ? a.message : ''))
+      .join(' ');
+    if (RC_DEV_NOISE.some((needle) => joined.includes(needle))) return;
+  }
   originalConsoleError(...args);
 };
 

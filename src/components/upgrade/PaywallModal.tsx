@@ -7,17 +7,23 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Linking,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { useAuthStore } from '../../store/authStore';
 import { analytics, EVENTS, type PaywallSource } from '../../services/analytics';
 import { purchasesService } from '../../services/purchasesService';
 import ConfirmDialog from '../common/ConfirmDialog';
+import PrivacyPolicyScreen from '../../screens/settings/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../../screens/settings/TermsOfServiceScreen';
+import ContactSupportSheet, {
+  type ContactSupportSheetRef,
+} from '../settings/ContactSupportSheet';
 import { colors, fonts, spacing } from '../../theme';
 
 // Format a number as currency in the store's reported currency, using the
@@ -55,6 +61,8 @@ export function PaywallModal() {
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [noPurchasesDialog, setNoPurchasesDialog] = useState(false);
+  const [legalScreen, setLegalScreen] = useState<'privacy' | 'terms' | null>(null);
+  const supportSheetRef = useRef<ContactSupportSheetRef>(null);
 
   // Track the open timestamp + active source for analytics. Use refs so a
   // re-render doesn't fire spurious events; the open event must fire exactly
@@ -235,9 +243,6 @@ export function PaywallModal() {
     }
   };
 
-  const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open link.'));
-  };
 
   return (
     <Modal
@@ -246,6 +251,8 @@ export function PaywallModal() {
       presentationStyle="pageSheet"
       onRequestClose={handleDismiss}
     >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <TouchableOpacity
           style={styles.closeBtn}
@@ -421,24 +428,33 @@ export function PaywallModal() {
               : 'Auto-renews until canceled. Manage in Google Play subscriptions.'}
           </Text>
 
-          {/* Link row — Terms · Privacy · Restore */}
+          {/* Link row — Terms · Privacy · Support · Restore */}
           <View style={styles.linkRow}>
             <TouchableOpacity
-              onPress={() => openLink('https://marchbuddy.com/terms')}
+              onPress={() => setLegalScreen('terms')}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               accessibilityRole="link"
-              accessibilityLabel="Terms of Use"
+              accessibilityLabel="Terms of Service"
             >
-              <Text style={styles.linkText}>Terms of Use</Text>
+              <Text style={styles.linkText}>Terms</Text>
             </TouchableOpacity>
             <Text style={styles.linkSeparator}>·</Text>
             <TouchableOpacity
-              onPress={() => openLink('https://marchbuddy.com/privacy')}
+              onPress={() => setLegalScreen('privacy')}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               accessibilityRole="link"
               accessibilityLabel="Privacy Policy"
             >
-              <Text style={styles.linkText}>Privacy Policy</Text>
+              <Text style={styles.linkText}>Privacy</Text>
+            </TouchableOpacity>
+            <Text style={styles.linkSeparator}>·</Text>
+            <TouchableOpacity
+              onPress={() => supportSheetRef.current?.present()}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel="Contact Support"
+            >
+              <Text style={styles.linkText}>Support</Text>
             </TouchableOpacity>
             <Text style={styles.linkSeparator}>·</Text>
             <TouchableOpacity
@@ -464,6 +480,28 @@ export function PaywallModal() {
           onConfirm={() => setNoPurchasesDialog(false)}
         />
       </SafeAreaView>
+
+      <Modal
+        visible={legalScreen === 'privacy'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <PrivacyPolicyScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <Modal
+        visible={legalScreen === 'terms'}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setLegalScreen(null)}
+      >
+        <TermsOfServiceScreen onClose={() => setLegalScreen(null)} />
+      </Modal>
+
+      <ContactSupportSheet ref={supportSheetRef} />
+      </BottomSheetModalProvider>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
