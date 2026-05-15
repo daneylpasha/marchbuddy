@@ -7,13 +7,21 @@ import { colors, fonts, spacing } from '../../theme';
 
 const LAST_UPDATED = 'May 14, 2026';
 
-export default function PrivacyPolicyScreen() {
+interface Props {
+  onClose?: () => void;
+}
+
+export default function PrivacyPolicyScreen({ onClose }: Props = {}) {
   const navigation = useNavigation();
+  const handleBack = () => {
+    if (onClose) onClose();
+    else navigation.goBack();
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={12}>
+        <Pressable style={styles.backButton} onPress={handleBack} hitSlop={12}>
           <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.headerTitle}>Privacy Policy</Text>

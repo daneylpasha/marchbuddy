@@ -25,7 +25,25 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   const textOpacity = useRef(new Animated.Value(0)).current;
   const buttonOpacity = useRef(new Animated.Value(0)).current;
 
+  // Fail-safe: if the milestone config can't be resolved (legacy ID, data
+  // out of sync), forward to CoachFeedback after commit instead of calling
+  // navigation.replace() inside render. Doing it in render violates React's
+  // "no state updates while rendering another component" rule and produces
+  // a noisy console error.
   useEffect(() => {
+    if (!milestone) {
+      navigation.replace('CoachFeedback', {
+        coachFeedback,
+        progressUpdate,
+        session,
+        shareAfter,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [milestone]);
+
+  useEffect(() => {
+    if (!milestone) return;
     // Haptic burst on entry
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
@@ -54,7 +72,7 @@ export default function CelebrationScreen({ navigation, route }: Props) {
     }, 320);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [milestone]);
 
   const handleContinue = () => {
     navigation.replace('CoachFeedback', {
@@ -75,8 +93,8 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   };
 
   if (!milestone) {
-    // Shouldn't happen, but fail-safe
-    handleContinue();
+    // useEffect above will forward to CoachFeedback. Render nothing in the
+    // meantime so the user doesn't see a flash of an empty celebration UI.
     return null;
   }
 

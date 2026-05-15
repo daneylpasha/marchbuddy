@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { colors, fonts } from '../../../theme';
 
 interface ChatInputProps {
@@ -11,73 +10,20 @@ interface ChatInputProps {
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const [text, setText] = useState('');
-  const [imageUri, setImageUri] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
 
   const handleSend = () => {
-    if (text.trim() || imageUri) {
-      onSend(text.trim(), imageUri || undefined);
+    if (text.trim()) {
+      onSend(text.trim());
       setText('');
-      setImageUri(null);
     }
   };
 
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return;
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
-
-  const canSend = (text.trim().length > 0 || !!imageUri) && !disabled;
+  const canSend = text.trim().length > 0 && !disabled;
 
   return (
     <View style={styles.container}>
-      {imageUri && (
-        <View style={styles.imagePreview}>
-          <Image source={{ uri: imageUri }} style={styles.previewImage} />
-          <TouchableOpacity style={styles.removeImage} onPress={() => setImageUri(null)}>
-            <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      )}
-
       <View style={styles.inputRow}>
-        <TouchableOpacity style={styles.iconButton} onPress={handleTakePhoto} disabled={disabled}>
-          <Ionicons
-            name="camera-outline"
-            size={22}
-            color={disabled ? colors.textMuted : colors.textTertiary}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.iconButton} onPress={handlePickImage} disabled={disabled}>
-          <Ionicons
-            name="image-outline"
-            size={22}
-            color={disabled ? colors.textMuted : colors.textTertiary}
-          />
-        </TouchableOpacity>
-
         <TextInput
           style={[styles.input, isFocused && styles.inputFocused]}
           value={text}
@@ -112,30 +58,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     backgroundColor: colors.background,
   },
-  imagePreview: {
-    padding: 12,
-    paddingBottom: 0,
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 12,
-  },
-  removeImage: {
-    position: 'absolute',
-    top: 8,
-    left: 96,
-  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 4,
-  },
-  iconButton: {
-    padding: 8,
-    marginBottom: 2,
   },
   input: {
     flex: 1,
