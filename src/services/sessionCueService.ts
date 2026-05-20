@@ -1,8 +1,13 @@
-import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { SegmentType } from '../types/session';
 import { useSettingsStore } from '../store/settingsStore';
+import {
+  HapticImpactStyle,
+  HapticNotificationType,
+  hapticImpact,
+  hapticNotification,
+} from '../utils/haptics';
 
 const SEGMENT_PHRASES: Record<SegmentType, string[]> = {
   warmup: ["Let's warm up.", 'Start your warmup. Nice and easy.'],
@@ -51,9 +56,7 @@ class SessionCueService {
 
   async playSegmentChange(nextSegmentType: SegmentType, nextSegmentLabel?: string): Promise<void> {
     this.lastCountdownPlayed = 0;
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {}
+    await hapticNotification(HapticNotificationType.Success);
     // Prefer the label (e.g. "Brisk walk", "Easy pace") so users hear the
     // intensity, not just the generic segment type.
     const phrase = nextSegmentLabel ? `${nextSegmentLabel} now.` : pickPhrase(nextSegmentType);
@@ -68,23 +71,17 @@ class SessionCueService {
   async playCountdown(secondsRemaining: number): Promise<void> {
     if (this.lastCountdownPlayed === secondsRemaining) return;
     this.lastCountdownPlayed = secondsRemaining;
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {}
+    await hapticImpact(HapticImpactStyle.Light);
     if (secondsRemaining > 0 && secondsRemaining <= 10) {
       this.speak(String(secondsRemaining));
     }
   }
 
   async playSessionComplete(): Promise<void> {
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTimeout(async () => {
-        try {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {}
-      }, 200);
-    } catch {}
+    await hapticNotification(HapticNotificationType.Success);
+    setTimeout(() => {
+      hapticNotification(HapticNotificationType.Success);
+    }, 200);
     this.speak('Session complete. Amazing work today!');
   }
 
@@ -105,15 +102,11 @@ class SessionCueService {
   }
 
   async playPause(): Promise<void> {
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {}
+    await hapticImpact(HapticImpactStyle.Medium);
   }
 
   async playResume(): Promise<void> {
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {}
+    await hapticImpact(HapticImpactStyle.Medium);
   }
 
   reset(): void {

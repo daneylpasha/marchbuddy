@@ -2,6 +2,11 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRunProgressStore } from '../../store/runProgressStore';
+import {
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { FilterPeriod } from './DataFilterChips';
 import { getDateRangeForPeriod } from './DataFilterChips';
@@ -34,6 +39,8 @@ function getPeriodLabel(period: FilterPeriod): string {
 
 export default function FilteredStatsCard({ period }: FilteredStatsCardProps) {
   const sessionHistory = useRunProgressStore((s) => s.sessionHistory);
+  const unit = useDistanceUnit();
+  const distanceLabel = getDistanceLabel(unit);
 
   const stats = useMemo(() => {
     const { start, end } = getDateRangeForPeriod(period);
@@ -73,8 +80,8 @@ export default function FilteredStatsCard({ period }: FilteredStatsCardProps) {
               <Text style={styles.gridLabel}>Total Time</Text>
             </View>
             <View style={styles.gridItem}>
-              <Text style={styles.gridValue}>{stats.totalDistance.toFixed(1)}</Text>
-              <Text style={styles.gridLabel}>km</Text>
+              <Text style={styles.gridValue}>{formatDistance(stats.totalDistance, unit, 1)}</Text>
+              <Text style={styles.gridLabel}>{distanceLabel}</Text>
             </View>
           </View>
 

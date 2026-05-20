@@ -2,6 +2,12 @@ import React, { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { calculatePace, formatPace } from '../../../utils/sessionUtils';
+import {
+  convertPace,
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../../utils/distanceUtils';
 import { colors, fonts } from '../../../theme';
 import PaceInfoSheet, { type PaceInfoSheetRef } from './PaceInfoSheet';
 
@@ -33,6 +39,7 @@ export const SessionStatsBar: React.FC<SessionStatsBarProps> = ({
   // formula (time/distance) swings wildly with normal GPS jitter.
   const pace = distanceKm < 0.1 ? null : calculatePace(distanceKm, totalElapsedSeconds / 60);
 
+  const unit = useDistanceUnit();
   const paceSheetRef = useRef<PaceInfoSheetRef>(null);
 
   return (
@@ -40,16 +47,16 @@ export const SessionStatsBar: React.FC<SessionStatsBarProps> = ({
       <View style={styles.container}>
         <View style={styles.stat}>
           <Text style={styles.value} numberOfLines={1}>
-            {locationPermissionDenied ? '--' : distanceKm.toFixed(2)}
+            {locationPermissionDenied ? '--' : formatDistance(distanceKm, unit)}
           </Text>
-          <Text style={styles.unit}>km</Text>
+          <Text style={styles.unit}>{getDistanceLabel(unit)}</Text>
         </View>
 
         <View style={styles.divider} />
 
         <View style={styles.stat}>
           <Text style={styles.value} numberOfLines={1}>
-            {locationPermissionDenied ? '--:--' : formatPace(pace)}
+            {locationPermissionDenied ? '--:--' : formatPace(convertPace(pace, unit))}
           </Text>
           <Pressable
             onPress={() => paceSheetRef.current?.present()}

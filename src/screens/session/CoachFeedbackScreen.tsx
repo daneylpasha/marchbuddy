@@ -7,6 +7,11 @@ import { colors, fonts, spacing } from '../../theme';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import { ProBanner } from '../../components/upgrade/ProBanner';
+import {
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'CoachFeedback'>;
@@ -64,9 +69,12 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
     navigation.navigate('ShareSession', { session });
   };
 
+  const unit = useDistanceUnit();
   const durationStr = formatDuration(session.actualDurationMinutes);
   const distanceStr =
-    session.actualDistanceKm > 0 ? `${session.actualDistanceKm.toFixed(2)} km` : '—';
+    session.actualDistanceKm > 0
+      ? `${formatDistance(session.actualDistanceKm, unit)} ${getDistanceLabel(unit)}`
+      : '—';
   const segmentsStr = `${session.completedSegments}/${session.plannedSegments.length}`;
 
   return (

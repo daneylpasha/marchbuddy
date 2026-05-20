@@ -21,6 +21,12 @@ import { useFeedbackStore } from '../../store/feedbackStore';
 import { useProgressStore } from '../../store/progressStore';
 import { useAuthStore } from '../../store/authStore';
 import { getWeekStart } from '../../utils/dateUtils';
+import {
+  convertDistance,
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 import { getWeekStartDate } from '../../utils/sessionUtils';
@@ -273,6 +279,8 @@ export default function ProgressScreen() {
   const streak = progress?.currentStreakDays ?? 0;
   const bestStreak = progress?.bestStreakDays ?? 0;
   const totalKm = progress?.totalDistanceKm ?? 0;
+  const distanceUnit = useDistanceUnit();
+  const distanceLabel = getDistanceLabel(distanceUnit);
   const longestRunMinutes = progress?.longestRunMinutes ?? 0;
   const sessionsAtLevel = progress?.sessionsAtCurrentLevel ?? 0;
   const sessionsThisWeek = progress?.sessionsThisWeek ?? 0;
@@ -440,8 +448,8 @@ export default function ProgressScreen() {
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{totalKm.toFixed(1)}</Text>
-                  <Text style={styles.statLabel}>Total km</Text>
+                  <Text style={styles.statValue}>{formatDistance(totalKm, distanceUnit, 1)}</Text>
+                  <Text style={styles.statLabel}>Total {distanceLabel}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
@@ -511,13 +519,13 @@ export default function ProgressScreen() {
               <View style={styles.milestoneTeaserContent}>
                 <Text style={styles.milestoneTeaserText}>
                   {upcomingMilestone.type === 'distance'
-                    ? upcomingMilestone.remaining.toFixed(2)
+                    ? convertDistance(upcomingMilestone.remaining, distanceUnit).toFixed(2)
                     : upcomingMilestone.remaining}{' '}
                   more{' '}
                   {upcomingMilestone.type === 'sessions'
                     ? 'sessions'
                     : upcomingMilestone.type === 'distance'
-                      ? 'km'
+                      ? distanceLabel
                       : 'days'}{' '}
                   to reach
                 </Text>
@@ -528,9 +536,11 @@ export default function ProgressScreen() {
                     {upcomingMilestone.type === 'streak' && '🔥'}
                   </Text>
                   <Text style={styles.milestoneTeaserLabel}>
-                    {upcomingMilestone.targetValue}
                     {upcomingMilestone.type === 'distance'
-                      ? 'km'
+                      ? convertDistance(upcomingMilestone.targetValue, distanceUnit).toFixed(0)
+                      : upcomingMilestone.targetValue}
+                    {upcomingMilestone.type === 'distance'
+                      ? distanceLabel
                       : upcomingMilestone.type === 'streak'
                         ? '-day'
                         : ''}{' '}
@@ -592,7 +602,7 @@ export default function ProgressScreen() {
                       </View>
                       {session.distanceKm > 0 && (
                         <Text style={styles.historyDistance}>
-                          {session.distanceKm.toFixed(2)} km
+                          {formatDistance(session.distanceKm, distanceUnit)} {distanceLabel}
                         </Text>
                       )}
                     </View>

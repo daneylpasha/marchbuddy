@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useKeepAwake } from 'expo-keep-awake';
-import * as Haptics from 'expo-haptics';
+import { HapticImpactStyle, hapticImpact } from '../../utils/haptics';
 
 import { useActiveSessionStore, getSessionReferenceTime } from '../../store/activeSessionStore';
 import { useSessionStore } from '../../store/sessionStore';
@@ -559,7 +559,7 @@ export default function ActiveSessionScreen({ navigation, route }: Props) {
       if (currentSegmentIndex >= halfway && !halfwayShownRef.current) {
         halfwayShownRef.current = true;
         setShowHalfwayMessage(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        hapticImpact(HapticImpactStyle.Medium);
         sessionCueService.playHalfway();
 
         halfwaySlideAnim.setValue(-40);

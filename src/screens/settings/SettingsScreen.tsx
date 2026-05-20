@@ -1,6 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Linking, Modal, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Linking,
+  Modal,
+  Pressable,
+  Platform,
+} from 'react-native';
 import * as Notifications from 'expo-notifications';
+import DateTimePicker, {
+  DateTimePickerAndroid,
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -74,6 +87,10 @@ export default function SettingsScreen() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const [quietHoursVisible, setQuietHoursVisible] = useState(false);
+  const [tempStartHour, setTempStartHour] = useState(22);
+  const [tempEndHour, setTempEndHour] = useState(7);
+  const [showStartPickerIOS, setShowStartPickerIOS] = useState(false);
+  const [showEndPickerIOS, setShowEndPickerIOS] = useState(false);
 
   // Hydrate prefs on mount so the toggles reflect server-side truth
   useEffect(() => {
@@ -97,11 +114,59 @@ export default function SettingsScreen() {
     return `${display} ${ampm}`;
   };
 
-  const promptQuietHours = () => setQuietHoursVisible(true);
+  const promptQuietHours = () => {
+    // Seed picker state from current prefs every time the modal opens so
+    // editing reflects the actual saved values, not a stale draft.
+    setTempStartHour(prefs.quiet_hours_start);
+    setTempEndHour(prefs.quiet_hours_end);
+    setShowStartPickerIOS(false);
+    setShowEndPickerIOS(false);
+    setQuietHoursVisible(true);
+  };
 
   const handleQuietHoursSelect = (start: number, end: number) => {
     setQuietHours(start, end);
     setQuietHoursVisible(false);
+  };
+
+  const hourToDate = (h: number): Date => {
+    const d = new Date();
+    d.setHours(h, 0, 0, 0);
+    return d;
+  };
+
+  const openTimePicker = (which: 'start' | 'end') => {
+    const initial = which === 'start' ? tempStartHour : tempEndHour;
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: hourToDate(initial),
+        mode: 'time',
+        is24Hour: false,
+        onChange: (event: DateTimePickerEvent, date?: Date) => {
+          if (event.type === 'set' && date) {
+            if (which === 'start') setTempStartHour(date.getHours());
+            else setTempEndHour(date.getHours());
+          }
+        },
+      });
+    } else {
+      // iOS: toggle inline spinner below the row
+      if (which === 'start') {
+        setShowStartPickerIOS((v) => !v);
+        setShowEndPickerIOS(false);
+      } else {
+        setShowEndPickerIOS((v) => !v);
+        setShowStartPickerIOS(false);
+      }
+    }
+  };
+
+  const handleSaveQuietHours = () => {
+    handleQuietHoursSelect(tempStartHour, tempEndHour);
+  };
+
+  const handleDisableQuietHours = () => {
+    handleQuietHoursSelect(0, 0);
   };
 
   // Sync store with actual OS permission on mount
@@ -579,39 +644,100 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.qhTitle}>Quiet Hours</Text>
             <Text style={styles.qhMessage}>
-              Notifications won't be sent during these hours.{'\n'}
-              Current: {formatHour(prefs.quiet_hours_start)} — {formatHour(prefs.quiet_hours_end)}
+              Notifications won't be sent during these hours.
             </Text>
 
-            <Pressable
-              style={({ pressed }) => [styles.qhOption, pressed && { opacity: 0.85 }]}
-              onPress={() => handleQuietHoursSelect(22, 7)}
-            >
-              <Text style={styles.qhOptionText}>Late evening (10 PM – 7 AM)</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.qhOption, pressed && { opacity: 0.85 }]}
-              onPress={() => handleQuietHoursSelect(21, 6)}
-            >
-              <Text style={styles.qhOptionText}>Early night (9 PM – 6 AM)</Text>
-            </Pressable>
+            {/* Start time row */}
             <Pressable
               style={({ pressed }) => [
-                styles.qhOption,
-                styles.qhOptionDanger,
+                styles.qhTimeRow,
+                showStartPickerIOS && styles.qhTimeRowActive,
                 pressed && { opacity: 0.85 },
               ]}
-              onPress={() => handleQuietHoursSelect(0, 0)}
+              onPress={() => openTimePicker('start')}
             >
-              <Text style={[styles.qhOptionText, styles.qhOptionTextDanger]}>
-                Always on (disable)
-              </Text>
+              <View style={styles.qhTimeLabelWrap}>
+                <Ionicons name="moon-outline" size={18} color={colors.primary} />
+                <Text style={styles.qhTimeLabel}>Start</Text>
+              </View>
+              <View style={styles.qhTimeValueWrap}>
+                <Text style={styles.qhTimeValue}>{formatHour(tempStartHour)}</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textTertiary} />
+              </View>
             </Pressable>
+            {showStartPickerIOS && Platform.OS === 'ios' && (
+              <DateTimePicker
+                value={hourToDate(tempStartHour)}
+                mode="time"
+                display="spinner"
+                minuteInterval={30}
+                themeVariant="dark"
+                onChange={(_e, date) => {
+                  if (date) setTempStartHour(date.getHours());
+                }}
+                style={styles.qhInlinePicker}
+              />
+            )}
+
+            {/* End time row */}
             <Pressable
-              style={({ pressed }) => [styles.qhCancel, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [
+                styles.qhTimeRow,
+                showEndPickerIOS && styles.qhTimeRowActive,
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={() => openTimePicker('end')}
+            >
+              <View style={styles.qhTimeLabelWrap}>
+                <Ionicons name="sunny-outline" size={18} color={colors.primary} />
+                <Text style={styles.qhTimeLabel}>End</Text>
+              </View>
+              <View style={styles.qhTimeValueWrap}>
+                <Text style={styles.qhTimeValue}>{formatHour(tempEndHour)}</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textTertiary} />
+              </View>
+            </Pressable>
+            {showEndPickerIOS && Platform.OS === 'ios' && (
+              <DateTimePicker
+                value={hourToDate(tempEndHour)}
+                mode="time"
+                display="spinner"
+                minuteInterval={30}
+                themeVariant="dark"
+                onChange={(_e, date) => {
+                  if (date) setTempEndHour(date.getHours());
+                }}
+                style={styles.qhInlinePicker}
+              />
+            )}
+
+            {/* Save (primary) */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.qhPrimaryButton,
+                tempStartHour === tempEndHour && styles.qhPrimaryButtonDisabled,
+                pressed && { opacity: 0.85 },
+              ]}
+              onPress={handleSaveQuietHours}
+              disabled={tempStartHour === tempEndHour}
+            >
+              <Text style={styles.qhPrimaryButtonText}>Save</Text>
+            </Pressable>
+
+            {/* Disable */}
+            <Pressable
+              style={({ pressed }) => [styles.qhGhostButton, pressed && { opacity: 0.85 }]}
+              onPress={handleDisableQuietHours}
+            >
+              <Text style={styles.qhGhostButtonText}>Disable Quiet Hours</Text>
+            </Pressable>
+
+            {/* Cancel */}
+            <Pressable
+              style={({ pressed }) => [styles.qhCancelLink, pressed && { opacity: 0.6 }]}
               onPress={() => setQuietHoursVisible(false)}
             >
-              <Text style={styles.qhCancelText}>Cancel</Text>
+              <Text style={styles.qhCancelLinkText}>Cancel</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -816,27 +942,51 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginBottom: 12,
   },
-  qhOption: {
+  qhTimeRow: {
     width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
-  qhOptionDanger: {
-    borderColor: 'rgba(244,63,94,0.3)',
+  qhTimeRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryDim,
   },
-  qhOptionText: {
+  qhTimeLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  qhTimeLabel: {
     fontFamily: fonts.semiBold,
     fontSize: 14,
+    color: colors.textSecondary,
+    letterSpacing: 0.3,
+  },
+  qhTimeValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  qhTimeValue: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
     color: colors.textPrimary,
+    letterSpacing: 0.3,
   },
-  qhOptionTextDanger: {
-    color: colors.danger,
+  qhInlinePicker: {
+    width: '100%',
+    height: 180,
+    marginTop: -8,
+    marginBottom: -8,
   },
-  qhCancel: {
+  qhPrimaryButton: {
     width: '100%',
     paddingVertical: 14,
     borderRadius: 14,
@@ -844,9 +994,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginTop: 4,
   },
-  qhCancelText: {
+  qhPrimaryButtonDisabled: {
+    opacity: 0.45,
+  },
+  qhPrimaryButtonText: {
     fontFamily: fonts.semiBold,
     fontSize: 15,
     color: '#fff',
+    letterSpacing: 0.3,
+  },
+  qhGhostButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(244,63,94,0.35)',
+  },
+  qhGhostButtonText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    color: colors.danger,
+    letterSpacing: 0.3,
+  },
+  qhCancelLink: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  qhCancelLinkText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
   },
 });

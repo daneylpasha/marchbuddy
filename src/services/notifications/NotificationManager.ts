@@ -35,6 +35,19 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { supabase } from '../../api/supabase';
 
+// ─── Quiet-hours gate ─────────────────────────────────────────────────────
+
+// Mirrors the server-side check in send-push-notification: returns true
+// when the given fire-time hour (0–23, user-local) falls inside the
+// quiet window. Supports wrap-around windows (e.g. 22 → 7 = 22:00–06:59).
+// start === end is treated as "disabled" so users can opt out by setting
+// both to the same value.
+function isInQuietWindow(hour: number, start: number, end: number): boolean {
+  if (start === end) return false;
+  if (start < end) return hour >= start && hour < end;
+  return hour >= start || hour < end;
+}
+
 // ─── Channels (Android) ───────────────────────────────────────────────────
 
 async function ensureChannels(): Promise<void> {
@@ -139,8 +152,8 @@ export async function scheduleForSession({
 }: ScheduleInput): Promise<string | null> {
   // Respect user preference — if they've disabled session reminders,
   // do nothing. This mirrors the server-side check for re-engagement.
-  const sessionRemindersEnabled = useNotificationPrefsStore.getState().prefs.session_reminders;
-  if (!sessionRemindersEnabled) return null;
+  const prefs = useNotificationPrefsStore.getState().prefs;
+  if (!prefs.session_reminders) return null;
 
   const { permissionStatus } = useNotificationStore.getState();
   if (permissionStatus !== 'granted') return null;
@@ -155,6 +168,8 @@ export async function scheduleForSession({
   const now = new Date();
   const ids: string[] = [];
   const channelId = Platform.OS === 'android' ? 'session-reminders' : undefined;
+  const quietStart = prefs.quiet_hours_start;
+  const quietEnd = prefs.quiet_hours_end;
 
   const commonData = {
     type: 'A' as const,
@@ -162,8 +177,11 @@ export async function scheduleForSession({
     sessionTitle,
   };
 
-  // 1. At the exact scheduled time
-  if (scheduledAt > now) {
+  // 1. At the exact scheduled time — skip if fire-time falls in the
+  //    user's quiet window. Local notifications cannot consult JS at
+  //    fire time (OS dispatches them), so we have to gate at schedule
+  //    time using the device's local hour.
+  if (scheduledAt > now && !isInQuietWindow(scheduledAt.getHours(), quietStart, quietEnd)) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
@@ -185,9 +203,10 @@ export async function scheduleForSession({
     }
   }
 
-  // 2. 30-min-before reminder (only when meaningfully in the future)
+  // 2. 30-min-before reminder (only when meaningfully in the future and
+  //    its fire-time is outside quiet hours).
   const earlyDate = new Date(scheduledAt.getTime() - 30 * 60 * 1000);
-  if (earlyDate > now) {
+  if (earlyDate > now && !isInQuietWindow(earlyDate.getHours(), quietStart, quietEnd)) {
     try {
       const id = await Notifications.scheduleNotificationAsync({
         content: {

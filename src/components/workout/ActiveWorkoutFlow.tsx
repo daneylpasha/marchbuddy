@@ -10,7 +10,12 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import {
+  HapticImpactStyle,
+  HapticNotificationType,
+  hapticImpact,
+  hapticNotification,
+} from '../../utils/haptics';
 import ProgressRing from '../common/ProgressRing';
 import { colors, fonts, spacing } from '../../theme';
 import type { Exercise } from '../../types';
@@ -73,7 +78,7 @@ export default function ActiveWorkoutFlow({
             if (timerRef.current) clearInterval(timerRef.current);
             timerRef.current = null;
             // Haptic notification when timer ends
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            hapticNotification(HapticNotificationType.Success);
             return 0;
           }
           return prev - 1;
@@ -96,7 +101,7 @@ export default function ActiveWorkoutFlow({
         setRestSeconds(ex.restSeconds);
         setTotalRestSeconds(ex.restSeconds);
         setIsResting(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        hapticImpact(HapticImpactStyle.Light);
       }
 
       // Auto-advance to next uncompleted exercise after a brief delay
