@@ -5,6 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RouteMap } from '../../components/session/RouteMap';
+import {
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 
@@ -49,6 +54,7 @@ export default function PastSessionDetailScreen({ navigation, route }: Props) {
   const isOutdoor = session.environment !== 'indoor';
   const hasRoute = isOutdoor && session.route && session.route.length >= 2;
   const feedback = feedbackLabel(session.feedbackRating);
+  const unit = useDistanceUnit();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -112,9 +118,11 @@ export default function PastSessionDetailScreen({ navigation, route }: Props) {
           <View style={styles.statBlock}>
             <Ionicons name="navigate-outline" size={20} color={colors.primary} />
             <Text style={styles.statValue}>
-              {session.distanceKm > 0 ? `${session.distanceKm.toFixed(2)}` : '—'}
+              {session.distanceKm > 0 ? formatDistance(session.distanceKm, unit) : '—'}
             </Text>
-            <Text style={styles.statLabel}>{session.distanceKm > 0 ? 'km' : 'Distance'}</Text>
+            <Text style={styles.statLabel}>
+              {session.distanceKm > 0 ? getDistanceLabel(unit) : 'Distance'}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBlock}>

@@ -3,7 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Share } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import {
+  HapticImpactStyle,
+  HapticNotificationType,
+  hapticImpact,
+  hapticNotification,
+} from '../../utils/haptics';
 
 import { getMilestoneConfig } from '../../constants/milestones';
 import { ConfettiAnimation } from './components/ConfettiAnimation';
@@ -45,7 +50,7 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!milestone) return;
     // Haptic burst on entry
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    hapticNotification(HapticNotificationType.Success);
 
     Animated.sequence([
       Animated.spring(iconScale, {
@@ -68,7 +73,7 @@ export default function CelebrationScreen({ navigation, route }: Props) {
 
     // Second impact when icon lands
     const timer = setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      hapticImpact(HapticImpactStyle.Heavy);
     }, 320);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

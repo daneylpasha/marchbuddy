@@ -2,6 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CompletedSession } from '../../../types/session';
 import { formatDuration, formatPace } from '../../../utils/sessionUtils';
+import {
+  convertPace,
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../../utils/distanceUtils';
 import { colors, fonts } from '../../../theme';
 
 interface SessionSummaryCardProps {
@@ -10,6 +16,7 @@ interface SessionSummaryCardProps {
 
 export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session }) => {
   const durationSeconds = session.actualDurationMinutes * 60;
+  const unit = useDistanceUnit();
 
   return (
     <View style={styles.container}>
@@ -23,14 +30,14 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session 
         <View style={styles.statDivider} />
 
         <View style={styles.stat}>
-          <Text style={styles.statValue}>{session.actualDistanceKm.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>km</Text>
+          <Text style={styles.statValue}>{formatDistance(session.actualDistanceKm, unit)}</Text>
+          <Text style={styles.statLabel}>{getDistanceLabel(unit)}</Text>
         </View>
 
         <View style={styles.statDivider} />
 
         <View style={styles.stat}>
-          <Text style={styles.statValue}>{formatPace(session.pacePerKm)}</Text>
+          <Text style={styles.statValue}>{formatPace(convertPace(session.pacePerKm, unit))}</Text>
           <Text style={styles.statLabel}>Pace</Text>
         </View>
       </View>

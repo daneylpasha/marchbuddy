@@ -17,6 +17,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RouteMap } from '../../components/session/RouteMap';
 import { formatDuration } from '../../utils/sessionUtils';
+import {
+  convertPace,
+  formatDistance,
+  getDistanceLabel,
+  getPaceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -55,7 +62,10 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
   const isOutdoor = session.environment !== 'indoor';
   const hasRoute = isOutdoor && session.route && session.route.length >= 2;
   const durationSeconds = session.actualDurationMinutes * 60;
-  const paceStr = formatPace(session.pacePerKm);
+  const unit = useDistanceUnit();
+  const distanceLabel = getDistanceLabel(unit);
+  const paceLabel = getPaceLabel(unit);
+  const paceStr = formatPace(convertPace(session.pacePerKm, unit));
 
   const capture = async (): Promise<string | null> => {
     if (!shareCardRef.current) return null;
@@ -163,9 +173,11 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
             <View style={styles.statsRow}>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>
-                  {session.actualDistanceKm > 0 ? session.actualDistanceKm.toFixed(2) : '—'}
+                  {session.actualDistanceKm > 0
+                    ? formatDistance(session.actualDistanceKm, unit)
+                    : '—'}
                 </Text>
-                <Text style={styles.statLabel}>Distance · km</Text>
+                <Text style={styles.statLabel}>Distance · {distanceLabel}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.stat}>
@@ -175,7 +187,7 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
               <View style={styles.statDivider} />
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{paceStr}</Text>
-                <Text style={styles.statLabel}>Pace · /km</Text>
+                <Text style={styles.statLabel}>Pace · {paceLabel}</Text>
               </View>
             </View>
 

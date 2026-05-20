@@ -26,6 +26,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import { SessionSummaryCard } from './components/SessionSummaryCard';
 import { FeedbackSelector } from './components/FeedbackSelector';
 import { RouteMap } from '../../components/session/RouteMap';
+import { getDistanceLabel, useDistanceUnit } from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
@@ -37,6 +38,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
   const { setupData, guestId } = useCoachSetupStore();
   const { updateAfterSession, incrementLevel, addToHistory } = useRunProgressStore();
   const { clearTodayOptions } = useSessionStore();
+  const distanceUnit = useDistanceUnit();
 
   const isIndoor = session.environment === 'indoor';
 
@@ -52,10 +54,19 @@ export default function PostSessionScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
 
+    // Treadmill input is in the user's chosen unit; persist in km (canonical
+    // storage unit) so progress, history, and AI feedback stay consistent.
+    const parsedTreadmillDistance = treadmillDistance ? parseFloat(treadmillDistance) : undefined;
+    const treadmillDistanceKm =
+      parsedTreadmillDistance != null
+        ? distanceUnit === 'miles'
+          ? parsedTreadmillDistance * 1.609344
+          : parsedTreadmillDistance
+        : undefined;
     const treadmillStats =
       isIndoor && (treadmillDistance || treadmillSteps || treadmillCalories)
         ? {
-            distanceKm: treadmillDistance ? parseFloat(treadmillDistance) : undefined,
+            distanceKm: treadmillDistanceKm,
             steps: treadmillSteps ? parseInt(treadmillSteps, 10) : undefined,
             calories: treadmillCalories ? parseInt(treadmillCalories, 10) : undefined,
           }
@@ -312,7 +323,9 @@ export default function PostSessionScreen({ navigation, route }: Props) {
                 </Text>
                 <View style={styles.treadmillFields}>
                   <View style={styles.treadmillField}>
-                    <Text style={styles.treadmillFieldLabel}>Distance (km)</Text>
+                    <Text style={styles.treadmillFieldLabel}>
+                      Distance ({getDistanceLabel(distanceUnit)})
+                    </Text>
                     <TextInput
                       style={styles.treadmillInput}
                       placeholder="0.00"

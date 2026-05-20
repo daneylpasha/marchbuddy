@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
+import { useDistanceUnit } from '../../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../../theme';
 
 export interface PaceInfoSheetRef {
@@ -12,6 +13,14 @@ export interface PaceInfoSheetRef {
 const PaceInfoSheet = forwardRef<PaceInfoSheetRef>((_props, ref) => {
   const modalRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['55%'], []);
+  const unit = useDistanceUnit();
+  const isMiles = unit === 'miles';
+  const unitLong = isMiles ? 'mile' : 'kilometre';
+  const unitShort = isMiles ? 'mi' : 'km';
+  const paceLabel = `/${unitShort}`;
+  const exampleHigh = isMiles ? '10:30' : '6:30';
+  const walkLow = isMiles ? '14:30' : '9:00';
+  const walkHigh = isMiles ? '22:30' : '14:00';
 
   useImperativeHandle(ref, () => ({
     present: () => modalRef.current?.present(),
@@ -41,7 +50,7 @@ const PaceInfoSheet = forwardRef<PaceInfoSheetRef>((_props, ref) => {
     >
       <BottomSheetView style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Pace (min/km)</Text>
+          <Text style={styles.title}>Pace (min{paceLabel})</Text>
           <Pressable
             onPress={() => modalRef.current?.dismiss()}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -52,14 +61,17 @@ const PaceInfoSheet = forwardRef<PaceInfoSheetRef>((_props, ref) => {
         </View>
 
         <Text style={styles.body}>
-          Pace shows how long it takes you to cover one kilometre at your current speed.
+          Pace shows how long it takes you to cover one {unitLong} at your current speed.
         </Text>
 
         <View style={styles.exampleBox}>
           <Text style={styles.exampleLabel}>EXAMPLE</Text>
           <Text style={styles.exampleText}>
-            <Text style={styles.exampleHighlight}>6:30 /km</Text> means you'd cover 1 km in 6
-            minutes and 30 seconds.
+            <Text style={styles.exampleHighlight}>
+              {exampleHigh} {paceLabel}
+            </Text>{' '}
+            means you'd cover 1 {unitShort} in {exampleHigh.split(':')[0]} minutes and{' '}
+            {exampleHigh.split(':')[1]} seconds.
           </Text>
           <Text style={styles.exampleSub}>Lower number = faster. Higher number = slower.</Text>
         </View>
@@ -72,8 +84,8 @@ const PaceInfoSheet = forwardRef<PaceInfoSheetRef>((_props, ref) => {
         <View style={styles.tipRow}>
           <Ionicons name="bulb-outline" size={16} color={colors.primary} />
           <Text style={styles.tipText}>
-            For walking, anything between 9:00 and 14:00 /km is normal. Don't chase a number — focus
-            on showing up.
+            For walking, anything between {walkLow} and {walkHigh} {paceLabel} is normal. Don't
+            chase a number — focus on showing up.
           </Text>
         </View>
       </BottomSheetView>

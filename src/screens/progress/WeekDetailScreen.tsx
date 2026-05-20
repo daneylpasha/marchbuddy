@@ -6,6 +6,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useRunProgressStore } from '../../store/runProgressStore';
+import {
+  formatDistance,
+  getDistanceLabel,
+  useDistanceUnit,
+} from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 
@@ -69,6 +74,8 @@ export default function WeekDetailScreen() {
   const totalMinutes = weekSessions.reduce((sum, s) => sum + s.durationMinutes, 0);
   const totalDistance = weekSessions.reduce((sum, s) => sum + s.distanceKm, 0);
   const avgDuration = totalSessions > 0 ? totalMinutes / totalSessions : 0;
+  const unit = useDistanceUnit();
+  const distanceLabel = getDistanceLabel(unit);
 
   // By-day breakdown
   const sessionsByDate = weekSessions.reduce<Record<string, number>>((acc, s) => {
@@ -105,8 +112,8 @@ export default function WeekDetailScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalDistance.toFixed(1)}</Text>
-            <Text style={styles.statLabel}>km</Text>
+            <Text style={styles.statValue}>{formatDistance(totalDistance, unit, 1)}</Text>
+            <Text style={styles.statLabel}>{distanceLabel}</Text>
           </View>
         </View>
 
@@ -152,7 +159,9 @@ export default function WeekDetailScreen() {
             <View style={styles.avgItem}>
               <Ionicons name="navigate-outline" size={20} color={colors.primary} />
               <Text style={styles.avgValue}>
-                {totalSessions > 0 ? (totalDistance / totalSessions).toFixed(1) : '0'}km
+                {totalSessions > 0
+                  ? `${formatDistance(totalDistance / totalSessions, unit, 1)}${distanceLabel}`
+                  : `0${distanceLabel}`}
               </Text>
               <Text style={styles.avgLabel}>per session</Text>
             </View>
@@ -195,7 +204,9 @@ export default function WeekDetailScreen() {
                     {formatDuration(session.durationMinutes)}
                   </Text>
                   {session.distanceKm > 0 && (
-                    <Text style={styles.sessionDistance}>{session.distanceKm.toFixed(2)} km</Text>
+                    <Text style={styles.sessionDistance}>
+                      {formatDistance(session.distanceKm, unit)} {distanceLabel}
+                    </Text>
                   )}
                 </View>
                 <Ionicons
