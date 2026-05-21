@@ -22,6 +22,11 @@ export interface NotificationPrefs {
   session_reminders: boolean;
   reengagement: boolean;
   community_events: boolean;
+  // V2 Proactive Coach Messages — opt-out for the 4 trigger moments
+  // (session_morning, post_session, missed_session, weekly_recap).
+  // When false: scheduler skips this user entirely; sender cancels any
+  // rows still in the queue.
+  coach_proactive: boolean;
   quiet_hours_start: number; // 0–23, user local time
   quiet_hours_end: number; // 0–23, user local time
 }
@@ -30,6 +35,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   session_reminders: true,
   reengagement: true,
   community_events: true,
+  coach_proactive: true,
   quiet_hours_start: 22,
   quiet_hours_end: 7,
 };

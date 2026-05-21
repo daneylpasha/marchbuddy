@@ -37,7 +37,7 @@ export function useNotificationListener() {
     // ── Tap handler ─────────────────────────────────────────────────────
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as
-        | { type?: string; sessionKey?: string; sessionTitle?: string }
+        | { type?: string; sessionKey?: string; sessionTitle?: string; trigger?: string; schedule_id?: string }
         | undefined;
 
       const type = data?.type;
@@ -45,6 +45,13 @@ export function useNotificationListener() {
 
       // Persist tap context so downstream screens can deep-link.
       setLastNotificationTap({ sessionKey, type });
+
+      // V2 Proactive Coach Messages — route to Coach tab and forward the
+      // schedule_id so CoachChatScreen can fire `coach_message_opened`.
+      if (type === 'proactive_coach') {
+        navigate('Coach', { fromProactive: true, scheduleId: data?.schedule_id });
+        return;
+      }
 
       if (type === 'A' || type === 'B' || type === 'C' || sessionKey) {
         navigate('Run');
