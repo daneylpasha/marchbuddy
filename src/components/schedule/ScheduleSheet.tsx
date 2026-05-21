@@ -10,13 +10,16 @@ import {
   View,
   Text,
   Pressable,
-  ScrollView,
   StyleSheet,
   ActivityIndicator,
   Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetModal,
+  BottomSheetBackdrop,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { useScheduleStore, type ScheduledSession } from '../../store/scheduleStore';
@@ -32,21 +35,16 @@ interface Props {
   onScheduled?: (scheduledAt: Date) => void;
 }
 
-function getNext7Days(): Date[] {
-  const days: Date[] = [];
-  const now = new Date();
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + i);
-    d.setHours(0, 0, 0, 0);
-    days.push(d);
-  }
-  return days;
+function getQuickDays(): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  return [today, tomorrow];
 }
 
-function formatDayLabel(date: Date): string {
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return `${dayNames[date.getDay()]} ${date.getDate()}`;
+function formatDayLabel(date: Date, index: number): string {
+  return index === 0 ? 'Today' : 'Tomorrow';
 }
 
 function formatConfirmation(date: Date): string {
@@ -64,7 +62,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
   const [sessionKey, setSessionKey] = useState('');
   const [sessionTitle, setSessionTitle] = useState('');
   const [existingSchedule, setExistingSchedule] = useState<ScheduledSession | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(getNext7Days()[0]);
+  const [selectedDate, setSelectedDate] = useState<Date>(getQuickDays()[0]);
   const [selectedTime, setSelectedTime] = useState<Date>(() => {
     const d = new Date();
     d.setHours(7, 0, 0, 0);
@@ -83,7 +81,7 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
     setLocalNotificationId,
   } = useScheduleStore();
   const userName = useCoachSetupStore((s) => s.setupData.userName);
-  const days = useMemo(() => getNext7Days(), []);
+  const days = useMemo(() => getQuickDays(), []);
   const snapPoints = useMemo(() => ['52%'], []);
 
   useImperativeHandle(ref, () => ({
@@ -114,11 +112,17 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
   }));
 
   const handleSubmit = async () => {
+    const scheduledAt = new Date(selectedDate);
+    scheduledAt.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+
+    if (scheduledAt.getTime() <= Date.now()) {
+      setErrorMsg('That time has already passed. Pick a future time.');
+      setTimeout(() => setErrorMsg(null), 2500);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const scheduledAt = new Date(selectedDate);
-      scheduledAt.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-
       if (existingSchedule) {
         // Defensive cancel: wipes everything on-device for this
         // sessionKey, even if local_notification_id was null (fixes
@@ -233,12 +237,8 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
             <Text style={styles.sessionName}>{sessionTitle}</Text>
 
             {/* Date chips */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.dateRow}
-            >
-              {days.map((day) => {
+            <View style={styles.dateRow}>
+              {days.map((day, index) => {
                 const isSelected = isSameDay(day, selectedDate);
                 return (
                   <Pressable
@@ -247,21 +247,45 @@ const ScheduleSheet = forwardRef<ScheduleSheetRef, Props>(({ onScheduled }, ref)
                     onPress={() => setSelectedDate(day)}
                   >
                     <Text style={[styles.dateChipText, isSelected && styles.dateChipTextSelected]}>
-                      {formatDayLabel(day)}
+                      {formatDayLabel(day, index)}
                     </Text>
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </View>
 
             {/* Time picker */}
             <View style={styles.timeSection}>
               <Text style={styles.timeLabel}>Time</Text>
               {Platform.OS === 'android' ? (
-                <Pressable style={styles.androidTimeButton} onPress={() => setShowTimePicker(true)}>
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.surfaceElevated,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.surfaceBorder,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                    style={{ marginRight: 8 }}
+                  />
                   <Text style={styles.androidTimeText}>
                     {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={14}
+                    color={colors.textSecondary}
+                    style={{ marginLeft: 8 }}
+                  />
                 </Pressable>
               ) : null}
               {showTimePicker && (
@@ -344,16 +368,26 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingBottom: 20,
+    marginBottom: 20,
   },
   dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+  },
+  chipIcon: {
+    marginRight: 6,
+  },
+  chipChevron: {
+    marginLeft: 8,
   },
   dateChipSelected: {
     backgroundColor: colors.primaryDim,
@@ -382,11 +416,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   androidTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: colors.surfaceElevated,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   androidTimeText: {

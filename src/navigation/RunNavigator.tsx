@@ -34,6 +34,11 @@ export type RunStackParamList = {
     };
     session: CompletedSession;
     shareAfter: boolean;
+    // V2 Auto-PRs: server-side session id, set when the session was
+    // successfully saved via the Edge Function path. Undefined when the
+    // client fallback path was used (offline / Edge Function down) — in
+    // that case the PR banner simply doesn't fetch.
+    sessionId?: string;
   };
   Celebration: {
     milestoneId: string;
@@ -47,8 +52,15 @@ export type RunStackParamList = {
     };
     session: CompletedSession;
     shareAfter: boolean;
+    sessionId?: string;
   };
-  ShareSession: { session: CompletedSession };
+  ShareSession: {
+    session: CompletedSession;
+    // V2 Auto-PRs: optional badge overlay when arriving from a session that
+    // set ≥1 PR. Caller passes the same PRs array it received from the
+    // detect-personal-records call so we don't refetch here.
+    prs?: import('../types/personalRecord').PersonalRecord[];
+  };
   Settings: undefined;
   EditName: undefined;
   Feedback: undefined;

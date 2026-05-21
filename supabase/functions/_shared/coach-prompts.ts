@@ -108,6 +108,22 @@ export interface CoachMessageContext {
     totalDistanceKm: number;
     totalDurationMinutes: number;
   } | null;
+  // post_session only — V2 Auto-PRs integration.
+  // Latest PR set in the session this message is responding to (single
+  // most "impressive" if multiple), plus the best Before/After comparison
+  // window from the same detection run. Either can be null.
+  postSessionPr?: {
+    type: 'fastest_pace' | 'fastest_1k_split' | 'longest_distance' | 'longest_duration' | 'first_milestone';
+    subtype: string | null;
+    displayLabel: string; // e.g. "Fastest 1K split", "First 5K"
+    displayValue: string; // e.g. "5:42/km", "5.10 km", "32 min", "" (milestone)
+    previousDisplay: string | null; // e.g. "Previous: 6:15/km"
+  } | null;
+  postSessionComparison?: {
+    window: 'vs_4_weeks_ago_same_distance' | 'vs_first_at_level' | 'vs_last_week_same_type' | 'vs_prior_30_day_avg';
+    label: string; // pre-formatted human-readable
+    improvementPct: number; // positive only (regressions are filtered out)
+  } | null;
 }
 
 export function buildUserPrompt(
@@ -162,6 +178,31 @@ export function buildUserPrompt(
     lines.push(
       `- THIS WEEK SO FAR: ${w.sessionsCompleted} sessions, ${w.totalDistanceKm.toFixed(1)}km, ${w.totalDurationMinutes} min total`,
     );
+  }
+
+  // V2 Auto-PRs: only relevant for post_session trigger. Surface at most one
+  // PR + one comparison so the message stays focused. Claude's instruction
+  // is to weave naturally, not to read these as bullets.
+  if (trigger === 'post_session') {
+    if (ctx.postSessionPr) {
+      const pr = ctx.postSessionPr;
+      const valueClause = pr.displayValue ? ` of ${pr.displayValue}` : '';
+      const prevClause = pr.previousDisplay ? ` (${pr.previousDisplay.toLowerCase()})` : '';
+      lines.push(
+        `- NEW PERSONAL RECORD just set: ${pr.displayLabel}${valueClause}${prevClause}.`,
+      );
+      lines.push(
+        '  Mention this as a NATURAL aside — one short clause embedded in the message, not as the headline. Do not say "PR" literally; say what was achieved (e.g. "your fastest 1K so far"). Do not pile on extra praise.',
+      );
+    } else if (ctx.postSessionComparison) {
+      const c = ctx.postSessionComparison;
+      lines.push(
+        `- NOTABLE PROGRESS this session: ${c.label} (${c.improvementPct.toFixed(0)}% improvement).`,
+      );
+      lines.push(
+        '  Reference this as a quick observational note if it fits, never the main beat. Drop it if it would make the message feel crammed.',
+      );
+    }
   }
 
   lines.push('');
@@ -235,6 +276,46 @@ export function pickFallback(
   const pool = POOLS[trigger];
   const raw = pool[Math.floor(Math.random() * pool.length)];
   return fillName(raw, firstName);
+}
+
+// ─── PR-aware fallback for post_session ──────────────────────────────────
+// Used when Claude API fails AND a PR was set in the session. We don't want
+// to lose the PR acknowledgment entirely — that's the whole point of V2.
+
+const FALLBACK_POST_SESSION_WITH_PR = [
+  "Solid run today{{nameComma}} — that was your {{prLabel}}{{prValue}}. Recovery is the next workout.",
+  "Strong session{{nameComma}}. You just set a new {{prLabel}}{{prValue}}. Hydrate, sleep, repeat.",
+  "{{prLabel}}{{prValue}} today. Quietly impressive. Stretch a little tonight.",
+];
+
+const FALLBACK_POST_SESSION_WITH_MILESTONE = [
+  "First {{milestone}} in the books. That one matters — recovery counts as much as the run.",
+  "You just hit your first {{milestone}}{{nameComma}}. Sleep well tonight.",
+  "{{milestone}} done for the first time. Take it easy the rest of the day.",
+];
+
+export function pickPostSessionFallbackWithPr(
+  firstName: string | null,
+  prLabel: string,
+  prValue: string,
+  isMilestone: boolean,
+  milestoneText: string | null,
+): string {
+  if (isMilestone && milestoneText) {
+    const raw =
+      FALLBACK_POST_SESSION_WITH_MILESTONE[
+        Math.floor(Math.random() * FALLBACK_POST_SESSION_WITH_MILESTONE.length)
+      ];
+    return fillName(raw, firstName)
+      .replace(/\{\{milestone\}\}/g, milestoneText.toLowerCase());
+  }
+  const raw =
+    FALLBACK_POST_SESSION_WITH_PR[
+      Math.floor(Math.random() * FALLBACK_POST_SESSION_WITH_PR.length)
+    ];
+  return fillName(raw, firstName)
+    .replace(/\{\{prLabel\}\}/g, prLabel.toLowerCase())
+    .replace(/\{\{prValue\}\}/g, prValue ? ` of ${prValue}` : '');
 }
 
 // ─── Message hygiene ─────────────────────────────────────────────────────

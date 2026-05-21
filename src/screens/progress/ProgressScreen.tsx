@@ -34,6 +34,7 @@ import DataFilterChips from '../../components/progress/DataFilterChips';
 import FilteredStatsCard from '../../components/progress/FilteredStatsCard';
 import type { FilterPeriod } from '../../components/progress/DataFilterChips';
 import { RatingNudgeCard } from './components/RatingNudgeCard';
+import { YourPrsSection } from './components/YourPrsSection';
 
 // ─── Ring constants ───────────────────────────────────────────────────────────
 
@@ -552,6 +553,9 @@ export default function ProgressScreen() {
               </View>
             </View>
           )}
+
+          {/* ── V2 Auto-PRs: Your Personal Records ──────────────────────── */}
+          {totalSessions > 0 && <YourPrsSection />}
 
           {/* ── Session history ──────────────────────────────────────────── */}
           <View style={styles.historySection}>

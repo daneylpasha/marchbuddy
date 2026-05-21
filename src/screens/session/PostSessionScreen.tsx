@@ -205,6 +205,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           progressUpdate,
           session: updatedSession,
           shareAfter,
+          sessionId: result.sessionId,
         });
       } else {
         navigation.replace('CoachFeedback', {
@@ -212,6 +213,7 @@ export default function PostSessionScreen({ navigation, route }: Props) {
           progressUpdate,
           session: updatedSession,
           shareAfter,
+          sessionId: result.sessionId,
         });
       }
     } catch (err) {

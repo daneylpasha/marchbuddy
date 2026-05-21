@@ -25,6 +25,7 @@ import {
   CoachMessageContext,
   buildUserPrompt,
   pickFallback,
+  pickPostSessionFallbackWithPr,
   sanitizeMessage,
   toPushBody,
 } from '../_shared/coach-prompts.ts';
@@ -55,6 +56,88 @@ const DEFAULT_QUIET_START = 22;
 const DEFAULT_QUIET_END = 7;
 const BATCH_SIZE = 50;
 const COMEBACK_PAUSE_MS = 48 * 60 * 60 * 1000;
+
+// ─── V2 Auto-PRs: format a personal_records row for the coach prompt ────
+
+function formatPrForPrompt(
+  prType: string,
+  prSubtype: string | null,
+  value: number,
+  previousValue: number | null,
+): NonNullable<CoachMessageContext['postSessionPr']> {
+  const formatPace = (secPerKm: number): string => {
+    const total = Math.round(secPerKm);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${s.toString().padStart(2, '0')}/km`;
+  };
+
+  let displayLabel = 'personal best';
+  let displayValue = '';
+  switch (prType) {
+    case 'fastest_pace':
+      displayLabel = 'fastest overall pace';
+      displayValue = formatPace(value);
+      break;
+    case 'fastest_1k_split':
+      displayLabel = 'fastest 1K split';
+      displayValue = formatPace(value);
+      break;
+    case 'longest_distance':
+      displayLabel = 'longest distance';
+      displayValue = `${(value / 1000).toFixed(2)} km`;
+      break;
+    case 'longest_duration': {
+      displayLabel = 'longest session';
+      const m = Math.floor(value / 60);
+      displayValue = `${m} min`;
+      break;
+    }
+    case 'first_milestone':
+      switch (prSubtype) {
+        case 'first_1k':
+          displayLabel = 'first 1K';
+          break;
+        case 'first_3k':
+          displayLabel = 'first 3K';
+          break;
+        case 'first_5k':
+          displayLabel = 'first 5K';
+          break;
+        case 'first_30min_no_walk':
+          displayLabel = 'first 30-minute nonstop session';
+          break;
+        default:
+          displayLabel = 'first milestone';
+      }
+      displayValue = '';
+      break;
+  }
+
+  let previousDisplay: string | null = null;
+  if (previousValue !== null) {
+    switch (prType) {
+      case 'fastest_pace':
+      case 'fastest_1k_split':
+        previousDisplay = `Previous: ${formatPace(previousValue)}`;
+        break;
+      case 'longest_distance':
+        previousDisplay = `Previous: ${(previousValue / 1000).toFixed(2)} km`;
+        break;
+      case 'longest_duration':
+        previousDisplay = `Previous: ${Math.floor(previousValue / 60)} min`;
+        break;
+    }
+  }
+
+  return {
+    type: prType as NonNullable<CoachMessageContext['postSessionPr']>['type'],
+    subtype: prSubtype,
+    displayLabel,
+    displayValue,
+    previousDisplay,
+  };
+}
 
 // ─── Quiet hours (same logic as send-push-notification) ──────────────────
 
@@ -181,6 +264,50 @@ async function gatherContext(
     }
   }
 
+  // post_session: pull PR + comparison that were detected at session save.
+  // triggerReferenceId for this trigger is the session_id, so we can fetch
+  // any personal_records rows that point to it directly.
+  if (trigger === 'post_session') {
+    try {
+      const { data: prRows } = await supabase
+        .from('personal_records')
+        .select('pr_type, pr_subtype, value, previous_value, confidence, metadata')
+        .eq('user_id', profile.id)
+        .eq('session_id', triggerReferenceId);
+
+      if (prRows && prRows.length > 0) {
+        // Pick the single most "impressive" PR using the same ranking as the
+        // client banner: milestones > distance > duration > pace > 1k split.
+        const order: Record<string, number> = {
+          first_milestone: 0,
+          longest_distance: 1,
+          longest_duration: 2,
+          fastest_pace: 3,
+          fastest_1k_split: 4,
+          highest_cadence: 5,
+        };
+        const sorted = [...prRows].sort(
+          (a: Record<string, unknown>, b: Record<string, unknown>) =>
+            (order[a.pr_type as string] ?? 99) - (order[b.pr_type as string] ?? 99),
+        );
+        const top = sorted[0] as Record<string, unknown>;
+        ctx.postSessionPr = formatPrForPrompt(
+          top.pr_type as string,
+          top.pr_subtype as string | null,
+          top.value as number,
+          top.previous_value as number | null,
+        );
+      }
+    } catch (e) {
+      // Best-effort — fall back to PR-less message if the table query fails.
+      console.warn('gatherContext PR fetch failed:', (e as Error).message);
+    }
+    // Comparison is not currently persisted across the schedule boundary;
+    // we'd need to add a `comparison_snapshots` table to surface it in the
+    // coach message. For V2, surfacing the PR is the priority; comparison
+    // is V2.1 to extend the coach message richness.
+  }
+
   // weekly_recap: aggregate this week's stats
   if (trigger === 'weekly_recap') {
     const tz = profile.timezone || 'UTC';
@@ -249,6 +376,24 @@ async function generateMessage(
     return { text: cleaned, method: 'claude' };
   } catch (err) {
     console.warn('Claude generation failed, falling back:', (err as Error).message);
+    // V2 Auto-PRs: if a PR was set in this session and Claude fell over,
+    // route through the PR-aware fallback so we don't drop the
+    // acknowledgment entirely.
+    if (trigger === 'post_session' && ctx.postSessionPr) {
+      const pr = ctx.postSessionPr;
+      const isMilestone = pr.type === 'first_milestone';
+      const milestoneText = isMilestone ? pr.displayLabel : null;
+      return {
+        text: pickPostSessionFallbackWithPr(
+          ctx.userFirstName,
+          pr.displayLabel,
+          pr.displayValue,
+          isMilestone,
+          milestoneText,
+        ),
+        method: 'fallback',
+      };
+    }
     return { text: pickFallback(trigger, ctx.userFirstName), method: 'fallback' };
   }
 }
