@@ -52,6 +52,14 @@ export const EVENTS = {
   coach_message_opened: 'coach_message_opened',
   coach_message_replied: 'coach_message_replied',
   coach_message_failed: 'coach_message_failed',
+
+  // Auto-Detected PRs (V2). `pr_detected` + `comparison_shown` fire
+  // server-side from detect-personal-records; `pr_viewed` + `pr_shared`
+  // are client-side. Success metric: % users who set ≥1 PR in 2 weeks (60%+).
+  pr_detected: 'pr_detected',
+  pr_viewed: 'pr_viewed',
+  pr_shared: 'pr_shared',
+  comparison_shown: 'comparison_shown',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

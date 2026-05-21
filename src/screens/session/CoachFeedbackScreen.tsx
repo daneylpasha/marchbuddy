@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,11 @@ import {
   useDistanceUnit,
 } from '../../utils/distanceUtils';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
+import { detectPrsForSession } from '../../services/prApi';
+import type { Comparison, PersonalRecord } from '../../types/personalRecord';
+import { PrBanner } from './components/PrBanner';
+import { ComparisonCard } from './components/ComparisonCard';
+import { analytics, EVENTS } from '../../services/analytics';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'CoachFeedback'>;
 
@@ -28,10 +33,41 @@ const SESSIONS_TO_LEVEL_UP = 3;
 const MAX_LEVEL = 16;
 
 export default function CoachFeedbackScreen({ navigation, route }: Props) {
-  const { coachFeedback, progressUpdate, session, shareAfter } = route.params;
+  const { coachFeedback, progressUpdate, session, shareAfter, sessionId } = route.params;
   const { progress } = useRunProgressStore();
   const { isLevelLocked, openPaywall } = useSubscriptionStore();
   const justLockedIn = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
+
+  // V2 Auto-PRs: async fetch on mount. Banner slides in when result lands.
+  // Never blocks the rest of the screen — pure additive UX.
+  const [prs, setPrs] = useState<PersonalRecord[]>([]);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await detectPrsForSession(sessionId);
+      if (cancelled || !result) return;
+      setPrs(result.prs);
+      setComparison(result.comparison);
+
+      // V2 Auto-PRs analytics: fire pr_viewed (surface='summary') for each
+      // PR that landed on the banner, and comparison_shown surfaced=true
+      // for the comparison if one rendered without a PR.
+      for (const pr of result.prs) {
+        analytics.track(EVENTS.pr_viewed, {
+          surface: 'summary',
+          pr_id: pr.id,
+          pr_type: pr.pr_type,
+          pr_subtype: pr.pr_subtype ?? null,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   // Entrance animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -65,8 +101,9 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
   const handleShare = () => {
     // Hand off to the dedicated share-card screen so users get a properly
     // composed, branded image (with route map) instead of a raw screenshot
-    // of this feedback view.
-    navigation.navigate('ShareSession', { session });
+    // of this feedback view. Pass any PRs we already fetched so the share
+    // card can show a "New PR" badge.
+    navigation.navigate('ShareSession', { session, prs: prs.length > 0 ? prs : undefined });
   };
 
   const unit = useDistanceUnit();
@@ -84,6 +121,9 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
           style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
         >
           <View style={styles.captureArea}>
+            {/* V2 Auto-PRs: prominent banner above the hero when a PR was set */}
+            {prs.length > 0 ? <PrBanner prs={prs} /> : null}
+
             {/* ── Hero checkmark ── */}
             <View style={styles.heroSection}>
               <Animated.View style={[styles.glowRing, { transform: [{ scale: checkScaleAnim }] }]}>
@@ -94,6 +134,10 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
               <Text style={styles.heroTitle}>Session{'\n'}Complete</Text>
               <Text style={styles.heroSubtitle}>{session.planTitle}</Text>
             </View>
+
+            {/* V2 Auto-PRs: smaller comparison card when no PR but improvement detected.
+                Per spec: only one or the other — banner OR card, never both. */}
+            {prs.length === 0 && comparison ? <ComparisonCard comparison={comparison} /> : null}
 
             {/* ── Session stats ── */}
             <View style={styles.sessionStatsRow}>

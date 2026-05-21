@@ -26,6 +26,8 @@ import {
 } from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
+import { analytics, EVENTS } from '../../services/analytics';
+import { prTypeLabel, type PersonalRecord } from '../../types/personalRecord';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'ShareSession'>;
 
@@ -54,10 +56,29 @@ function formatDate(iso: string): string {
 }
 
 export default function ShareSessionScreen({ navigation, route }: Props) {
-  const { session } = route.params;
+  const { session, prs } = route.params;
   const shareCardRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // V2 Auto-PRs: featured PR for the badge (same ranking as PrBanner).
+  const featuredPr: PersonalRecord | null = React.useMemo(() => {
+    if (!prs || prs.length === 0) return null;
+    const order: PersonalRecord['pr_type'][] = [
+      'first_milestone',
+      'longest_distance',
+      'longest_duration',
+      'fastest_pace',
+      'fastest_1k_split',
+      'highest_cadence',
+    ];
+    return [...prs].sort(
+      (a, b) => order.indexOf(a.pr_type) - order.indexOf(b.pr_type),
+    )[0];
+  }, [prs]);
+  const badgeLabel = featuredPr
+    ? prTypeLabel(featuredPr.pr_type, featuredPr.pr_subtype)
+    : null;
 
   const isOutdoor = session.environment !== 'indoor';
   const hasRoute = isOutdoor && session.route && session.route.length >= 2;
@@ -93,6 +114,18 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
           mimeType: 'image/png',
           dialogTitle: 'Share your MarchBuddy session',
         });
+        // V2 Auto-PRs: fire pr_shared once per share that includes a PR
+        // badge. We can't tell which sharing destination the user picked
+        // (iOS / Android system sheet hides that), so we log destination
+        // as 'system_sheet'. Track only if a PR was on the card.
+        if (featuredPr) {
+          analytics.track(EVENTS.pr_shared, {
+            pr_id: featuredPr.id,
+            pr_type: featuredPr.pr_type,
+            pr_subtype: featuredPr.pr_subtype ?? null,
+            share_destination: 'system_sheet',
+          });
+        }
       } else {
         Alert.alert('Sharing not available on this device');
       }
@@ -146,6 +179,23 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
               </View>
               <Text style={styles.cardDate}>{formatDate(session.completedAt)}</Text>
             </View>
+
+            {/* V2 Auto-PRs: "New PR" badge — overlay on the card so it gets
+                captured in the share image. Only renders when a PR was set. */}
+            {featuredPr ? (
+              <View style={styles.prBadge}>
+                <Ionicons
+                  name={featuredPr.pr_type === 'first_milestone' ? 'flag' : 'trophy'}
+                  size={12}
+                  color="#0A0A0A"
+                />
+                <Text style={styles.prBadgeText} numberOfLines={1}>
+                  {featuredPr.pr_type === 'first_milestone' ? 'NEW MILESTONE' : 'NEW PR'}
+                  {' · '}
+                  {badgeLabel}
+                </Text>
+              </View>
+            ) : null}
 
             {/* Map / fallback */}
             <View style={styles.mapBlock}>
@@ -316,6 +366,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 12,
+  },
+  // V2 Auto-PRs: gold ribbon overlay anchored top-right of the share card.
+  prBadge: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFD466',
+    gap: 4,
+    maxWidth: 200,
+    // Subtle drop shadow on the colored badge so it pops off the dark card.
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    zIndex: 10,
+  },
+  prBadgeText: {
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: '#0A0A0A',
   },
   brandRow: {
     flexDirection: 'row',
