@@ -62,11 +62,8 @@ export const CoachChatScreen: React.FC = () => {
   }, []);
 
   // Re-sync proactive messages on tab focus + on app foreground.
-  // `coach_message_opened` analytics fire inside `markAsRead` (drained from
-  // a pending queue populated by sync), so events only fire when the user
-  // actually focuses the Coach tab — not on silent background fetches.
-  // The store's `syncProactiveMessages` has its own reentrancy guard, so
-  // multiple call sites firing simultaneously is safe.
+  // Both fire `coach_message_opened` indirectly via the store's
+  // de-duplicated merge — analytics inside the store handles it.
   useFocusEffect(
     React.useCallback(() => {
       void syncProactiveMessages();

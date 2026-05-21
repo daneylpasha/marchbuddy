@@ -24,11 +24,6 @@ interface ChatState {
   // Proactive messages that have been fetched but the user hasn't actually
   // viewed yet. Drained by markAsRead() (which fires when Coach tab focuses).
   pendingOpenedEvents: PendingOpenedEvent[];
-  // Reentrancy guard for syncProactiveMessages. Multiple call sites can fire
-  // sync at the same time (useEffect + useFocusEffect + AppState listener
-  // all trigger on app open) — without this flag they race and we end up
-  // with duplicate messages appended to chat.
-  isSyncingProactive: boolean;
 
   addMessage: (message: ChatMessage) => void;
   addCoachMessage: (content: string) => void;
@@ -59,7 +54,6 @@ export const useChatStore = create<ChatState>()(
       hasUnread: false,
       lastProactiveSyncAt: null,
       pendingOpenedEvents: [],
-      isSyncingProactive: false,
 
       addMessage: (message) => {
         set((state) => ({
@@ -131,120 +125,68 @@ export const useChatStore = create<ChatState>()(
         const { messages } = get();
         if (messages.length === 0) {
           set({ messages: [createWelcomeMessage(userName)] });
-          return;
-        }
-        // Self-heal: prior versions had a race that could duplicate proactive
-        // coach messages in AsyncStorage. On mount, collapse duplicates by
-        // serverScheduleId (keep first occurrence). One-time cost; no-op once
-        // the persisted state is clean.
-        const seen = new Set<string>();
-        const deduped: ChatMessage[] = [];
-        let removed = 0;
-        for (const m of messages) {
-          if (m.serverScheduleId) {
-            if (seen.has(m.serverScheduleId)) {
-              removed++;
-              continue;
-            }
-            seen.add(m.serverScheduleId);
-          }
-          deduped.push(m);
-        }
-        if (removed > 0) {
-          console.warn(`[chatStore] removed ${removed} duplicate proactive message(s) from persisted state`);
-          set({ messages: deduped });
         }
       },
 
       // Pulls any new server-generated coach messages and appends them.
       // De-dup by serverScheduleId so re-syncs are no-ops.
       // Returns the number of NEW messages added.
-      //
-      // CONCURRENCY: this function can be called from multiple places on
-      // app open (useEffect mount + useFocusEffect + AppState 'active').
-      // We use an isSyncingProactive guard + an atomic in-set dedup so
-      // overlapping calls never produce duplicate chat entries.
       syncProactiveMessages: async () => {
-        // Guard: if another sync is already in flight, skip. The in-flight
-        // one will pick up everything pending; running a duplicate fetch
-        // just wastes a network round-trip and risks racing on the dedup.
-        if (get().isSyncingProactive) return 0;
-        set({ isSyncingProactive: true });
-
         try {
           const { data: authData } = await supabase.auth.getUser();
           const userId = authData?.user?.id;
           if (!userId) return 0;
 
+          const state = get();
           const result = await fetchProactiveCoachMessages(
             userId,
-            get().lastProactiveSyncAt,
+            state.lastProactiveSyncAt,
           );
-
           if (result.messages.length === 0) {
             // Still bump the watermark if the server gave us a new one
             // (no new messages, but ack the sync).
-            if (result.latestSentAt) {
-              set((s) =>
-                result.latestSentAt && result.latestSentAt !== s.lastProactiveSyncAt
-                  ? { lastProactiveSyncAt: result.latestSentAt }
-                  : {},
-              );
+            if (result.latestSentAt && result.latestSentAt !== state.lastProactiveSyncAt) {
+              set({ lastProactiveSyncAt: result.latestSentAt });
             }
             return 0;
           }
 
-          // Snapshot a few values from the fetch result so we can compute
-          // them once here, then do the actual dedup ATOMICALLY inside the
-          // set() callback below. Doing dedup against `get().messages`
-          // outside the set callback would race with a concurrent sync
-          // (or any other store mutation) and re-introduce duplicates.
-          const now = Date.now();
-          const fetchedLatest = result.latestSentAt;
-          const fetched = result.messages;
+          const existingIds = new Set(state.messages.map((m) => m.serverScheduleId).filter(Boolean));
+          const novel = result.messages.filter(
+            (m) => !m.serverScheduleId || !existingIds.has(m.serverScheduleId),
+          );
 
-          let addedCount = 0;
-          set((s) => {
-            const existingIds = new Set(
-              s.messages.map((m) => m.serverScheduleId).filter(Boolean),
-            );
-            const novel = fetched.filter(
-              (m) => !m.serverScheduleId || !existingIds.has(m.serverScheduleId),
-            );
-            addedCount = novel.length;
-
-            if (novel.length === 0) {
-              return fetchedLatest && fetchedLatest !== s.lastProactiveSyncAt
-                ? { lastProactiveSyncAt: fetchedLatest }
-                : {};
+          if (novel.length === 0) {
+            if (result.latestSentAt) {
+              set({ lastProactiveSyncAt: result.latestSentAt });
             }
+            return 0;
+          }
 
-            // Queue these messages for `coach_message_opened` tracking —
-            // we only fire that event when the user actually focuses the
-            // Coach tab (handled in markAsRead). Fetching silently in the
-            // background should NOT count as "opened".
-            const newPending: PendingOpenedEvent[] = novel
-              .filter((m) => m.proactiveTrigger && m.serverScheduleId)
-              .map((m) => ({
-                scheduleId: m.serverScheduleId!,
-                triggerType: m.proactiveTrigger!,
-                fetchedAt: now,
-              }));
+          // Queue these messages for `coach_message_opened` tracking — we
+          // only fire that event when the user actually focuses the Coach
+          // tab (handled in markAsRead). Fetching silently in the
+          // background should NOT count as "opened".
+          const now = Date.now();
+          const newPending: PendingOpenedEvent[] = novel
+            .filter((m) => m.proactiveTrigger && m.serverScheduleId)
+            .map((m) => ({
+              scheduleId: m.serverScheduleId!,
+              triggerType: m.proactiveTrigger!,
+              fetchedAt: now,
+            }));
 
-            return {
-              messages: [...s.messages, ...novel],
-              hasUnread: true,
-              lastProactiveSyncAt: fetchedLatest ?? s.lastProactiveSyncAt,
-              pendingOpenedEvents: [...s.pendingOpenedEvents, ...newPending],
-            };
-          });
+          set((s) => ({
+            messages: [...s.messages, ...novel],
+            hasUnread: true,
+            lastProactiveSyncAt: result.latestSentAt ?? s.lastProactiveSyncAt,
+            pendingOpenedEvents: [...s.pendingOpenedEvents, ...newPending],
+          }));
 
-          return addedCount;
+          return novel.length;
         } catch (e) {
           console.warn('syncProactiveMessages failed:', e);
           return 0;
-        } finally {
-          set({ isSyncingProactive: false });
         }
       },
     }),
