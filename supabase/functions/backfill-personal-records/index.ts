@@ -120,6 +120,24 @@ Deno.serve(async (req: Request) => {
   if (corsResp) return corsResp;
 
   try {
+    // ── SECURITY: service-role-only endpoint ────────────────────────────
+    // This function processes EVERY user in the database via service-role
+    // queries (RLS bypass). Even though Supabase verifies the JWT by
+    // default, any signed-in user has a valid JWT — without this gate they
+    // could trigger expensive global scans. Require the caller's
+    // Authorization header to carry the project's service_role key.
+    const authHeader = req.headers.get('authorization') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    // The header is "Bearer <key>". We compare the substring to dodge any
+    // whitespace/casing drift. constant-time compare is overkill here since
+    // the key is server-side; equality on a long random string is fine.
+    if (!serviceRoleKey || !authHeader.includes(serviceRoleKey)) {
+      return new Response(
+        JSON.stringify({ error: 'service_role_required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,

@@ -105,8 +105,11 @@ export function isSessionEligibleForPrs(s: SessionRecord): {
 }
 
 export function computeConfidence(s: SessionRecord): PrConfidence {
-  // Manual treadmill entries: confidence='low' (user self-reported numbers).
-  if (s.environment === 'indoor' && s.treadmill_stats) {
+  // Indoor sessions ALWAYS get low confidence. There is no GPS indoors, so
+  // every indoor session is self-reported by definition — whether or not
+  // treadmill_stats was supplied. Spec §6: "Manual treadmill entries: PRs
+  // allowed but visually distinguished — user knows they self-reported."
+  if (s.environment === 'indoor') {
     return 'low';
   }
   // Outdoor GPS sessions: if any route point has accuracy worse than the
