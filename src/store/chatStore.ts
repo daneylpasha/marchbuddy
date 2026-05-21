@@ -251,6 +251,26 @@ export const useChatStore = create<ChatState>()(
     {
       name: 'march-buddy-chat',
       storage: createJSONStorage(() => AsyncStorage),
+      // Exclude transient/in-flight state from persistence.
+      //
+      // Without this, a crash or force-quit mid-sync would persist
+      // `isSyncingProactive: true`, and on next launch the rehydrated
+      // state would block ALL future syncProactiveMessages calls forever
+      // (the reentrancy guard would think a sync is still in flight).
+      //
+      // `pendingOpenedEvents` IS persisted intentionally: if the user
+      // received a proactive message, then closed the app before
+      // focusing the Coach tab, the `coach_message_opened` event should
+      // still fire when they finally view it on the next session.
+      partialize: (state) => ({
+        messages: state.messages,
+        hasUnread: state.hasUnread,
+        lastProactiveSyncAt: state.lastProactiveSyncAt,
+        pendingOpenedEvents: state.pendingOpenedEvents,
+        // Deliberately NOT persisted:
+        //   - isLoading (typing indicator must never survive restart)
+        //   - isSyncingProactive (reentrancy guard, must reset each session)
+      }),
     },
   ),
 );
