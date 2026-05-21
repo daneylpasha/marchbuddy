@@ -367,11 +367,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  // V2 Auto-PRs: gold ribbon overlay anchored top-right of the share card.
+  // V2 Auto-PRs: gold ribbon overlay anchored top-LEFT of the map area so
+  // it doesn't fight with the cardDate in the header strip on the right.
+  // Positioned just below the header (paddingTop 16 + brand row ~24px =
+  // header ends near y=52) so the badge floats over the top of the map.
   prBadge: {
     position: 'absolute',
-    top: 14,
-    right: 14,
+    top: 60,
+    left: 14,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 5,
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#FFD466',
     gap: 4,
-    maxWidth: 200,
+    maxWidth: CARD_WIDTH - 28,
     // Subtle drop shadow on the colored badge so it pops off the dark card.
     shadowColor: '#000',
     shadowOpacity: 0.25,
