@@ -471,13 +471,19 @@ export default function SettingsScreen() {
               />
             }
           />
+          {/*
+            Proactive Coach intentionally has NO `disabled` gate on notif
+            permission. Unlike Session Reminders / Motivational Check-ins
+            (which are push-only), proactive coach also delivers as chat
+            messages — so the user should be able to toggle this even when
+            notifications are not granted.
+          */}
           <SettingsRow
             label="Proactive Coach"
             rightElement={
               <AppSwitch
                 value={prefs.coach_proactive !== false}
                 onValueChange={(v) => setPref('coach_proactive', v)}
-                disabled={!quietHoursGranted}
                 accessibilityLabel="Proactive Coach"
               />
             }

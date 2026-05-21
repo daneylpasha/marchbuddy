@@ -6,12 +6,24 @@ import { fetchProactiveCoachMessages } from '../services/proactiveCoachApi';
 import { supabase } from '../api/supabase';
 import { analytics, EVENTS } from '../services/analytics';
 
+// Per-pending-open record. Holds the bare minimum needed to fire
+// `coach_message_opened` when the user actually focuses the Coach tab
+// (not when the message is silently fetched in the background).
+interface PendingOpenedEvent {
+  scheduleId: string;
+  triggerType: string;
+  fetchedAt: number; // epoch ms — used to compute "delay from send to view"
+}
+
 interface ChatState {
   messages: ChatMessage[];
   isLoading: boolean;
   hasUnread: boolean;
   // High-water mark for incremental proactive-message sync.
   lastProactiveSyncAt: string | null;
+  // Proactive messages that have been fetched but the user hasn't actually
+  // viewed yet. Drained by markAsRead() (which fires when Coach tab focuses).
+  pendingOpenedEvents: PendingOpenedEvent[];
 
   addMessage: (message: ChatMessage) => void;
   addCoachMessage: (content: string) => void;
@@ -41,6 +53,7 @@ export const useChatStore = create<ChatState>()(
       isLoading: false,
       hasUnread: false,
       lastProactiveSyncAt: null,
+      pendingOpenedEvents: [],
 
       addMessage: (message) => {
         set((state) => ({
@@ -85,7 +98,26 @@ export const useChatStore = create<ChatState>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
-      markAsRead: () => set({ hasUnread: false }),
+      markAsRead: () => {
+        // Drain any queued proactive messages and fire `coach_message_opened`
+        // for each ONE TIME, only when the user actually views the tab.
+        // This is the correct semantic for the spec metric ("user opened
+        // Coach tab within 1 hour of send") — firing on silent fetch would
+        // inflate the metric.
+        const queue = get().pendingOpenedEvents;
+        if (queue.length > 0) {
+          for (const ev of queue) {
+            analytics.track(EVENTS.coach_message_opened, {
+              trigger_type: ev.triggerType,
+              schedule_id: ev.scheduleId,
+              latency_ms: Date.now() - ev.fetchedAt,
+            });
+          }
+          set({ hasUnread: false, pendingOpenedEvents: [] });
+          return;
+        }
+        set({ hasUnread: false });
+      },
 
       clearChat: () => set({ messages: [], hasUnread: false }),
 
@@ -131,24 +163,25 @@ export const useChatStore = create<ChatState>()(
             return 0;
           }
 
+          // Queue these messages for `coach_message_opened` tracking — we
+          // only fire that event when the user actually focuses the Coach
+          // tab (handled in markAsRead). Fetching silently in the
+          // background should NOT count as "opened".
+          const now = Date.now();
+          const newPending: PendingOpenedEvent[] = novel
+            .filter((m) => m.proactiveTrigger && m.serverScheduleId)
+            .map((m) => ({
+              scheduleId: m.serverScheduleId!,
+              triggerType: m.proactiveTrigger!,
+              fetchedAt: now,
+            }));
+
           set((s) => ({
             messages: [...s.messages, ...novel],
             hasUnread: true,
             lastProactiveSyncAt: result.latestSentAt ?? s.lastProactiveSyncAt,
+            pendingOpenedEvents: [...s.pendingOpenedEvents, ...newPending],
           }));
-
-          // Fire `coach_message_opened` for each as soon as it lands in the
-          // user's local chat — the spec defines this as "user opened Coach
-          // tab within 1h of send". This timing approximation is close
-          // enough for V2; we can tighten later if needed.
-          for (const m of novel) {
-            if (m.proactiveTrigger && m.serverScheduleId) {
-              analytics.track(EVENTS.coach_message_opened, {
-                trigger_type: m.proactiveTrigger,
-                schedule_id: m.serverScheduleId,
-              });
-            }
-          }
 
           return novel.length;
         } catch (e) {

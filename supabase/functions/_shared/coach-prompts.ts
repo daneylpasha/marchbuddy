@@ -31,6 +31,11 @@ HARD RULES (these break the product if violated):
 - Never ask a question that requires an answer the user can't act on.
 - Never reference their name awkwardly — use it only if it feels natural; skipping it is fine.
 - Do NOT prefix with "Hey [name]," every time. Vary openings.
+- NEVER invent numbers (duration in minutes, distance in km, calories,
+  streak count) that were not explicitly provided in the user context.
+  If a number isn't given, reference the activity without quantifying it.
+  "Today's session is on the schedule" is fine; "Today's 20-min run"
+  is NOT fine unless the context explicitly says 20 min.
 
 TONE:
 - Knowledgeable friend who happens to coach. Not a drill sergeant. Not a therapist.
@@ -93,7 +98,8 @@ export interface CoachMessageContext {
   // session_morning only
   todaysPlannedSession?: {
     title: string;
-    durationMinutes: number;
+    // null = duration unknown. Claude is instructed not to invent a number.
+    durationMinutes: number | null;
     difficulty: 'easy' | 'moderate' | 'hard' | null;
   } | null;
   // weekly_recap only
@@ -143,8 +149,12 @@ export function buildUserPrompt(
 
   if (trigger === 'session_morning' && ctx.todaysPlannedSession) {
     const p = ctx.todaysPlannedSession;
+    const durationStr =
+      p.durationMinutes !== null && p.durationMinutes > 0
+        ? `${p.durationMinutes} min`
+        : 'duration unknown — DO NOT invent a number, just reference the session by title';
     lines.push(
-      `- TODAY'S PLANNED SESSION: "${p.title}", ${p.durationMinutes} min, difficulty: ${p.difficulty ?? 'unknown'}`,
+      `- TODAY'S PLANNED SESSION: "${p.title}", ${durationStr}, difficulty: ${p.difficulty ?? 'unknown'}`,
     );
   }
   if (trigger === 'weekly_recap' && ctx.weekStats) {

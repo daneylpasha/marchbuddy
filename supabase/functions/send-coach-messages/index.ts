@@ -371,17 +371,17 @@ async function processRow(
     return;
   }
 
-  // Push notification — respect quiet hours + token presence + session_reminders
-  // pref umbrella. The spec says "if user disabled coach notifications, chat
-  // appears, push suppressed" — we treat coach_proactive as the master
-  // (already checked above) and session_reminders as the push-only gate.
+  // Push notification — respect quiet hours + token presence.
+  //
+  // Design decision: `coach_proactive` is the SOLE gate for this feature
+  // (checked above). We deliberately do NOT couple to `session_reminders`,
+  // which controls a different category (upcoming-session local alerts).
+  // Coupling them was a code-review finding — a user disabling pre-session
+  // reminders should NOT silently lose proactive coach pushes.
   const quietStart = (prefs.quiet_hours_start as number) ?? DEFAULT_QUIET_START;
   const quietEnd = (prefs.quiet_hours_end as number) ?? DEFAULT_QUIET_END;
   const inQuietHours = isQuietHoursForUser(profile.timezone || 'UTC', quietStart, quietEnd);
-  const pushAllowed =
-    !!profile.expo_push_token &&
-    !inQuietHours &&
-    prefs.session_reminders !== false;
+  const pushAllowed = !!profile.expo_push_token && !inQuietHours;
 
   if (pushAllowed) {
     try {
