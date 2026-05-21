@@ -175,6 +175,31 @@ interface PendingInsert {
   scheduled_for: string; // ISO
 }
 
+// PostHog server-side capture — best-effort, silent on failure.
+async function fireAnalyticsServer(
+  event: string,
+  properties: Record<string, unknown>,
+): Promise<void> {
+  const phKey = Deno.env.get('POSTHOG_API_KEY');
+  const phHost = Deno.env.get('POSTHOG_HOST') || 'https://app.posthog.com';
+  if (!phKey) return;
+  try {
+    await fetch(`${phHost}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: phKey,
+        event,
+        distinct_id: properties.user_id ?? 'unknown',
+        properties: { ...properties, source: 'edge-function' },
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    console.warn('PostHog server capture failed:', (e as Error).message);
+  }
+}
+
 async function queueRow(
   supabase: SupabaseClient,
   row: PendingInsert,
@@ -192,7 +217,16 @@ async function queueRow(
     console.error('queueRow error:', error.message, row);
     return 'error';
   }
-  return data && data.length > 0 ? 'inserted' : 'duplicate';
+  const wasInserted = data && data.length > 0;
+  if (wasInserted) {
+    // Fire-and-forget — don't await, don't block the scan loop.
+    void fireAnalyticsServer('coach_message_scheduled', {
+      user_id: row.user_id,
+      trigger_type: row.trigger_type,
+      scheduled_for: row.scheduled_for,
+    });
+  }
+  return wasInserted ? 'inserted' : 'duplicate';
 }
 
 // ─── Per-trigger scanners ─────────────────────────────────────────────────

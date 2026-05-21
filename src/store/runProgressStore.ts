@@ -3,6 +3,27 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProgress, SessionRecord } from '../types/session';
 import { getWeekStartDate } from '../utils/sessionUtils';
+import { supabase } from '../api/supabase';
+
+/**
+ * Best-effort write of `profiles.comeback_completed_at` so the V2 Proactive
+ * Coach Messages Edge Functions know to suppress proactive messages for the
+ * 48-hour window after a comeback flow completes. Silent on failure — local
+ * comeback handling still proceeds correctly.
+ */
+async function writeComebackCompletedAtRemote(): Promise<void> {
+  try {
+    const { data } = await supabase.auth.getUser();
+    const userId = data?.user?.id;
+    if (!userId) return;
+    await supabase
+      .from('profiles')
+      .update({ comeback_completed_at: new Date().toISOString() })
+      .eq('id', userId);
+  } catch (err) {
+    console.warn('writeComebackCompletedAtRemote failed:', err);
+  }
+}
 
 interface RunProgressState {
   progress: UserProgress | null;
@@ -193,6 +214,15 @@ export const useRunProgressStore = create<RunProgressState>()(
       markComebackHandled: () => {
         const today = new Date().toISOString().split('T')[0];
         set({ comebackHandledToday: today });
+        // V2 Proactive Coach Messages — write a server-side timestamp so the
+        // schedule-coach-messages / send-coach-messages Edge Functions know
+        // to suppress proactive messages for 48 hours after a comeback flow
+        // completes (spec §7 edge case: "User in middle of comeback flow →
+        // Pause all proactive messages for 48 hours after comeback
+        // completion"). Best-effort: failure here doesn't break the comeback
+        // flow itself — the user just gets one extra proactive message that
+        // would otherwise have been suppressed.
+        void writeComebackCompletedAtRemote();
       },
 
       shouldShowComeback: () => {
