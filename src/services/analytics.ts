@@ -42,6 +42,16 @@ export const EVENTS = {
   starting_level_captured: 'starting_level_captured',
   free_chat_limit_hit: 'free_chat_limit_hit',
   level_locked_view: 'level_locked_view',
+
+  // Proactive Coach Messages (V2). `coach_message_scheduled` + `_sent` +
+  // `_failed` fire server-side from the Edge Function; `_opened` and
+  // `_replied` are client-side signals. Keep names in sync with the Edge
+  // Function (supabase/functions/send-coach-messages/index.ts).
+  coach_message_scheduled: 'coach_message_scheduled',
+  coach_message_sent: 'coach_message_sent',
+  coach_message_opened: 'coach_message_opened',
+  coach_message_replied: 'coach_message_replied',
+  coach_message_failed: 'coach_message_failed',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

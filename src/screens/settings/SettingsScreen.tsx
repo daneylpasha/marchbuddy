@@ -472,6 +472,17 @@ export default function SettingsScreen() {
             }
           />
           <SettingsRow
+            label="Proactive Coach"
+            rightElement={
+              <AppSwitch
+                value={prefs.coach_proactive !== false}
+                onValueChange={(v) => setPref('coach_proactive', v)}
+                disabled={!quietHoursGranted}
+                accessibilityLabel="Proactive Coach"
+              />
+            }
+          />
+          <SettingsRow
             label="Quiet Hours"
             value={
               prefs.quiet_hours_start === prefs.quiet_hours_end

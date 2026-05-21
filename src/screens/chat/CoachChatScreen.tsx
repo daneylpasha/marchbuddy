@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, KeyboardAvoidingView, Platform, View, Text } from 'react-native';
+import { FlatList, StyleSheet, KeyboardAvoidingView, Platform, View, Text, AppState, type AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 
 import { useChatStore } from '../../store/chatStore';
@@ -38,6 +38,7 @@ export const CoachChatScreen: React.FC = () => {
     setLoading,
     initializeChat,
     markAsRead,
+    syncProactiveMessages,
   } = useChatStore();
 
   const { setPlanAdjustment } = useSessionStore();
@@ -55,8 +56,30 @@ export const CoachChatScreen: React.FC = () => {
   useEffect(() => {
     initializeChat(setupData.userName || 'there');
     markAsRead();
+    // Initial sync of any proactive messages the server has queued.
+    void syncProactiveMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-sync proactive messages on tab focus + on app foreground.
+  // Both fire `coach_message_opened` indirectly via the store's
+  // de-duplicated merge — analytics inside the store handles it.
+  useFocusEffect(
+    React.useCallback(() => {
+      void syncProactiveMessages();
+      markAsRead();
+    }, [syncProactiveMessages, markAsRead]),
+  );
+
+  useEffect(() => {
+    const handleAppState = (status: AppStateStatus) => {
+      if (status === 'active') {
+        void syncProactiveMessages();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppState);
+    return () => sub.remove();
+  }, [syncProactiveMessages]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -152,6 +175,24 @@ export const CoachChatScreen: React.FC = () => {
 
     setShowQuickActions(false);
     setHasUsedQuickAction(true);
+
+    // V2 — if the most recent proactive coach message is within 24h, attribute
+    // this user message as a reply to it (success metric: % users who reply
+    // to a proactive within week 1).
+    const recentProactive = [...useChatStore.getState().messages]
+      .reverse()
+      .find((m) => m.proactiveTrigger && m.serverScheduleId);
+    if (recentProactive) {
+      const sentAt = new Date(recentProactive.timestamp).getTime();
+      if (Date.now() - sentAt < 24 * 60 * 60 * 1000) {
+        analytics.track(EVENTS.coach_message_replied, {
+          trigger_type: recentProactive.proactiveTrigger,
+          schedule_id: recentProactive.serverScheduleId,
+          hours_since_proactive: Number(((Date.now() - sentAt) / 36e5).toFixed(1)),
+        });
+      }
+    }
+
     addUserMessage(text, imageUri);
     setLoading(true);
 
