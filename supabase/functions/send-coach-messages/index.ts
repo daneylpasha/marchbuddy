@@ -158,8 +158,11 @@ async function gatherContext(
       .eq('id', triggerReferenceId)
       .maybeSingle();
     if (planned) {
-      // We don't have duration on scheduled_sessions directly; approximate
-      // from the latest sessions row of the same title, else mark unknown.
+      // Duration isn't stored on scheduled_sessions directly. Best-effort
+      // lookup from the latest matching `sessions` row of the same title;
+      // if we don't find one, pass null and let the prompt instruct Claude
+      // to NOT invent a number. Previously we defaulted to 20 min which
+      // could surface a wrong duration in the message text.
       const { data: lookup } = await supabase
         .from('sessions')
         .select('planned_duration_minutes')
@@ -167,11 +170,12 @@ async function gatherContext(
         .eq('plan_title', planned.session_title)
         .order('completed_at', { ascending: false })
         .limit(1);
-      const duration =
-        (lookup?.[0]?.planned_duration_minutes as number | undefined) ?? 0;
+      const rawDuration = lookup?.[0]?.planned_duration_minutes as number | undefined;
+      const durationMinutes =
+        typeof rawDuration === 'number' && rawDuration > 0 ? Math.round(rawDuration) : null;
       ctx.todaysPlannedSession = {
         title: planned.session_title as string,
-        durationMinutes: Math.round(duration) || 20,
+        durationMinutes,
         difficulty: null,
       };
     }
