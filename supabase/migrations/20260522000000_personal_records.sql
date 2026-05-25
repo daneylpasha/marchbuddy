@@ -71,21 +71,34 @@ create table if not exists public.personal_records (
   -- (e.g. add gps_accuracy_m, distance_bucket_m, segment_index for the
   -- specific 1k split) without further migrations.
   metadata        jsonb not null default '{}'::jsonb,
-  created_at      timestamptz not null default now(),
-
-  -- Idempotency: detection re-runs against the same session must not
-  -- produce duplicate rows. Includes pr_subtype so multiple first_milestone
-  -- types from a single session (e.g. user hits both first_1k and first_3k
-  -- in their first long session) are allowed.
-  unique (user_id, pr_type, coalesce(pr_subtype, ''), session_id)
+  created_at      timestamptz not null default now()
 );
+
+-- Ensure all columns exist even if the table was created in a partial prior run.
+alter table public.personal_records
+  add column if not exists pr_type         public.pr_type,
+  add column if not exists pr_subtype      text,
+  add column if not exists value           numeric,
+  add column if not exists previous_value  numeric,
+  add column if not exists session_id      uuid references public.sessions(id) on delete cascade,
+  add column if not exists achieved_at     timestamptz,
+  add column if not exists confidence      public.pr_confidence not null default 'high',
+  add column if not exists metadata        jsonb not null default '{}'::jsonb;
+
+-- Idempotency: detection re-runs against the same session must not
+-- produce duplicate rows. Expression index used (inline UNIQUE with coalesce
+-- is not supported in older Postgres versions).
+create unique index if not exists idx_pr_no_duplicate
+  on public.personal_records (user_id, pr_type, coalesce(pr_subtype, ''), session_id);
 
 alter table public.personal_records enable row level security;
 
 -- Users SELECT their own; writes only via service role (Edge Function).
-create policy "Users can read own personal records"
-  on public.personal_records for select
-  using (auth.uid() = user_id);
+do $$ begin
+  create policy "Users can read own personal records"
+    on public.personal_records for select
+    using (auth.uid() = user_id);
+exception when duplicate_object then null; end $$;
 
 -- ─── 3. Indexes ───────────────────────────────────────────────────────────
 
@@ -123,9 +136,11 @@ insert into public.coach_v2_feature_flags (id) values (1) on conflict do nothing
 alter table public.coach_v2_feature_flags enable row level security;
 
 -- Read-only for everyone; only service role can flip the flag.
-create policy "Anyone can read coach_v2_feature_flags"
-  on public.coach_v2_feature_flags for select
-  using (true);
+do $$ begin
+  create policy "Anyone can read coach_v2_feature_flags"
+    on public.coach_v2_feature_flags for select
+    using (true);
+exception when duplicate_object then null; end $$;
 
 -- ─── 5. Helper view: user latest PRs ──────────────────────────────────────
 -- Convenience view used by the Progress tab and the coach Trigger-2 prompt

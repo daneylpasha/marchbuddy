@@ -29,6 +29,7 @@ import { useNotificationStore } from '../../store/notificationStore';
 import { useNotificationPrefsStore } from '../../store/notificationPrefsStore';
 import { registerForPushNotifications } from '../../services/notificationService';
 import { getDiscoverable, setDiscoverable } from '../../services/communityService';
+import { supabase } from '../../api/supabase';
 import { featureFlags } from '../../constants/featureFlags';
 import { SettingsSection } from './components/SettingsSection';
 import { SettingsRow } from './components/SettingsRow';
@@ -78,6 +79,7 @@ export default function SettingsScreen() {
   const hydratePrefs = useNotificationPrefsStore((s) => s.hydrateFromServer);
 
   const [discoverable, setDiscoverableLocal] = useState(true);
+  const [allowBuddyConnections, setAllowBuddyConnectionsLocal] = useState(true);
   const [signOutConfirmVisible, setSignOutConfirmVisible] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [resetOnboardingVisible, setResetOnboardingVisible] = useState(false);
@@ -98,11 +100,38 @@ export default function SettingsScreen() {
     if (showCommunity) {
       getDiscoverable().then(setDiscoverableLocal);
     }
+    // Fetch allow_buddy_connections for the current user
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('allow_buddy_connections')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (data && typeof data.allow_buddy_connections === 'boolean') {
+        setAllowBuddyConnectionsLocal(data.allow_buddy_connections);
+      }
+    })();
   }, [hydratePrefs, showCommunity]);
 
   const handleDiscoverableToggle = (value: boolean) => {
     setDiscoverableLocal(value);
     setDiscoverable(value).catch(() => setDiscoverableLocal(!value));
+  };
+
+  const handleAllowBuddyToggle = async (value: boolean) => {
+    setAllowBuddyConnectionsLocal(value);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ allow_buddy_connections: value })
+      .eq('id', session.user.id);
+    if (error) {
+      console.warn('[settings] handleAllowBuddyToggle error:', error.message);
+      setAllowBuddyConnectionsLocal(!value);
+    }
   };
 
   const quietHoursGranted = notificationPermission === 'granted';
@@ -407,6 +436,23 @@ export default function SettingsScreen() {
           </SettingsSection>
         )}
 
+        {/* Buddy Privacy — always visible, no feature flag gate */}
+        <SettingsSection title="BUDDY PRIVACY">
+          <SettingsRow
+            label="Allow buddy connections"
+            rightElement={
+              <AppSwitch
+                value={allowBuddyConnections}
+                onValueChange={handleAllowBuddyToggle}
+                accessibilityLabel="Allow buddy connections"
+              />
+            }
+          />
+          <Text style={styles.privacyHelp}>
+            When off, others can't use your buddy code to connect with you.
+          </Text>
+        </SettingsSection>
+
         {/* Preferences */}
         <SettingsSection title="PREFERENCES">
           <SettingsRow
@@ -485,6 +531,17 @@ export default function SettingsScreen() {
                 value={prefs.coach_proactive !== false}
                 onValueChange={(v) => setPref('coach_proactive', v)}
                 accessibilityLabel="Proactive Coach"
+              />
+            }
+          />
+          <SettingsRow
+            label="Buddy Notifications"
+            rightElement={
+              <AppSwitch
+                value={prefs.buddy_notifications !== false}
+                onValueChange={(v) => setPref('buddy_notifications', v)}
+                disabled={!quietHoursGranted}
+                accessibilityLabel="Buddy Notifications"
               />
             }
           />

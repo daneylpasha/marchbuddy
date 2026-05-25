@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Share } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,8 @@ import { MilestoneIcon } from './components/MilestoneIcon';
 import { colors, fonts, spacing } from '../../theme';
 import { useSubscriptionStore } from '../../store/subscriptionStore';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
+import ShareCard, { CARD_WIDTH, CARD_HEIGHT } from '../../components/session/ShareCard';
+import { shareCelebrationCard } from '../../utils/shareCelebrationCard';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'Celebration'>;
 
@@ -23,6 +25,9 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   const { milestoneId, coachFeedback, progressUpdate, session, shareAfter } = route.params;
   const { isLevelLocked, openPaywall } = useSubscriptionStore();
   const celebratingLockedLevel = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
+
+  const shareCardRef = useRef<View>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   const milestone = getMilestoneConfig(milestoneId);
 
@@ -89,11 +94,15 @@ export default function CelebrationScreen({ navigation, route }: Props) {
   };
 
   const handleShare = async () => {
-    if (!milestone) return;
+    if (!milestone || isSharing) return;
+    setIsSharing(true);
     try {
-      await Share.share({ message: milestone.shareText });
-    } catch {
-      // Share dismissed — ignore
+      const caption = progressUpdate.leveledUp
+        ? `Just hit Level ${progressUpdate.newLevel} on MarchBuddy 🎯`
+        : 'Reached a new milestone on MarchBuddy 🏆';
+      await shareCelebrationCard(shareCardRef, caption, 'level_up');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -105,6 +114,11 @@ export default function CelebrationScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Off-screen card captured for one-tap share — not visible to user */}
+      <View style={styles.offScreenCard} pointerEvents="none">
+        <ShareCard ref={shareCardRef} session={session} />
+      </View>
+
       {/* Confetti layer */}
       {milestone.confettiColors && <ConfettiAnimation colors={milestone.confettiColors} />}
 
@@ -134,9 +148,20 @@ export default function CelebrationScreen({ navigation, route }: Props) {
         {celebratingLockedLevel ? (
           <>
             {/* Share first — the user earned this; don't gate the celebration */}
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
-              <Ionicons name="share-social-outline" size={18} color={colors.primary} />
-              <Text style={styles.shareButtonText}>Share Achievement</Text>
+            <TouchableOpacity
+              style={[styles.shareButton, isSharing && styles.shareButtonDisabled]}
+              onPress={handleShare}
+              activeOpacity={0.8}
+              disabled={isSharing}
+            >
+              <Ionicons
+                name={isSharing ? 'hourglass-outline' : 'share-social-outline'}
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={styles.shareButtonText}>
+                {isSharing ? 'Preparing…' : 'Share Achievement'}
+              </Text>
             </TouchableOpacity>
 
             {/* Then the upgrade CTA — natural next step, not a paywall slap */}
@@ -162,9 +187,20 @@ export default function CelebrationScreen({ navigation, route }: Props) {
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.8}>
-              <Ionicons name="share-social-outline" size={18} color={colors.primary} />
-              <Text style={styles.shareButtonText}>Share Achievement</Text>
+            <TouchableOpacity
+              style={[styles.shareButton, isSharing && styles.shareButtonDisabled]}
+              onPress={handleShare}
+              activeOpacity={0.8}
+              disabled={isSharing}
+            >
+              <Ionicons
+                name={isSharing ? 'hourglass-outline' : 'share-social-outline'}
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={styles.shareButtonText}>
+                {isSharing ? 'Preparing…' : 'Share Achievement'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -296,5 +332,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textTertiary,
     letterSpacing: 0.3,
+  },
+  offScreenCard: {
+    position: 'absolute',
+    left: -(CARD_WIDTH + 50),
+    top: 0,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+  },
+  shareButtonDisabled: {
+    opacity: 0.6,
   },
 });

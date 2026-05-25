@@ -7,7 +7,9 @@ type SocialEvent =
   | 'challenge_invite'
   | 'challenge_accepted'
   | 'challenge_completed'
-  | 'buddy_request';
+  | 'buddy_request'
+  | 'buddy_request_received'
+  | 'buddy_request_accepted';
 
 interface RequestBody {
   event: SocialEvent;
@@ -113,6 +115,16 @@ function buildMessage(
         title: 'Buddy Request',
         body: `${senderName} wants to be your MarchBuddy.`,
       };
+    case 'buddy_request_received':
+      return {
+        title: 'Buddy Request',
+        body: 'Someone wants to be your running buddy. Open the app to see who.',
+      };
+    case 'buddy_request_accepted':
+      return {
+        title: 'Buddy Connected!',
+        body: `${senderName} is now your buddy! Time to keep each other accountable.`,
+      };
   }
 }
 
@@ -164,12 +176,22 @@ Deno.serve(async (req: Request) => {
 
     const prefs = target.notification_prefs ?? {};
 
-    // Check community_events pref (default true — opt-out)
-    if (prefs['community_events'] === false) {
-      return new Response(
-        JSON.stringify({ skipped: 'pref_off' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+    // Check buddy_notifications pref for buddy events (default true — opt-out)
+    if (event === 'buddy_request_received' || event === 'buddy_request_accepted') {
+      if (prefs['buddy_notifications'] === false) {
+        return new Response(
+          JSON.stringify({ skipped: 'pref_off' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    } else {
+      // Check community_events pref for non-buddy social events
+      if (prefs['community_events'] === false) {
+        return new Response(
+          JSON.stringify({ skipped: 'pref_off' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
     }
 
     // Quiet hours
@@ -186,7 +208,7 @@ Deno.serve(async (req: Request) => {
 
     await sendExpoPush(target.expo_push_token, title, msgBody, {
       type: 'D',
-      event,
+      event: event,
       challengeId: meta?.myTeamId,
     });
 

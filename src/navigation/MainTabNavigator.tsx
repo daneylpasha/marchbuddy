@@ -9,6 +9,7 @@ import RunNavigator from './RunNavigator';
 import ProgressNavigator from './ProgressNavigator';
 import CommunityNavigator from './CommunityNavigator';
 import CoachChatScreen from '../screens/chat/CoachChatScreen';
+import BuddyNavigator from './BuddyNavigator';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';
 import { useActiveSessionStore } from '../store/activeSessionStore';
@@ -31,6 +32,7 @@ export type MainTabParamList = {
   Progress: undefined;
   Community: undefined;
   Coach: undefined;
+  Buddy: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -46,6 +48,7 @@ const TAB_ICONS: Record<
   Progress: { focused: 'stats-chart', unfocused: 'stats-chart-outline' },
   Community: { focused: 'people', unfocused: 'people-outline' },
   Coach: { focused: 'chatbubble', unfocused: 'chatbubble-outline' },
+  Buddy: { focused: 'people-circle', unfocused: 'people-circle-outline' },
 };
 
 // ─── Coach Stack Navigator ────────────────────────────────────────────────────
@@ -129,6 +132,7 @@ export default function MainTabNavigator() {
         />
       )}
       <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
+      <Tab.Screen name="Buddy" component={BuddyNavigator} options={{ tabBarLabel: 'Buddy' }} />
     </Tab.Navigator>
   );
 }

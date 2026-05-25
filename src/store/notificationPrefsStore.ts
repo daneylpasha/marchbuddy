@@ -27,6 +27,8 @@ export interface NotificationPrefs {
   // When false: scheduler skips this user entirely; sender cancels any
   // rows still in the queue.
   coach_proactive: boolean;
+  // Buddy Codes — opt-out for buddy_request_received / buddy_request_accepted
+  buddy_notifications: boolean;
   quiet_hours_start: number; // 0–23, user local time
   quiet_hours_end: number; // 0–23, user local time
 }
@@ -36,6 +38,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   reengagement: true,
   community_events: true,
   coach_proactive: true,
+  buddy_notifications: true,
   quiet_hours_start: 22,
   quiet_hours_end: 7,
 };

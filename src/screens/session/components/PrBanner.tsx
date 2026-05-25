@@ -7,8 +7,8 @@
 // here; the screen already has Celebration confetti coverage).
 // ============================================================================
 
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing } from '../../../theme';
@@ -17,6 +17,7 @@ import { formatPrValue, prTypeLabel, previousValueLabel } from '../../../types/p
 
 interface Props {
   prs: PersonalRecord[];
+  onSharePress?: () => Promise<void>;
 }
 
 /**
@@ -39,9 +40,10 @@ function pickFeaturedPr(prs: PersonalRecord[]): PersonalRecord {
   )[0];
 }
 
-export const PrBanner: React.FC<Props> = ({ prs }) => {
+export const PrBanner: React.FC<Props> = ({ prs, onSharePress }) => {
   const translateY = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     // Slide-down + fade-in + subtle haptic on appearance.
@@ -105,6 +107,29 @@ export const PrBanner: React.FC<Props> = ({ prs }) => {
           </Text>
         ) : null}
       </View>
+
+      {onSharePress ? (
+        <TouchableOpacity
+          style={[styles.shareBtn, isSharing && styles.shareBtnDisabled]}
+          onPress={async () => {
+            if (isSharing) return;
+            setIsSharing(true);
+            try {
+              await onSharePress();
+            } finally {
+              setIsSharing(false);
+            }
+          }}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={isSharing ? 'hourglass-outline' : 'share-social-outline'}
+            size={18}
+            color="#FFD466"
+          />
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 };
@@ -169,5 +194,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  shareBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+    backgroundColor: 'rgba(255, 212, 102, 0.1)',
+  },
+  shareBtnDisabled: {
+    opacity: 0.5,
   },
 });
