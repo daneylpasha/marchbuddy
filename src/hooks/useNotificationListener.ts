@@ -37,7 +37,7 @@ export function useNotificationListener() {
     // ── Tap handler ─────────────────────────────────────────────────────
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as
-        | { type?: string; sessionKey?: string; sessionTitle?: string; trigger?: string; schedule_id?: string }
+        | { type?: string; sessionKey?: string; sessionTitle?: string; trigger?: string; schedule_id?: string; event?: string }
         | undefined;
 
       const type = data?.type;
@@ -45,6 +45,12 @@ export function useNotificationListener() {
 
       // Persist tap context so downstream screens can deep-link.
       setLastNotificationTap({ sessionKey, type });
+
+      // Buddy Codes — route to Buddy tab for buddy-related events
+      if (data?.event === 'buddy_request_received' || data?.event === 'buddy_request_accepted') {
+        navigate('Buddy');
+        return;
+      }
 
       // V2 Proactive Coach Messages — route to Coach tab and forward the
       // schedule_id so CoachChatScreen can fire `coach_message_opened`.

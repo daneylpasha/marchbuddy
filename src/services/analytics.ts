@@ -60,6 +60,24 @@ export const EVENTS = {
   pr_viewed: 'pr_viewed',
   pr_shared: 'pr_shared',
   comparison_shown: 'comparison_shown',
+
+  // One-tap external sharing (PR banner + level-up celebration + session screen).
+  // share_sheet_opened fires after card generation — result: 'success' | 'failure'.
+  // expo-sharing does not distinguish completion from dismissal on either platform;
+  // share_completed fires on both. There is no share_sheet_dismissed event.
+  share_button_tapped: 'share_button_tapped',
+  share_sheet_opened: 'share_sheet_opened',
+  share_completed: 'share_completed',
+
+  // Buddy Codes feature
+  buddy_code_viewed: 'buddy_code_viewed',
+  buddy_code_shared: 'buddy_code_shared',
+  buddy_code_copied: 'buddy_code_copied',
+  buddy_request_sent: 'buddy_request_sent',
+  buddy_request_received: 'buddy_request_received',
+  buddy_request_accepted: 'buddy_request_accepted',
+  buddy_request_declined: 'buddy_request_declined',
+  buddy_removed: 'buddy_removed',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

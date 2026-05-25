@@ -18,6 +18,8 @@ import type { Comparison, PersonalRecord } from '../../types/personalRecord';
 import { PrBanner } from './components/PrBanner';
 import { ComparisonCard } from './components/ComparisonCard';
 import { analytics, EVENTS } from '../../services/analytics';
+import ShareCard, { CARD_WIDTH, CARD_HEIGHT } from '../../components/session/ShareCard';
+import { shareCelebrationCard } from '../../utils/shareCelebrationCard';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'CoachFeedback'>;
 
@@ -37,6 +39,17 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
   const { progress } = useRunProgressStore();
   const { isLevelLocked, openPaywall } = useSubscriptionStore();
   const justLockedIn = progressUpdate.leveledUp && isLevelLocked(progressUpdate.newLevel);
+
+  // Off-screen card ref for one-tap PR share.
+  const prShareCardRef = useRef<View>(null);
+
+  const handlePrShare = async () => {
+    await shareCelebrationCard(
+      prShareCardRef,
+      'New personal record with MarchBuddy 💪',
+      'pr',
+    );
+  };
 
   // V2 Auto-PRs: async fetch on mount. Banner slides in when result lands.
   // Never blocks the rest of the screen — pure additive UX.
@@ -116,13 +129,18 @@ export default function CoachFeedbackScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Off-screen card captured by react-native-view-shot for one-tap PR share */}
+      <View style={styles.offScreenCard} pointerEvents="none">
+        <ShareCard ref={prShareCardRef} session={session} prs={prs} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Animated.View
           style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
         >
           <View style={styles.captureArea}>
             {/* V2 Auto-PRs: prominent banner above the hero when a PR was set */}
-            {prs.length > 0 ? <PrBanner prs={prs} /> : null}
+            {prs.length > 0 ? <PrBanner prs={prs} onSharePress={handlePrShare} /> : null}
 
             {/* ── Hero checkmark ── */}
             <View style={styles.heroSection}>
@@ -313,6 +331,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  offScreenCard: {
+    position: 'absolute',
+    left: -(CARD_WIDTH + 50),
+    top: 0,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
   },
   scroll: {
     flexGrow: 1,

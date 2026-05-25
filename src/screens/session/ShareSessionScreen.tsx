@@ -11,82 +11,27 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
+import { shareCelebrationCard } from '../../utils/shareCelebrationCard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { RouteMap } from '../../components/session/RouteMap';
-import { formatDuration } from '../../utils/sessionUtils';
-import {
-  convertPace,
-  formatDistance,
-  getDistanceLabel,
-  getPaceLabel,
-  useDistanceUnit,
-} from '../../utils/distanceUtils';
+import ShareCard, { CARD_WIDTH, CARD_HEIGHT } from '../../components/session/ShareCard';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 import { analytics, EVENTS } from '../../services/analytics';
-import { prTypeLabel, type PersonalRecord } from '../../types/personalRecord';
+import type { PersonalRecord } from '../../types/personalRecord';
 
 type Props = NativeStackScreenProps<RunStackParamList, 'ShareSession'>;
 
 // Card dimensions chosen so 3x device pixel ratio captures at ~1020×1530 —
 // a 2:3 portrait that crops cleanly for both Instagram feed (4:5) and stories
-// (9:16). Wider than this and the card overflows narrow phones.
-const CARD_WIDTH = 340;
-const CARD_HEIGHT = 510;
-const MAP_HEIGHT = 240;
-
-function formatPace(minutesPerKm: number | null): string {
-  if (minutesPerKm == null || !isFinite(minutesPerKm) || minutesPerKm <= 0) {
-    return '—';
-  }
-  const m = Math.floor(minutesPerKm);
-  const s = Math.round((minutesPerKm - m) * 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 export default function ShareSessionScreen({ navigation, route }: Props) {
   const { session, prs } = route.params;
   const shareCardRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // V2 Auto-PRs: featured PR for the badge (same ranking as PrBanner).
-  const featuredPr: PersonalRecord | null = React.useMemo(() => {
-    if (!prs || prs.length === 0) return null;
-    const order: PersonalRecord['pr_type'][] = [
-      'first_milestone',
-      'longest_distance',
-      'longest_duration',
-      'fastest_pace',
-      'fastest_1k_split',
-      'highest_cadence',
-    ];
-    return [...prs].sort(
-      (a, b) => order.indexOf(a.pr_type) - order.indexOf(b.pr_type),
-    )[0];
-  }, [prs]);
-  const badgeLabel = featuredPr
-    ? prTypeLabel(featuredPr.pr_type, featuredPr.pr_subtype)
-    : null;
-
-  const isOutdoor = session.environment !== 'indoor';
-  const hasRoute = isOutdoor && session.route && session.route.length >= 2;
-  const durationSeconds = session.actualDurationMinutes * 60;
-  const unit = useDistanceUnit();
-  const distanceLabel = getDistanceLabel(unit);
-  const paceLabel = getPaceLabel(unit);
-  const paceStr = formatPace(convertPace(session.pacePerKm, unit));
+  const featuredPr: PersonalRecord | null = prs?.[0] ?? null;
 
   const capture = async (): Promise<string | null> => {
     if (!shareCardRef.current) return null;
@@ -103,31 +48,16 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
   const handleShare = async () => {
     setIsSharing(true);
     try {
-      const uri = await capture();
-      if (!uri) {
-        Alert.alert('Error', 'Could not generate share card.');
-        return;
-      }
-      const available = await Sharing.isAvailableAsync();
-      if (available) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Share your MarchBuddy session',
+      await shareCelebrationCard(shareCardRef, 'Share your MarchBuddy session', 'session');
+      // Keep pr_shared for backward compat with existing PostHog dashboards.
+      // Fires only when a PR badge is on the card.
+      if (featuredPr) {
+        analytics.track(EVENTS.pr_shared, {
+          pr_id: featuredPr.id,
+          pr_type: featuredPr.pr_type,
+          pr_subtype: featuredPr.pr_subtype ?? null,
+          share_destination: 'system_sheet',
         });
-        // V2 Auto-PRs: fire pr_shared once per share that includes a PR
-        // badge. We can't tell which sharing destination the user picked
-        // (iOS / Android system sheet hides that), so we log destination
-        // as 'system_sheet'. Track only if a PR was on the card.
-        if (featuredPr) {
-          analytics.track(EVENTS.pr_shared, {
-            pr_id: featuredPr.id,
-            pr_type: featuredPr.pr_type,
-            pr_subtype: featuredPr.pr_subtype ?? null,
-            share_destination: 'system_sheet',
-          });
-        }
-      } else {
-        Alert.alert('Sharing not available on this device');
       }
     } finally {
       setIsSharing(false);
@@ -170,91 +100,7 @@ export default function ShareSessionScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ── Share card (this is what gets captured) ─────────────────────── */}
         <View style={styles.cardShadow}>
-          <View ref={shareCardRef} collapsable={false} style={styles.shareCard}>
-            {/* Top brand strip */}
-            <View style={styles.cardHeader}>
-              <View style={styles.brandRow}>
-                <View style={styles.brandDot} />
-                <Text style={styles.brandWordmark}>MARCHBUDDY</Text>
-              </View>
-              <Text style={styles.cardDate}>{formatDate(session.completedAt)}</Text>
-            </View>
-
-            {/* V2 Auto-PRs: "New PR" badge — overlay on the card so it gets
-                captured in the share image. Only renders when a PR was set. */}
-            {featuredPr ? (
-              <View style={styles.prBadge}>
-                <Ionicons
-                  name={featuredPr.pr_type === 'first_milestone' ? 'flag' : 'trophy'}
-                  size={12}
-                  color="#0A0A0A"
-                />
-                <Text style={styles.prBadgeText} numberOfLines={1}>
-                  {featuredPr.pr_type === 'first_milestone' ? 'NEW MILESTONE' : 'NEW PR'}
-                  {' · '}
-                  {badgeLabel}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Map / fallback */}
-            <View style={styles.mapBlock}>
-              {hasRoute ? (
-                <RouteMap
-                  route={session.route!}
-                  height={MAP_HEIGHT}
-                  style={styles.mapStyleOverride}
-                />
-              ) : (
-                <View style={[styles.mapFallback, { height: MAP_HEIGHT }]}>
-                  <Ionicons
-                    name={isOutdoor ? 'navigate-outline' : 'home-outline'}
-                    size={48}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.mapFallbackText}>
-                    {isOutdoor ? 'Route not recorded' : 'Indoor session'}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Stats row */}
-            <View style={styles.statsRow}>
-              <View style={styles.stat}>
-                <Text style={styles.statValue}>
-                  {session.actualDistanceKm > 0
-                    ? formatDistance(session.actualDistanceKm, unit)
-                    : '—'}
-                </Text>
-                <Text style={styles.statLabel}>Distance · {distanceLabel}</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.stat}>
-                <Text style={styles.statValue}>{formatDuration(durationSeconds)}</Text>
-                <Text style={styles.statLabel}>Duration</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.stat}>
-                <Text style={styles.statValue}>{paceStr}</Text>
-                <Text style={styles.statLabel}>Pace · {paceLabel}</Text>
-              </View>
-            </View>
-
-            {/* Footer */}
-            <View style={styles.cardFooter}>
-              <View style={styles.cardFooterLeft}>
-                <Text style={styles.cardPlan} numberOfLines={1}>
-                  {session.planTitle}
-                </Text>
-                <Text style={styles.cardLevel}>Level {session.planLevel}</Text>
-              </View>
-              <View style={styles.completedBadge}>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-                <Text style={styles.completedBadgeText}>Completed</Text>
-              </View>
-            </View>
-          </View>
+          <ShareCard ref={shareCardRef} session={session} prs={prs} />
         </View>
 
         {/* Hint */}
@@ -341,170 +187,12 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     alignItems: 'center',
   },
-
-  // ── Card ────────────────────────────────────────────────────────────────
   cardShadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 18,
     elevation: 12,
-  },
-  shareCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    backgroundColor: '#0E1410',
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(6,138,21,0.35)',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  // V2 Auto-PRs: gold ribbon overlay anchored top-LEFT of the map area so
-  // it doesn't fight with the cardDate in the header strip on the right.
-  // Positioned just below the header (paddingTop 16 + brand row ~24px =
-  // header ends near y=52) so the badge floats over the top of the map.
-  prBadge: {
-    position: 'absolute',
-    top: 60,
-    left: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: '#FFD466',
-    gap: 4,
-    maxWidth: CARD_WIDTH - 28,
-    // Subtle drop shadow on the colored badge so it pops off the dark card.
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-    zIndex: 10,
-  },
-  prBadgeText: {
-    fontFamily: fonts.bold,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: '#0A0A0A',
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  brandWordmark: {
-    fontFamily: fonts.bold,
-    fontSize: 13,
-    letterSpacing: 2,
-    color: '#fff',
-  },
-  cardDate: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.6)',
-  },
-
-  mapBlock: {
-    paddingHorizontal: 14,
-  },
-  mapStyleOverride: {
-    borderRadius: 14,
-  },
-  mapFallback: {
-    borderRadius: 14,
-    backgroundColor: 'rgba(6,138,21,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(6,138,21,0.2)',
-  },
-  mapFallbackText: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    paddingVertical: 18,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-  },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    color: '#fff',
-    letterSpacing: 0.4,
-  },
-  statLabel: {
-    fontFamily: fonts.regular,
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 0.4,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-    paddingTop: 14,
-    marginTop: 'auto',
-  },
-  cardFooterLeft: { flex: 1, gap: 2 },
-  cardPlan: {
-    fontFamily: fonts.semiBold,
-    fontSize: 13,
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
-  cardLevel: {
-    fontFamily: fonts.regular,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 0.4,
-  },
-  completedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  completedBadgeText: {
-    fontFamily: fonts.bold,
-    fontSize: 10,
-    color: '#fff',
-    letterSpacing: 0.6,
   },
 
   // ── Hint + actions ──────────────────────────────────────────────────────
