@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ComebackDecision } from '../../../types/comeback';
 import { colors, fonts } from '../../../theme';
 
+
 interface AiDecisionViewProps {
   decision: ComebackDecision;
   previousLevel: number;
@@ -18,50 +19,78 @@ export const AiDecisionView: React.FC<AiDecisionViewProps> = ({
   onDiscuss,
 }) => {
   const levelDiff = previousLevel - decision.recommendedLevel;
+  const aiUnavailable = decision.isAiUnavailable === true;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="bulb" size={40} color={colors.primary} />
+        <View style={[styles.iconContainer, aiUnavailable && styles.iconContainerWarning]}>
+          <Ionicons
+            name={aiUnavailable ? 'warning-outline' : 'bulb'}
+            size={40}
+            color={aiUnavailable ? colors.warning : colors.primary}
+          />
         </View>
-        <Text style={styles.title}>My Recommendation</Text>
+        <Text style={styles.title}>
+          {aiUnavailable ? 'AI Unavailable' : 'My Recommendation'}
+        </Text>
       </View>
 
+      {/* AI unavailable notice */}
+      {aiUnavailable && (
+        <View style={styles.unavailableBox}>
+          <Ionicons name="wifi-outline" size={18} color={colors.warning} />
+          <Text style={styles.unavailableText}>
+            Couldn't reach the AI coach right now. You've been kept at your current level — nothing has changed.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.levelContainer}>
-        <Text style={styles.levelLabel}>Start at</Text>
+        <Text style={styles.levelLabel}>{aiUnavailable ? 'Your level' : 'Start at'}</Text>
         <Text style={styles.levelNumber}>Level {decision.recommendedLevel}</Text>
-        {levelDiff > 0 && (
+        {!aiUnavailable && levelDiff > 0 && (
           <View style={styles.levelChange}>
             <Ionicons name="arrow-down" size={16} color={colors.textTertiary} />
             <Text style={styles.levelChangeText}>from Level {previousLevel}</Text>
           </View>
         )}
-        {levelDiff === 0 && <Text style={styles.levelSame}>Same as before</Text>}
+        {!aiUnavailable && levelDiff === 0 && (
+          <Text style={styles.levelSame}>Same as before</Text>
+        )}
+        {aiUnavailable && (
+          <Text style={styles.levelSame}>Unchanged — same as before</Text>
+        )}
       </View>
 
-      <View style={styles.reasoningBox}>
-        <View style={styles.reasoningHeader}>
-          <Ionicons name="information-circle" size={20} color={colors.primary} />
-          <Text style={styles.reasoningLabel}>WHY THIS LEVEL</Text>
-        </View>
-        <Text style={styles.reasoningText}>{decision.reasoning}</Text>
-      </View>
+      {!aiUnavailable && (
+        <>
+          <View style={styles.reasoningBox}>
+            <View style={styles.reasoningHeader}>
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text style={styles.reasoningLabel}>WHY THIS LEVEL</Text>
+            </View>
+            <Text style={styles.reasoningText}>{decision.reasoning}</Text>
+          </View>
 
-      <View style={styles.encouragementBox}>
-        <Text style={styles.encouragementText}>{decision.encouragement}</Text>
-      </View>
+          <View style={styles.encouragementBox}>
+            <Text style={styles.encouragementText}>{decision.encouragement}</Text>
+          </View>
 
-      <View style={styles.tipBox}>
-        <Ionicons name="flash" size={20} color={colors.warning} />
-        <Text style={styles.tipText}>
-          Good news: You'll progress faster this time. Muscle memory is real!
-        </Text>
-      </View>
+          <View style={styles.tipBox}>
+            <Ionicons name="flash" size={20} color={colors.warning} />
+            <Text style={styles.tipText}>
+              Good news: You'll progress faster this time. Muscle memory is real!
+            </Text>
+          </View>
+        </>
+      )}
 
       <View style={styles.buttons}>
         <TouchableOpacity style={styles.acceptButton} onPress={onAccept} activeOpacity={0.8}>
-          <Text style={styles.acceptButtonText}>Sounds Good, Let's Go</Text>
+          <Text style={styles.acceptButtonText}>
+            {aiUnavailable ? 'Continue at Level ' + decision.recommendedLevel : 'Sounds Good, Let\'s Go'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.discussButton} onPress={onDiscuss} activeOpacity={0.7}>
@@ -89,6 +118,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  iconContainerWarning: {
+    backgroundColor: colors.warningDim,
+  },
+  unavailableBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: colors.warningDim,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 24,
+  },
+  unavailableText: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.warning,
+    flex: 1,
+    lineHeight: 20,
   },
   title: {
     fontFamily: fonts.titleRegular,

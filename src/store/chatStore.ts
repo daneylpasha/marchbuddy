@@ -38,6 +38,12 @@ interface ChatState {
   syncProactiveMessages: () => Promise<number>;
 }
 
+// Guard against concurrent syncs (mount + focus + appstate can all fire
+// at once). Without this, two in-flight fetches each see the same stale
+// `existingIds` snapshot and both append the same rows, producing duplicate
+// React keys (`proactive-<uuid>`).
+let proactiveSyncInFlight: Promise<number> | null = null;
+
 const createWelcomeMessage = (userName: string): ChatMessage => ({
   id: 'welcome',
   role: 'coach',
@@ -132,67 +138,93 @@ export const useChatStore = create<ChatState>()(
       // De-dup by serverScheduleId so re-syncs are no-ops.
       // Returns the number of NEW messages added.
       syncProactiveMessages: async () => {
-        try {
-          const { data: authData } = await supabase.auth.getUser();
-          const userId = authData?.user?.id;
-          if (!userId) return 0;
+        // Coalesce concurrent callers onto a single fetch so mount + focus +
+        // appstate firing together don't double-append the same rows.
+        if (proactiveSyncInFlight) return proactiveSyncInFlight;
 
-          const state = get();
-          const result = await fetchProactiveCoachMessages(
-            userId,
-            state.lastProactiveSyncAt,
-          );
-          if (result.messages.length === 0) {
-            // Still bump the watermark if the server gave us a new one
-            // (no new messages, but ack the sync).
-            if (result.latestSentAt && result.latestSentAt !== state.lastProactiveSyncAt) {
-              set({ lastProactiveSyncAt: result.latestSentAt });
+        proactiveSyncInFlight = (async () => {
+          try {
+            const { data: authData } = await supabase.auth.getUser();
+            const userId = authData?.user?.id;
+            if (!userId) return 0;
+
+            const state = get();
+            const result = await fetchProactiveCoachMessages(
+              userId,
+              state.lastProactiveSyncAt,
+            );
+            if (result.messages.length === 0) {
+              if (result.latestSentAt && result.latestSentAt !== state.lastProactiveSyncAt) {
+                set({ lastProactiveSyncAt: result.latestSentAt });
+              }
+              return 0;
             }
+
+            const now = Date.now();
+            let appendedCount = 0;
+
+            // Dedup at write time against the freshest store state so any
+            // parallel mutation (e.g. a user message added mid-fetch, or
+            // another sync that already appended) can't produce duplicate ids.
+            set((s) => {
+              const existingIds = new Set(
+                s.messages.map((m) => m.serverScheduleId).filter(Boolean),
+              );
+              const novel = result.messages.filter(
+                (m) => m.serverScheduleId && !existingIds.has(m.serverScheduleId),
+              );
+              if (novel.length === 0) {
+                return {
+                  lastProactiveSyncAt: result.latestSentAt ?? s.lastProactiveSyncAt,
+                };
+              }
+              appendedCount = novel.length;
+              const newPending: PendingOpenedEvent[] = novel
+                .filter((m) => m.proactiveTrigger && m.serverScheduleId)
+                .map((m) => ({
+                  scheduleId: m.serverScheduleId!,
+                  triggerType: m.proactiveTrigger!,
+                  fetchedAt: now,
+                }));
+              return {
+                messages: [...s.messages, ...novel],
+                hasUnread: true,
+                lastProactiveSyncAt: result.latestSentAt ?? s.lastProactiveSyncAt,
+                pendingOpenedEvents: [...s.pendingOpenedEvents, ...newPending],
+              };
+            });
+
+            return appendedCount;
+          } catch (e) {
+            console.warn('syncProactiveMessages failed:', e);
             return 0;
+          } finally {
+            proactiveSyncInFlight = null;
           }
+        })();
 
-          const existingIds = new Set(state.messages.map((m) => m.serverScheduleId).filter(Boolean));
-          const novel = result.messages.filter(
-            (m) => !m.serverScheduleId || !existingIds.has(m.serverScheduleId),
-          );
-
-          if (novel.length === 0) {
-            if (result.latestSentAt) {
-              set({ lastProactiveSyncAt: result.latestSentAt });
-            }
-            return 0;
-          }
-
-          // Queue these messages for `coach_message_opened` tracking — we
-          // only fire that event when the user actually focuses the Coach
-          // tab (handled in markAsRead). Fetching silently in the
-          // background should NOT count as "opened".
-          const now = Date.now();
-          const newPending: PendingOpenedEvent[] = novel
-            .filter((m) => m.proactiveTrigger && m.serverScheduleId)
-            .map((m) => ({
-              scheduleId: m.serverScheduleId!,
-              triggerType: m.proactiveTrigger!,
-              fetchedAt: now,
-            }));
-
-          set((s) => ({
-            messages: [...s.messages, ...novel],
-            hasUnread: true,
-            lastProactiveSyncAt: result.latestSentAt ?? s.lastProactiveSyncAt,
-            pendingOpenedEvents: [...s.pendingOpenedEvents, ...newPending],
-          }));
-
-          return novel.length;
-        } catch (e) {
-          console.warn('syncProactiveMessages failed:', e);
-          return 0;
-        }
+        return proactiveSyncInFlight;
       },
     }),
     {
       name: 'march-buddy-chat',
       storage: createJSONStorage(() => AsyncStorage),
+      // Drop any duplicate ids that may have been written by an earlier
+      // racing-sync bug. Keeps the first occurrence so React's keyExtractor
+      // sees a unique set on app start.
+      onRehydrateStorage: () => (state) => {
+        if (!state || !Array.isArray(state.messages)) return;
+        const seen = new Set<string>();
+        const deduped: ChatMessage[] = [];
+        for (const m of state.messages) {
+          if (seen.has(m.id)) continue;
+          seen.add(m.id);
+          deduped.push(m);
+        }
+        if (deduped.length !== state.messages.length) {
+          state.messages = deduped;
+        }
+      },
     },
   ),
 );

@@ -144,15 +144,11 @@ Respond with JSON only, no other text.`;
     });
   } catch (error) {
     console.error('Error in comeback-decision:', error);
-
+    // Return 503 so the client knows AI is unavailable and can keep the user
+    // at their current level instead of silently dropping them to Level 1.
     return new Response(
-      JSON.stringify({
-        recommendedLevel: 1,
-        reasoning: "Let's start fresh and build up safely together.",
-        encouragement: 'Welcome back! Ready when you are.',
-        suggestFitnessCheck: false,
-      } satisfies ComebackDecision),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: 'AI unavailable' }),
+      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

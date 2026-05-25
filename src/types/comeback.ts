@@ -35,6 +35,9 @@ export interface ComebackDecision {
   reasoning: string;
   encouragement: string;
   suggestFitnessCheck: boolean;
+  // Set to true when the AI was unavailable and we kept the user at their
+  // previous level rather than guessing. UI should show a friendly notice.
+  isAiUnavailable?: boolean;
 }
 
 export interface GapAnalysis {

@@ -11,12 +11,28 @@ export const comebackApi = {
         body: context,
       });
 
-      if (error) throw error;
+      // Edge function returns 503 when the AI is unavailable. Keep user at
+      // their current level and surface a friendly notice — never silently drop.
+      if (error || data?.error) {
+        return this.getAiUnavailableDecision(context);
+      }
+
       return data as ComebackDecision;
-    } catch (error) {
-      console.error('Error getting comeback recommendation:', error);
-      return this.getFallbackRecommendation(context);
+    } catch {
+      return this.getAiUnavailableDecision(context);
     }
+  },
+
+  // Called when the AI edge function is unreachable or errored. Keeps the
+  // user at their previous level — no surprise demotion.
+  getAiUnavailableDecision(context: ComebackContext): ComebackDecision {
+    return {
+      recommendedLevel: context.previousLevel,
+      reasoning: '',
+      encouragement: '',
+      suggestFitnessCheck: false,
+      isAiUnavailable: true,
+    };
   },
 
   /**
