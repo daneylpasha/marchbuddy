@@ -2,6 +2,7 @@
 // Complete service for the Buddy Codes feature (new, standalone).
 // Does NOT depend on the old buddyService.ts (hidden community flow).
 
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { SUPABASE_URL } from '../config/env';
 
@@ -20,6 +21,10 @@ export interface BuddyConnectionState {
   connectionId?: string;
   buddy?: BuddyProfile;
   initiatedByMe?: boolean;
+  /** ISO timestamp when the connection became active. Null for pending. */
+  acceptedAt?: string | null;
+  /** ISO timestamp when the connection row was created (request sent). */
+  createdAt?: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,7 +93,7 @@ export async function getMyBuddyConnection(): Promise<BuddyConnectionState> {
 
   const { data, error } = await supabase
     .from('buddy_connections')
-    .select('id, user_a_id, user_b_id, initiated_by, status')
+    .select('id, user_a_id, user_b_id, initiated_by, status, accepted_at, created_at')
     .or(`user_a_id.eq.${userId},user_b_id.eq.${userId}`)
     .in('status', ['pending', 'active'])
     .maybeSingle();
@@ -106,6 +111,8 @@ export async function getMyBuddyConnection(): Promise<BuddyConnectionState> {
     user_b_id: string;
     initiated_by: string;
     status: string;
+    accepted_at: string | null;
+    created_at: string | null;
   };
 
   const buddyId = row.user_a_id === userId ? row.user_b_id : row.user_a_id;
@@ -130,6 +137,8 @@ export async function getMyBuddyConnection(): Promise<BuddyConnectionState> {
       status: 'active',
       connectionId: row.id,
       buddy,
+      acceptedAt: row.accepted_at,
+      createdAt: row.created_at,
     };
   }
 
@@ -140,6 +149,8 @@ export async function getMyBuddyConnection(): Promise<BuddyConnectionState> {
     connectionId: row.id,
     buddy,
     initiatedByMe,
+    acceptedAt: row.accepted_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -306,4 +317,56 @@ export async function removeBuddy(connectionId: string): Promise<void> {
     .eq('id', connectionId);
 
   if (error) console.warn('[buddyConnectionService] removeBuddy error:', error.message);
+}
+
+// ─── Realtime ────────────────────────────────────────────────────────────────
+
+/**
+ * Subscribe to changes on buddy_connections that involve the given user.
+ *
+ * postgres_changes filters do not support OR across columns, so we open two
+ * channels: one for rows where user_a_id = userId, one for user_b_id = userId.
+ * The caller receives a single `unsubscribe()` that tears down both.
+ *
+ * Fires on INSERT (incoming request), UPDATE (accept/decline/remove), and
+ * DELETE (cancel). The caller should re-fetch state on any event.
+ */
+export function subscribeToBuddyConnection(
+  userId: string,
+  onChange: () => void,
+): { unsubscribe: () => void } {
+  const channelA: RealtimeChannel = supabase
+    .channel(`buddy-conn-a-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'buddy_connections',
+        filter: `user_a_id=eq.${userId}`,
+      },
+      onChange,
+    )
+    .subscribe();
+
+  const channelB: RealtimeChannel = supabase
+    .channel(`buddy-conn-b-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'buddy_connections',
+        filter: `user_b_id=eq.${userId}`,
+      },
+      onChange,
+    )
+    .subscribe();
+
+  return {
+    unsubscribe: () => {
+      channelA.unsubscribe();
+      channelB.unsubscribe();
+    },
+  };
 }
