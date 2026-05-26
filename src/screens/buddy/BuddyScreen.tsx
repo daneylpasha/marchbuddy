@@ -3,6 +3,9 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -55,6 +58,35 @@ export default function BuddyScreen() {
   // Remove buddy confirmation modal
   const [removeBuddyVisible, setRemoveBuddyVisible] = useState(false);
   const [removingBuddy, setRemovingBuddy] = useState(false);
+
+  // Track keyboard so we can add bottom slack to the ScrollView only while
+  // the keyboard is open — avoids a permanent dead zone at the bottom.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Used to scroll the focused code input above the keyboard on Android
+  // (where ScrollView doesn't auto-scroll to a focused TextInput).
+  const scrollViewRef = useRef<ScrollView>(null);
+  const handleInputFocus = useCallback(() => {
+    // Wait for the keyboard animation + padding update to commit, then
+    // scroll to the bottom so the input + Connect button sit above it.
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 120);
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates?.height ?? 0);
+      // Once the padding has expanded, scroll to the bottom so the focused
+      // input + Connect button sit comfortably above the keyboard.
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const myName = useProfileStore((s) => s.profile?.name ?? '');
   const isConnected = useNetworkStore((s) => s.isConnected);
@@ -241,11 +273,20 @@ export default function BuddyScreen() {
         </View>
       )}
 
-      <Animated.View style={[styles.animatedContent, { opacity: fadeAnim }]}>
+      <KeyboardAvoidingView
+        style={styles.animatedContent}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Animated.View style={[styles.animatedContent, { opacity: fadeAnim }]}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollViewRef}
+          contentContainerStyle={[
+            styles.scrollContent,
+            keyboardHeight > 0 && { paddingBottom: keyboardHeight + spacing.xl },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {screenState === 'no_buddy' && (
             <NoBuddyState
@@ -258,6 +299,7 @@ export default function BuddyScreen() {
                 setInputCode(v.toUpperCase().slice(0, 6));
               }}
               onSubmit={handleSubmitCode}
+              onInputFocus={handleInputFocus}
             />
           )}
 
@@ -288,7 +330,8 @@ export default function BuddyScreen() {
             />
           )}
         </ScrollView>
-      </Animated.View>
+        </Animated.View>
+      </KeyboardAvoidingView>
 
       <ConfirmDialog
         visible={removeBuddyVisible}
@@ -314,6 +357,7 @@ function NoBuddyState({
   submitting,
   onChangeInput,
   onSubmit,
+  onInputFocus,
 }: {
   code: string | null;
   inputCode: string;
@@ -321,6 +365,7 @@ function NoBuddyState({
   submitting: boolean;
   onChangeInput: (v: string) => void;
   onSubmit: () => void;
+  onInputFocus?: () => void;
 }) {
   return (
     <View style={styles.stateContainer}>
@@ -362,6 +407,7 @@ function NoBuddyState({
           maxLength={6}
           returnKeyType="done"
           onSubmitEditing={onSubmit}
+          onFocus={onInputFocus}
         />
         {inputError ? <Text style={styles.errorText}>{inputError}</Text> : null}
         <Pressable
