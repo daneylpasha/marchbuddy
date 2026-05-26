@@ -236,6 +236,37 @@ export async function sendBuddyRequest(
   const user_a_id = sorted[0];
   const user_b_id = sorted[1];
 
+  // The (user_a_id, user_b_id) unique constraint covers all statuses, so a
+  // declined/removed row from a prior pairing would block a fresh INSERT.
+  // Recycle it instead: flip back to pending, clear accepted_at so the new
+  // pairing's "Buddies since" reflects the new accept time. Preserves created_at.
+  const { data: priorRow } = await supabase
+    .from('buddy_connections')
+    .select('id, status')
+    .eq('user_a_id', user_a_id)
+    .eq('user_b_id', user_b_id)
+    .in('status', ['declined', 'removed'])
+    .maybeSingle();
+
+  if (priorRow) {
+    const { error: updateError } = await supabase
+      .from('buddy_connections')
+      .update({
+        status: 'pending',
+        initiated_by: myId,
+        accepted_at: null,
+      })
+      .eq('id', priorRow.id);
+
+    if (updateError) {
+      console.warn('[buddyConnectionService] recycle prior row error:', updateError.message);
+      return { success: false, error: updateError.message };
+    }
+
+    fireBuddyPush('buddy_request_received', targetUserId);
+    return { success: true };
+  }
+
   const { error: insertError } = await supabase.from('buddy_connections').insert({
     user_a_id,
     user_b_id,
