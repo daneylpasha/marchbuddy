@@ -465,7 +465,11 @@ function PendingSentState({
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.ghostButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.ghostButton,
+            styles.stretchSelf,
+            pressed && styles.pressed,
+          ]}
           onPress={onCancel}
         >
           <Text style={styles.ghostButtonText}>Cancel request</Text>
@@ -509,14 +513,22 @@ function PendingReceivedState({
         </Text>
 
         <Pressable
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            styles.stretchSelf,
+            pressed && styles.pressed,
+          ]}
           onPress={onAccept}
         >
           <Text style={styles.primaryButtonText}>Accept</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.ghostButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.ghostButton,
+            styles.stretchSelf,
+            pressed && styles.pressed,
+          ]}
           onPress={onDecline}
         >
           <Text style={styles.ghostButtonText}>Decline</Text>
@@ -805,6 +817,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  stretchSelf: {
+    alignSelf: 'stretch',
   },
   ghostButton: {
     paddingVertical: 12,
