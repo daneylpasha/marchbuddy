@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,7 @@ import { searchUsers } from '../../services/communityService';
 import { inviteMember } from '../../services/teamService';
 import { useRunProgressStore } from '../../store/runProgressStore';
 import { colors, fonts, spacing } from '../../theme';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 type Props = NativeStackScreenProps<CommunityStackParamList, 'MyTeam'>;
 
@@ -35,6 +38,8 @@ export default function MyTeamScreen({ navigation }: Props) {
   const [teamName, setTeamName] = useState('');
   const [createError, setCreateError] = useState('');
   const [showInvite, setShowInvite] = useState(false);
+  const [pendingRemove, setPendingRemove] = useState<TeamMember | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const load = useCallback(async () => {
     const t = await getMyTeam();
@@ -64,18 +69,19 @@ export default function MyTeamScreen({ navigation }: Props) {
   };
 
   const handleRemove = (member: TeamMember) => {
-    Alert.alert('Remove Member', `Remove ${member.profile.name} from your team?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          if (!team) return;
-          await removeMember(team.id, member.userId);
-          load();
-        },
-      },
-    ]);
+    setPendingRemove(member);
+  };
+
+  const confirmRemove = async () => {
+    if (!team || !pendingRemove) return;
+    setRemoving(true);
+    try {
+      await removeMember(team.id, pendingRemove.userId);
+      setPendingRemove(null);
+      await load();
+    } finally {
+      setRemoving(false);
+    }
   };
 
   if (loading) {
@@ -195,6 +201,18 @@ export default function MyTeamScreen({ navigation }: Props) {
           }}
         />
       )}
+
+      <ConfirmDialog
+        visible={!!pendingRemove}
+        icon="person-remove-outline"
+        title="Remove member?"
+        message={`Remove ${pendingRemove?.profile.name ?? 'this runner'} from your team?`}
+        confirmLabel={removing ? 'Removing…' : 'Remove'}
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => !removing && setPendingRemove(null)}
+        onConfirm={confirmRemove}
+      />
     </SafeAreaView>
   );
 }
@@ -238,7 +256,10 @@ function InviteOverlay({
   };
 
   return (
-    <View style={styles.overlay}>
+    <KeyboardAvoidingView
+      style={styles.overlay}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.overlaySheet}>
         <View style={styles.overlayHeader}>
           <Text style={styles.overlayTitle}>Invite Member</Text>
@@ -278,7 +299,7 @@ function InviteOverlay({
         ))}
         {query.trim() && !results.length && <Text style={styles.noResults}>No runners found</Text>}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
