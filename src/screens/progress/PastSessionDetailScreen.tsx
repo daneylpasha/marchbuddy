@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RouteMap } from '../../components/session/RouteMap';
+import ShareCard from '../../components/session/ShareCard';
+import { shareCelebrationCard } from '../../utils/shareCelebrationCard';
 import {
   formatDistance,
   getDistanceLabel,
@@ -12,6 +14,7 @@ import {
 } from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
+import type { CompletedSession, SessionRecord } from '../../types/session';
 
 type Props = NativeStackScreenProps<ProgressStackParamList, 'PastSessionDetail'>;
 
@@ -49,12 +52,59 @@ function feedbackLabel(rating: string | null): string | null {
   }
 }
 
+// ShareCard was designed against CompletedSession, which carries a few fields
+// past SessionRecord drops (planVariant, pace, segments…). Re-share from
+// history is purely visual, so we synthesize sensible defaults rather than
+// changing ShareCard's contract.
+function recordToShareSession(record: SessionRecord): CompletedSession {
+  const completedAtIso = `${record.date}T12:00:00.000Z`;
+  return {
+    id: record.id,
+    orderId: record.id,
+    planId: record.id,
+    planLevel: record.planLevel,
+    planVariant: 'recommended',
+    planTitle: record.planTitle,
+    plannedDurationMinutes: record.durationMinutes,
+    plannedSegments: [],
+    actualDurationMinutes: record.durationMinutes,
+    actualDistanceKm: record.distanceKm,
+    actualSteps: 0,
+    completedSegments: 0,
+    endedEarly: record.endedEarly,
+    // Pace = minutes/km. Derive only when we have a real distance.
+    pacePerKm:
+      record.distanceKm > 0 ? record.durationMinutes / record.distanceKm : null,
+    route: record.route ?? [],
+    environment: record.environment ?? 'outdoor',
+    treadmillStats: null,
+    feedbackRating: (record.feedbackRating as CompletedSession['feedbackRating']) ?? null,
+    feedbackNotes: null,
+    startedAt: completedAtIso,
+    completedAt: completedAtIso,
+  };
+}
+
 export default function PastSessionDetailScreen({ navigation, route }: Props) {
   const { session } = route.params;
   const isOutdoor = session.environment !== 'indoor';
   const hasRoute = isOutdoor && session.route && session.route.length >= 2;
   const feedback = feedbackLabel(session.feedbackRating);
   const unit = useDistanceUnit();
+
+  const shareCardRef = useRef<View>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareSession = React.useMemo(() => recordToShareSession(session), [session]);
+
+  const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
+    try {
+      await shareCelebrationCard(shareCardRef, 'Share your MarchBuddy session', 'session');
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -143,7 +193,35 @@ export default function PastSessionDetailScreen({ navigation, route }: Props) {
             <Text style={styles.feedbackText}>{feedback}</Text>
           </View>
         )}
+
+        {/* Share later — lets users post a past session whenever they want
+            (e.g., they skipped sharing right after the run). */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.shareButton,
+            isSharing && styles.shareButtonDisabled,
+            pressed && !isSharing && styles.shareButtonPressed,
+          ]}
+          onPress={handleShare}
+          disabled={isSharing}
+        >
+          {isSharing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="share-social-outline" size={18} color="#fff" />
+              <Text style={styles.shareButtonText}>Share this session</Text>
+            </>
+          )}
+        </Pressable>
       </ScrollView>
+
+      {/* Off-screen ShareCard — captured by react-native-view-shot when the
+          user taps Share. Positioned absolutely off the visible area instead
+          of using `display: none` so layout still computes. */}
+      <View style={styles.captureHost} pointerEvents="none">
+        <ShareCard ref={shareCardRef} session={shareSession} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -305,5 +383,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textPrimary,
     letterSpacing: 0.3,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 6,
+  },
+  shareButtonDisabled: { opacity: 0.55 },
+  shareButtonPressed: { opacity: 0.85 },
+  shareButtonText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 15,
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  // Off-screen mount for the capture target. Far enough off the viewport
+  // that it never paints on top of the real UI.
+  captureHost: {
+    position: 'absolute',
+    left: -10000,
+    top: 0,
   },
 });

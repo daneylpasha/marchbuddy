@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,8 +12,84 @@ import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/
 import EnvironmentPickerSheet, {
   type SessionEnvironment,
 } from '../../components/session/EnvironmentPickerSheet';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { useWeather } from '../../hooks/useWeather';
+import { weatherService, type WeatherSnapshot } from '../../services/weatherService';
 import { colors, fonts, spacing } from '../../theme';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
+
+// Conditions that warrant a "you sure?" prompt before heading outdoors.
+// `hot` included because users specifically asked for heat-aware nudges
+// (Lahore/Karachi summer hits 30-35° feel even outside the "very_hot" band).
+function isOutdoorRisky(weather: WeatherSnapshot | null): boolean {
+  if (!weather) return false;
+  return ['rain', 'storm', 'snow', 'very_hot', 'hot', 'fog'].includes(weather.condition);
+}
+
+function outdoorWarningCopy(weather: WeatherSnapshot): {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  destructive: boolean;
+} {
+  switch (weather.condition) {
+    case 'storm':
+      return {
+        title: 'Storms in your area',
+        message:
+          'Thunderstorms reported nearby — please don\'t walk outside. Switch to indoor to stay safe and keep your streak.',
+        confirmLabel: 'Go outside anyway',
+        destructive: true,
+      };
+    case 'very_hot':
+      return {
+        title: `It feels ${Math.round(weather.apparentTemperatureC)}°C out there`,
+        message:
+          'Heat advisory — risk of dehydration and heatstroke. Walk early/late, take water, or switch to indoor mode.',
+        confirmLabel: 'Walk outside',
+        destructive: true,
+      };
+    case 'hot':
+      return {
+        title: `It's ${Math.round(weather.temperatureC)}°C outside`,
+        message:
+          'Warm out there — carry water, keep the pace easy. Indoor mode is also a great call today.',
+        confirmLabel: 'Walk outside',
+        destructive: false,
+      };
+    case 'rain':
+      return {
+        title: 'It\'s raining outside',
+        message:
+          'Are you sure you want to head out? Indoor mode keeps your streak safe without getting soaked.',
+        confirmLabel: 'Walk outside',
+        destructive: false,
+      };
+    case 'snow':
+      return {
+        title: 'Snowy conditions',
+        message:
+          'Slippery footing outside. Indoor mode is a smart call today — your streak stays safe.',
+        confirmLabel: 'Walk outside',
+        destructive: false,
+      };
+    case 'fog':
+      return {
+        title: 'Low visibility outside',
+        message:
+          'Drivers may not see you. Stick to lit, familiar routes if you head out — or pick indoor mode.',
+        confirmLabel: 'Walk outside',
+        destructive: false,
+      };
+    default:
+      return {
+        title: 'Heads up',
+        message: 'Conditions look rough outside. Consider indoor mode.',
+        confirmLabel: 'Walk outside',
+        destructive: false,
+      };
+  }
+}
 
 type SessionDetailNavProp = NativeStackNavigationProp<RunStackParamList, 'SessionDetail'>;
 
@@ -28,13 +104,37 @@ export default function SessionDetailScreen({ navigation }: Props) {
   const envSheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
 
+  const { weather } = useWeather();
+  const [pendingOutdoorStart, setPendingOutdoorStart] = useState(false);
+  // Snapshot used for the dialog copy. Captured at click-time so the user
+  // sees the current temperature, not a stale hook value.
+  const [pendingWeather, setPendingWeather] = useState<WeatherSnapshot | null>(null);
+
   const handleBeginSession = () => {
     envSheetRef.current?.present();
   };
 
-  const handleEnvironmentSelect = (env: SessionEnvironment) => {
-    envSheetRef.current?.dismiss();
+  const startActiveSession = (env: SessionEnvironment) => {
     navigation.navigate('ActiveSession', { environment: env });
+  };
+
+  const handleEnvironmentSelect = async (env: SessionEnvironment) => {
+    envSheetRef.current?.dismiss();
+    if (env !== 'outdoor') {
+      startActiveSession(env);
+      return;
+    }
+    // Read direct from service so we don't race the hook's async load.
+    // getCurrentWeather is cache-first — instant when Today screen already
+    // fetched, otherwise resolves quickly. Null = no permission / offline /
+    // upstream down — fall through to start without prompting.
+    const snap = weather ?? (await weatherService.getCurrentWeather());
+    if (snap && isOutdoorRisky(snap)) {
+      setPendingWeather(snap);
+      setPendingOutdoorStart(true);
+      return;
+    }
+    startActiveSession('outdoor');
   };
 
   useEffect(() => {
@@ -149,6 +249,26 @@ export default function SessionDetailScreen({ navigation }: Props) {
 
       <ScheduleSheet ref={scheduleSheetRef} />
       <EnvironmentPickerSheet ref={envSheetRef} onSelect={handleEnvironmentSelect} />
+
+      {/* Pre-walk weather confirmation — fires only when user picks outdoor
+          AND current weather is risky (rain/storm/very_hot/hot/snow/fog). */}
+      {pendingWeather && (
+        <ConfirmDialog
+          visible={pendingOutdoorStart}
+          icon="cloud-outline"
+          stackButtons
+          {...outdoorWarningCopy(pendingWeather)}
+          cancelLabel="Switch to indoor"
+          onConfirm={() => {
+            setPendingOutdoorStart(false);
+            startActiveSession('outdoor');
+          }}
+          onCancel={() => {
+            setPendingOutdoorStart(false);
+            startActiveSession('indoor');
+          }}
+        />
+      )}
     </View>
   );
 }
