@@ -59,11 +59,18 @@ function classifyWeatherCode(code: number): {
 function classifyCondition(
   apparentTempC: number,
   weatherCode: number,
+  precipitationMm: number,
 ): WeatherCondition {
   const { bucket } = classifyWeatherCode(weatherCode);
-  if (bucket === 'storm') return 'storm';
-  if (bucket === 'rain') return 'rain';
-  if (bucket === 'snow') return 'snow';
+  // Open-Meteo's `weather_code` is model-extrapolated and over-reports
+  // storms/rain when a nearby cell has bad weather but the user's exact
+  // location is clear. Cross-check with `precipitation` (actual mm in the
+  // last hour) before showing alarming UI — no rain hitting the ground
+  // means we shouldn't tell the user there's a storm overhead.
+  const isPrecipitating = precipitationMm > 0;
+  if (bucket === 'storm' && isPrecipitating) return 'storm';
+  if (bucket === 'rain' && isPrecipitating) return 'rain';
+  if (bucket === 'snow' && isPrecipitating) return 'snow';
   if (bucket === 'fog') return 'fog';
   if (apparentTempC >= 35) return 'very_hot';
   if (apparentTempC >= 30) return 'hot';
@@ -160,7 +167,7 @@ async function fetchOpenMeteo(
 ): Promise<WeatherSnapshot | null> {
   const url =
     `${ENDPOINT}?latitude=${latitude}&longitude=${longitude}` +
-    `&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m` +
+    `&current=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,precipitation` +
     `&timezone=auto`;
   const res = await fetch(url);
   if (!res.ok) return null;
@@ -173,13 +180,28 @@ async function fetchOpenMeteo(
     current.apparent_temperature ?? current.temperature_2m,
   );
   const weatherCode = Number(current.weather_code ?? 0);
+  const precipitationMm = Number(current.precipitation ?? 0);
   const humidityPct = current.relative_humidity_2m != null
     ? Number(current.relative_humidity_2m)
     : null;
 
-  const condition = classifyCondition(apparentTemperatureC, weatherCode);
-  const { label } = classifyWeatherCode(weatherCode);
-  const tempLabel = `${Math.round(temperatureC)}°C · ${label}`;
+  const condition = classifyCondition(apparentTemperatureC, weatherCode, precipitationMm);
+  // Label follows the resolved condition, not the raw weather_code — so a
+  // "thunderstorm code with 0mm precip" surfaces as the temperature bucket
+  // rather than the bogus storm label.
+  const labelByCondition: Record<WeatherCondition, string> = {
+    very_hot: 'Hot',
+    hot: 'Warm',
+    pleasant: 'Pleasant',
+    cool: 'Cool',
+    cold: 'Cold',
+    rain: 'Rainy',
+    storm: 'Thunderstorm',
+    snow: 'Snowy',
+    fog: 'Foggy',
+    normal: classifyWeatherCode(weatherCode).label,
+  };
+  const tempLabel = `${Math.round(temperatureC)}°C · ${labelByCondition[condition]}`;
 
   return {
     temperatureC,
