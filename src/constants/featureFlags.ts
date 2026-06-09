@@ -21,4 +21,5 @@ export function isInternalTeamMember(email: string | null | undefined): boolean 
 // `() => true` here without touching call sites).
 export const featureFlags = {
   community: (email: string | null | undefined): boolean => isInternalTeamMember(email),
+  buddy: (email: string | null | undefined): boolean => isInternalTeamMember(email),
 };

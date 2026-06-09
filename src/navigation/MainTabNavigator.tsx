@@ -67,6 +67,7 @@ export default function MainTabNavigator() {
   const hasUnread = useChatStore((state) => state.hasUnread);
   const userEmail = useAuthStore((state) => state.user?.email);
   const showCommunity = featureFlags.community(userEmail);
+  const showBuddy = featureFlags.buddy(userEmail);
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === 'android' ? Math.max(insets.bottom, 12) : 0;
   // Cold-start resume edge case: when RunNavigator's initialRouteName lands
@@ -132,7 +133,9 @@ export default function MainTabNavigator() {
         />
       )}
       <Tab.Screen name="Coach" component={CoachStackNavigator} options={{ tabBarLabel: 'Coach' }} />
-      <Tab.Screen name="Buddy" component={BuddyNavigator} options={{ tabBarLabel: 'Buddy' }} />
+      {showBuddy && (
+        <Tab.Screen name="Buddy" component={BuddyNavigator} options={{ tabBarLabel: 'Buddy' }} />
+      )}
     </Tab.Navigator>
   );
 }
