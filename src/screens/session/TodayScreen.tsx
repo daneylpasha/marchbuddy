@@ -31,6 +31,10 @@ import { AlternativeSessionCard } from './components/AlternativeSessionCard';
 import ScheduleSheet, { type ScheduleSheetRef } from '../../components/schedule/ScheduleSheet';
 import { colors, fonts, spacing } from '../../theme';
 import { FeatureTips } from '../../components/FeatureTips';
+import { WeatherChip } from '../../components/home/WeatherChip';
+import { WeatherAdvisory } from '../../components/home/WeatherAdvisory';
+import { useWeather } from '../../hooks/useWeather';
+import { weatherService } from '../../services/weatherService';
 import type { RunStackParamList } from '../../navigation/RunNavigator';
 
 // Enable LayoutAnimation on Android
@@ -97,6 +101,9 @@ export default function TodayScreen({ navigation }: Props) {
       setLoadError(null);
       try {
         const recentSessionSignals = await sessionApi.getRecentSessionSignals();
+        // Weather is best-effort context for the coach prompt — failures here
+        // should never block session loading, so swallow the error.
+        const weatherSnap = await weatherService.getCurrentWeather().catch(() => null);
         const options = await sessionApi.generateTodayOptions({
           progress: currentProgress,
           onboardingData: {
@@ -107,6 +114,14 @@ export default function TodayScreen({ navigation }: Props) {
             successVision: setupData.successVision,
           },
           recentSessionSignals,
+          weatherContext: weatherSnap
+            ? {
+                temperatureC: weatherSnap.temperatureC,
+                apparentTemperatureC: weatherSnap.apparentTemperatureC,
+                condition: weatherSnap.condition,
+                shortLabel: weatherSnap.shortLabel,
+              }
+            : undefined,
         });
         setTodayOptions(options);
         setLoadError(null);
@@ -219,6 +234,8 @@ export default function TodayScreen({ navigation }: Props) {
     ? `${getTimeGreeting()}, ${setupData.userName}`
     : getTimeGreeting();
 
+  const { weather } = useWeather();
+
   // Coach-adjusted plan logic
   const isRestDay = planAdjustment?.suggestedVariant === 'rest';
   const adjustedPlan =
@@ -281,6 +298,7 @@ export default function TodayScreen({ navigation }: Props) {
           </View>
         </View>
         <Text style={styles.headerTitle}>{greeting}</Text>
+        {weather && <WeatherChip weather={weather} />}
       </View>
 
       <ScrollView
@@ -296,6 +314,11 @@ export default function TodayScreen({ navigation }: Props) {
       >
         {/* Feature tips for first-time users */}
         <FeatureTips />
+
+        {/* Weather advisory — only renders when conditions warrant a heads-up
+            (heat, rain, storm, etc). Sits above the session card so the user
+            sees it before tapping into a workout. */}
+        {weather?.advisory && <WeatherAdvisory weather={weather} />}
 
         {isLoadingOptions && !isRefreshing ? (
           <View style={styles.loadingContainer}>
@@ -528,8 +551,11 @@ export default function TodayScreen({ navigation }: Props) {
               </Pressable>
             )}
 
-            {/* Rest day — saves streak without breaking it */}
+            {/* Rest day — saves streak without breaking it.
+                Hidden once today's session is logged (or week target hit) so
+                we don't nag a user who already trained today. */}
             {!isRestDay &&
+              !alreadyDoneToday &&
               streak > 0 &&
               restDayDeclaredDate !== new Date().toISOString().split('T')[0] && (
                 <Pressable

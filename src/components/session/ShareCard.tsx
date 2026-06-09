@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteMap } from './RouteMap';
 import {
@@ -13,6 +13,8 @@ import { formatDuration } from '../../utils/sessionUtils';
 import { colors, fonts } from '../../theme';
 import { prTypeLabel, type PersonalRecord } from '../../types/personalRecord';
 import type { CompletedSession } from '../../types/session';
+
+const BRAND_LOGO = require('../../../assets/splash-logo-transparent.png');
 
 export const CARD_WIDTH = 340;
 export const CARD_HEIGHT = 510;
@@ -68,7 +70,7 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
       {/* Brand strip */}
       <View style={styles.cardHeader}>
         <View style={styles.brandRow}>
-          <View style={styles.brandDot} />
+          <Image source={BRAND_LOGO} style={styles.brandLogo} resizeMode="contain" />
           <Text style={styles.brandWordmark}>MARCHBUDDY</Text>
         </View>
         <Text style={styles.cardDate}>{formatDate(session.completedAt)}</Text>
@@ -139,6 +141,13 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
           <Text style={styles.completedBadgeText}>Completed</Text>
         </View>
       </View>
+
+      {/* Watermark — keeps MarchBuddy attribution visible when card is shared
+          and cropped on platforms like WhatsApp / Instagram stories. */}
+      <View style={styles.watermark}>
+        <Image source={BRAND_LOGO} style={styles.watermarkLogo} resizeMode="contain" />
+        <Text style={styles.watermarkText}>MarchBuddy</Text>
+      </View>
     </View>
   );
 });
@@ -169,11 +178,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  brandDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
+  brandLogo: {
+    width: 22,
+    height: 22,
   },
   brandWordmark: {
     fontFamily: fonts.bold,
@@ -294,5 +301,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#fff',
     letterSpacing: 0.6,
+  },
+  watermark: {
+    position: 'absolute',
+    bottom: 6,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    opacity: 0.45,
+  },
+  watermarkLogo: {
+    width: 12,
+    height: 12,
+  },
+  watermarkText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: '#fff',
   },
 });

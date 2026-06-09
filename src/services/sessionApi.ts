@@ -42,10 +42,21 @@ interface RecentSessionSignal {
   feedbackRating: string | null;
 }
 
+interface WeatherContext {
+  temperatureC: number;
+  apparentTemperatureC: number;
+  condition: string; // hot, very_hot, pleasant, cool, cold, rain, storm, snow, fog, normal
+  shortLabel: string;
+}
+
 interface GenerateOptionsParams {
   progress: UserProgress;
   onboardingData: OnboardingData;
   recentSessionSignals?: RecentSessionSignal[];
+  // Forwarded to the server-side prompt so the coach can suggest pace,
+  // hydration, indoor swap, etc. Server-side handler ignores unknown fields,
+  // so this is a non-breaking addition for older deploys.
+  weatherContext?: WeatherContext;
 }
 
 interface GenerateOptionsResponse {
@@ -54,9 +65,39 @@ interface GenerateOptionsResponse {
   adjustmentReason?: string;
 }
 
+function buildFallbackCoachMessage(
+  userName: string,
+  weather?: WeatherContext,
+): string {
+  const name = userName || 'there';
+  if (!weather) {
+    return `Ready when you are, ${name}. Today's session is waiting.`;
+  }
+  switch (weather.condition) {
+    case 'very_hot':
+      return `It's ${weather.shortLabel} out there, ${name}. Walk early, hydrate, and consider an indoor session if it feels too intense.`;
+    case 'hot':
+      return `Warm one today (${weather.shortLabel}). Take water and keep your pace easy, ${name}.`;
+    case 'pleasant':
+      return `Perfect weather, ${name} — ${weather.shortLabel}. Today's session will feel great.`;
+    case 'rain':
+      return `Rain expected (${weather.shortLabel}). Check the sky before heading out — indoor mode keeps the streak alive, ${name}.`;
+    case 'storm':
+      return `Storms in your area, ${name}. Please stay safe — switch to an indoor session today.`;
+    case 'cold':
+      return `Chilly day (${weather.shortLabel}). Warm up well and layer up before stepping out, ${name}.`;
+    case 'snow':
+      return `Snowy conditions (${weather.shortLabel}). Indoor mode is a smart call today, ${name}.`;
+    case 'fog':
+      return `Low visibility outside (${weather.shortLabel}). Stick to lit, familiar routes, ${name}.`;
+    default:
+      return `Ready when you are, ${name}. Today's session is waiting.`;
+  }
+}
+
 export const sessionApi = {
   async generateTodayOptions(params: GenerateOptionsParams): Promise<SessionOptions> {
-    const { progress, onboardingData, recentSessionSignals } = params;
+    const { progress, onboardingData, recentSessionSignals, weatherContext } = params;
 
     const levelDef = getLevelDefinition(progress.currentLevel);
     if (!levelDef) {
@@ -77,6 +118,7 @@ export const sessionApi = {
           sessionsThisWeek: progress.sessionsThisWeek,
           recentSessionSignals,
           onboardingData,
+          weatherContext,
         },
       });
 
@@ -85,7 +127,7 @@ export const sessionApi = {
     } catch (error) {
       console.warn('generate-session-options unavailable, using fallback:', error);
       aiResponse = {
-        coachMessage: `Ready when you are, ${onboardingData.userName}. Today's session is waiting.`,
+        coachMessage: buildFallbackCoachMessage(onboardingData.userName, weatherContext),
         recommendedVariant: 'recommended',
       };
     }
