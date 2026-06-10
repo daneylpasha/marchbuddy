@@ -22,6 +22,7 @@
         "NSLocationWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MarchBuddy needs your location to track your walk/run distance and route, even when the app is in the background.",
         "NSMotionUsageDescription": "MarchBuddy uses motion data to count your steps during walks and runs — works even indoors and on treadmills.",
+        "NSPhotoLibraryAddUsageDescription": "MarchBuddy needs permission to save your share card to your Photos when you tap Save Image from the share sheet.",
         "UIBackgroundModes": ["location", "audio"]
       }
     },
