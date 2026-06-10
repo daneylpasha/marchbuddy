@@ -69,6 +69,8 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
     session.actualDistanceKm > 0 ? formatDistance(session.actualDistanceKm, unit) : '—';
   const calories = estimateSessionCalories(session);
   const stepsStr = session.actualSteps > 0 ? session.actualSteps.toLocaleString() : null;
+  const totalSegments = session.plannedSegments?.length ?? 0;
+  const segmentsStr = totalSegments > 0 ? `${session.completedSegments} / ${totalSegments}` : null;
 
   return (
     <View ref={ref} collapsable={false} style={styles.card}>
@@ -135,11 +137,22 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
         </View>
       </View>
 
-      {/* Steps row — fills out "all progress" without cluttering the main grid */}
-      {stepsStr ? (
+      {/* Meta row — fills out "all progress" without cluttering the main grid */}
+      {stepsStr || segmentsStr ? (
         <View style={styles.metaRow}>
-          <Ionicons name="footsteps-outline" size={13} color={colors.primary} />
-          <Text style={styles.metaText}>{stepsStr} steps</Text>
+          {stepsStr ? (
+            <>
+              <Ionicons name="footsteps-outline" size={13} color={colors.primary} />
+              <Text style={styles.metaText}>{stepsStr} steps</Text>
+            </>
+          ) : null}
+          {stepsStr && segmentsStr ? <Text style={styles.metaDot}>·</Text> : null}
+          {segmentsStr ? (
+            <>
+              <Ionicons name="list-outline" size={13} color={colors.primary} />
+              <Text style={styles.metaText}>{segmentsStr} segments</Text>
+            </>
+          ) : null}
         </View>
       ) : null}
 
@@ -278,6 +291,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255,255,255,0.65)',
     letterSpacing: 0.3,
+  },
+  metaDot: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.35)',
+    marginHorizontal: 2,
   },
   cardFooter: {
     flexDirection: 'row',
