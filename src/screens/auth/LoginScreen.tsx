@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Modal,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,10 +48,10 @@ export default function LoginScreen({ navigation }: Props) {
       setIsLoading(true);
       const result = await authService.signInWithGoogleOAuth();
       if (!result.success && result.error !== 'Sign in cancelled') {
-        Alert.alert('Sign In Failed', result.error || 'Please try again.');
+        showAppDialog('Sign In Failed', result.error || 'Please try again.');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong.');
+      showAppDialog('Error', error.message || 'Something went wrong.');
     } finally {
       setIsLoading(false);
     }

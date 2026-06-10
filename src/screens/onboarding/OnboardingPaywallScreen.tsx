@@ -20,10 +20,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   Modal,
   Platform,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -157,7 +157,7 @@ export default function OnboardingPaywallScreen(_props: Props) {
     });
 
     if (!selectedPackage) {
-      Alert.alert(
+      showAppDialog(
         'Cannot complete purchase',
         'We could not load the subscription products. Please check your internet connection and try again.',
       );
@@ -199,7 +199,7 @@ export default function OnboardingPaywallScreen(_props: Props) {
       source: 'onboarding',
       reason: result.error ?? 'unknown',
     });
-    Alert.alert(
+    showAppDialog(
       'Purchase failed',
       result.error ?? 'Something went wrong with the purchase. Please try again in a moment.',
     );
@@ -224,13 +224,13 @@ export default function OnboardingPaywallScreen(_props: Props) {
       analytics.track(EVENTS.subscription_restored);
       // The restore succeeded — they're already a Pro user. Finalize
       // onboarding and let them into the app.
-      Alert.alert(
+      showAppDialog(
         'Welcome back',
         'Your MarchBuddy Pro subscription has been restored.',
         [{ text: 'OK', onPress: () => finalizeOnboarding() }],
       );
     } else {
-      Alert.alert(
+      showAppDialog(
         'No purchases found',
         'We could not find any previous MarchBuddy Pro purchases on this account. If you believe this is an error, contact support.',
       );

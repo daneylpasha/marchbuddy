@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fonts } from '../../theme';
@@ -61,7 +62,7 @@ export default function WaterScreen() {
   };
 
   const handleRemoveEntry = (entryId: string) => {
-    Alert.alert('Remove Entry', 'Remove this water entry?', [
+    showAppDialog('Remove Entry', 'Remove this water entry?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => removeWaterEntry(entryId) },
     ]);

@@ -7,8 +7,8 @@ import {
   FlatList,
   ActivityIndicator,
   TextInput,
-  Alert,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -59,7 +59,7 @@ export default function TeamSearchScreen({ navigation }: Props) {
   }, [query, myTeamId]);
 
   const handleChallenge = (team: TeamSummary) => {
-    Alert.alert('Send Challenge', `Challenge ${team.name} to a 7-day outdoor session battle?`, [
+    showAppDialog('Send Challenge', `Challenge ${team.name} to a 7-day outdoor session battle?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Send',
@@ -67,9 +67,9 @@ export default function TeamSearchScreen({ navigation }: Props) {
           setChallengingId(team.id);
           try {
             await sendChallenge(team.id);
-            Alert.alert('Challenge Sent!', `${team.name} has been invited to compete.`);
+            showAppDialog('Challenge Sent!', `${team.name} has been invited to compete.`);
           } catch (e: unknown) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Failed to send challenge.');
+            showAppDialog('Error', e instanceof Error ? e.message : 'Failed to send challenge.');
           } finally {
             setChallengingId(null);
           }

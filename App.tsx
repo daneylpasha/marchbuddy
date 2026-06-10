@@ -26,6 +26,7 @@ import { offlineQueue } from './src/services/offlineQueue';
 import { registerOfflineActions } from './src/services/offlineActions';
 import { offlineCache } from './src/services/offlineCache';
 import NotificationPermissionModal from './src/components/notifications/NotificationPermissionModal';
+import AppDialogHost from './src/components/common/AppDialogHost';
 import { analytics, EVENTS } from './src/services/analytics';
 import { purchasesService } from './src/services/purchasesService';
 
@@ -223,6 +224,7 @@ export default function App() {
                 onAllow={handleAllowNotifications}
                 onSkip={handleSkipNotifications}
               />
+              <AppDialogHost />
             </NavigationContainer>
           </BottomSheetModalProvider>
         </ErrorBoundary>

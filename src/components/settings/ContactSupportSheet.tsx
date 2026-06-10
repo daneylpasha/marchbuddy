@@ -1,5 +1,6 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,7 +38,7 @@ const ContactSupportSheet = forwardRef<ContactSupportSheetRef>((_, ref) => {
     try {
       const canOpen = await Linking.canOpenURL(url);
       if (!canOpen) {
-        Alert.alert(
+        showAppDialog(
           'No email app found',
           `Please email us directly at ${SUPPORT_EMAIL}.`,
         );
@@ -46,7 +47,7 @@ const ContactSupportSheet = forwardRef<ContactSupportSheetRef>((_, ref) => {
       await Linking.openURL(url);
       modalRef.current?.dismiss();
     } catch {
-      Alert.alert('Could not open email app', `Please email us at ${SUPPORT_EMAIL}.`);
+      showAppDialog('Could not open email app', `Please email us at ${SUPPORT_EMAIL}.`);
     }
   };
 

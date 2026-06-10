@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   Platform,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -171,7 +171,7 @@ export function PaywallModal() {
     });
 
     if (!selectedPackage) {
-      Alert.alert(
+      showAppDialog(
         'Cannot complete purchase',
         'We could not load the subscription products. Please check your internet connection and try again.',
       );
@@ -218,7 +218,7 @@ export function PaywallModal() {
       source: activeSourceRef.current ?? 'manual',
       reason: result.error ?? 'unknown',
     });
-    Alert.alert(
+    showAppDialog(
       'Purchase failed',
       result.error ?? 'Something went wrong with the purchase. Please try again in a moment.',
     );
@@ -233,7 +233,7 @@ export function PaywallModal() {
 
     if (restored) {
       analytics.track(EVENTS.subscription_restored);
-      Alert.alert(
+      showAppDialog(
         'Welcome back',
         'Your MarchBuddy Pro subscription has been restored.',
         [{ text: 'OK', onPress: () => closePaywall() }],

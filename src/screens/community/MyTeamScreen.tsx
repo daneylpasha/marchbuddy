@@ -6,11 +6,11 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
-  Alert,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -250,7 +250,7 @@ function InviteOverlay({
       await inviteMember(teamId, userId);
       onClose();
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to invite.');
+      showAppDialog('Error', e instanceof Error ? e.message : 'Failed to invite.');
       setInviting(null);
     }
   };
