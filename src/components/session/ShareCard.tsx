@@ -9,16 +9,16 @@ import {
   getPaceLabel,
   useDistanceUnit,
 } from '../../utils/distanceUtils';
-import { formatDuration } from '../../utils/sessionUtils';
+import { estimateSessionCalories, formatDuration } from '../../utils/sessionUtils';
 import { colors, fonts } from '../../theme';
 import { prTypeLabel, type PersonalRecord } from '../../types/personalRecord';
 import type { CompletedSession } from '../../types/session';
 
 const BRAND_LOGO = require('../../../assets/splash-logo-transparent.png');
 
-export const CARD_WIDTH = 340;
-export const CARD_HEIGHT = 510;
-const MAP_HEIGHT = 240;
+export const CARD_WIDTH = 360;
+export const CARD_HEIGHT = 560;
+const MAP_HEIGHT = 230;
 
 function formatPace(minutesPerKm: number | null): string {
   if (minutesPerKm == null || !isFinite(minutesPerKm) || minutesPerKm <= 0) return '—';
@@ -65,14 +65,16 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
   const badgeLabel = featuredPr ? prTypeLabel(featuredPr.pr_type, featuredPr.pr_subtype) : null;
   const isMilestone = featuredPr?.pr_type === 'first_milestone';
 
+  const distanceStr =
+    session.actualDistanceKm > 0 ? formatDistance(session.actualDistanceKm, unit) : '—';
+  const calories = estimateSessionCalories(session);
+  const stepsStr = session.actualSteps > 0 ? session.actualSteps.toLocaleString() : null;
+
   return (
     <View ref={ref} collapsable={false} style={styles.card}>
-      {/* Brand strip */}
+      {/* Brand header — large logo, no wordmark */}
       <View style={styles.cardHeader}>
-        <View style={styles.brandRow}>
-          <Image source={BRAND_LOGO} style={styles.brandLogo} resizeMode="contain" />
-          <Text style={styles.brandWordmark}>MARCHBUDDY</Text>
-        </View>
+        <Image source={BRAND_LOGO} style={styles.brandLogo} resizeMode="contain" />
         <Text style={styles.cardDate}>{formatDate(session.completedAt)}</Text>
       </View>
 
@@ -106,27 +108,40 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
         )}
       </View>
 
-      {/* Stats row */}
+      {/* Stats grid — 4 stats so the full picture of the session is visible */}
       <View style={styles.statsRow}>
         <View style={styles.stat}>
-          <Text style={styles.statValue}>
-            {session.actualDistanceKm > 0
-              ? formatDistance(session.actualDistanceKm, unit)
-              : '—'}
+          <Text style={styles.statValue}>{distanceStr}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>
+            {distanceLabel.toUpperCase()}
           </Text>
-          <Text style={styles.statLabel}>Distance · {distanceLabel}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.stat}>
           <Text style={styles.statValue}>{formatDuration(durationSeconds)}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
+          <Text style={styles.statLabel}>TIME</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.stat}>
           <Text style={styles.statValue}>{paceStr}</Text>
-          <Text style={styles.statLabel}>Pace · {paceLabel}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>
+            {paceLabel.toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.stat}>
+          <Text style={styles.statValue}>{calories != null ? calories.toString() : '—'}</Text>
+          <Text style={styles.statLabel}>KCAL</Text>
         </View>
       </View>
+
+      {/* Steps row — fills out "all progress" without cluttering the main grid */}
+      {stepsStr ? (
+        <View style={styles.metaRow}>
+          <Ionicons name="footsteps-outline" size={13} color={colors.primary} />
+          <Text style={styles.metaText}>{stepsStr} steps</Text>
+        </View>
+      ) : null}
 
       {/* Footer */}
       <View style={styles.cardFooter}>
@@ -142,11 +157,10 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
         </View>
       </View>
 
-      {/* Watermark — keeps MarchBuddy attribution visible when card is shared
-          and cropped on platforms like WhatsApp / Instagram stories. */}
+      {/* Watermark — logo only (no text), bottom-right, stays visible after
+          Instagram / WhatsApp story crops. */}
       <View style={styles.watermark}>
         <Image source={BRAND_LOGO} style={styles.watermarkLogo} resizeMode="contain" />
-        <Text style={styles.watermarkText}>MarchBuddy</Text>
       </View>
     </View>
   );
@@ -170,23 +184,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
   brandLogo: {
-    width: 22,
-    height: 22,
-  },
-  brandWordmark: {
-    fontFamily: fonts.bold,
-    fontSize: 13,
-    letterSpacing: 2,
-    color: '#fff',
+    width: 56,
+    height: 56,
   },
   cardDate: {
     fontFamily: fonts.medium,
@@ -196,7 +199,7 @@ const styles = StyleSheet.create({
   },
   prBadge: {
     position: 'absolute',
-    top: 60,
+    top: 76,
     left: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -241,27 +244,40 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    paddingVertical: 18,
-    paddingHorizontal: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
     alignItems: 'center',
   },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
   statValue: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: 18,
     color: '#fff',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   statLabel: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: 9,
     color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   statDivider: {
     width: 1,
-    height: 32,
+    height: 30,
     backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingBottom: 8,
+  },
+  metaText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 0.3,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -304,21 +320,12 @@ const styles = StyleSheet.create({
   },
   watermark: {
     position: 'absolute',
-    bottom: 6,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    opacity: 0.45,
+    bottom: 8,
+    right: 12,
+    opacity: 0.55,
   },
   watermarkLogo: {
-    width: 12,
-    height: 12,
-  },
-  watermarkText: {
-    fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    color: '#fff',
+    width: 24,
+    height: 24,
   },
 });

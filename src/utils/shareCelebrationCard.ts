@@ -1,8 +1,9 @@
 import { type RefObject } from 'react';
-import { View, Alert } from 'react-native';
+import { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { analytics, EVENTS } from '../services/analytics';
+import { showAppDialog } from '../services/appDialog';
 
 export type ShareSurface = 'pr' | 'level_up' | 'session';
 
@@ -30,13 +31,13 @@ export async function shareCelebrationCard(
     uri = await captureRef(cardRef, { format: 'png', quality: 1 });
   } catch {
     analytics.track(EVENTS.share_sheet_opened, { result: 'failure', surface });
-    Alert.alert("Couldn't generate share card, try again");
+    showAppDialog("Couldn't generate share card, try again");
     return;
   }
 
   const available = await Sharing.isAvailableAsync();
   if (!available) {
-    Alert.alert('Sharing not available on this device');
+    showAppDialog('Sharing not available on this device');
     return;
   }
 

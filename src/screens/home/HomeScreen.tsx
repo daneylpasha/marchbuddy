@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -272,7 +273,7 @@ export default function HomeScreen() {
       return;
     }
 
-    Alert.alert('Refresh Plan', 'This will regenerate your daily plan. Continue?', [
+    showAppDialog('Refresh Plan', 'This will regenerate your daily plan. Continue?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Refresh',

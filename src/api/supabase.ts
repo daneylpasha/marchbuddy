@@ -35,6 +35,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
-    flowType: 'implicit',
+    // PKCE — implicit flow stopped returning refresh_token from Google in
+    // 2025, breaking sign-in for new users with "No tokens in redirect URL".
+    // PKCE returns an authorization code we exchange via exchangeCodeForSession.
+    flowType: 'pkce',
   },
 });

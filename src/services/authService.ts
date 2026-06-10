@@ -38,21 +38,28 @@ export const authService = {
         return { success: false, error: 'Sign in cancelled' };
       }
 
+      // PKCE: Supabase appends ?code=XYZ to the redirect URL. Exchange that
+      // for a session using the code_verifier the client stored when
+      // signInWithOAuth was called.
       const url = result.url;
-      const fragment = url.includes('#') ? url.split('#')[1] : url.split('?')[1];
-      const params = new URLSearchParams(fragment || '');
+      const queryIdx = url.indexOf('?');
+      const fragIdx = url.indexOf('#');
+      const paramString =
+        queryIdx >= 0 ? url.slice(queryIdx + 1) : fragIdx >= 0 ? url.slice(fragIdx + 1) : '';
+      const params = new URLSearchParams(paramString);
 
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-
-      if (!accessToken || !refreshToken) {
-        return { success: false, error: 'No tokens in redirect URL' };
+      const errorDesc = params.get('error_description');
+      if (errorDesc) {
+        return { success: false, error: errorDesc };
       }
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
+      const code = params.get('code');
+      if (!code) {
+        return { success: false, error: 'No authorization code in redirect URL' };
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
 
       if (sessionError) throw sessionError;
 

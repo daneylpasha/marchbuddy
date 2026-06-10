@@ -6,8 +6,8 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { showAppDialog } from '../../services/appDialog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -55,14 +55,14 @@ export default function ChallengesScreen({ navigation }: Props) {
       setPending((prev) => prev.filter((c) => c.id !== challenge.id));
       load(); // reload to get active challenge with scores
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to accept.');
+      showAppDialog('Error', e instanceof Error ? e.message : 'Failed to accept.');
     } finally {
       setRespondingId(null);
     }
   };
 
   const handleDecline = async (challenge: Challenge) => {
-    Alert.alert(
+    showAppDialog(
       'Decline Challenge',
       `Decline the challenge from ${challenge.isMyTeamA ? challenge.teamBName : challenge.teamAName}?`,
       [
