@@ -32,6 +32,30 @@ export default function AppDialogHost() {
   const stackVertical =
     buttons.length > 2 || buttons.some((b) => b.text.length > 14) || (buttons.length === 2 && !hasCancel);
 
+  // Visual contract MUST mirror common/ConfirmDialog so the entire app uses
+  // one dialog look. ConfirmDialog's pattern:
+  //   • Cancel  → filled brand-green (the prominent, safer choice)
+  //   • Confirm → outlined / secondary
+  //   • Destructive → filled danger red (replaces the confirm slot)
+  //   • Single button → filled brand-green
+  const buttonVisual = (
+    btn: AppDialogButton,
+  ): { container: object; text: object } => {
+    if (btn.style === 'destructive') {
+      return { container: styles.destructiveBtn, text: styles.destructiveText };
+    }
+    if (btn.style === 'cancel') {
+      return { container: styles.primaryBtn, text: styles.primaryText };
+    }
+    // 'default' (or no style). If there's a cancel sibling, render this as
+    // the outlined secondary (so cancel stays the prominent one, matching
+    // ConfirmDialog). Otherwise this is a single OK-style button — make it
+    // the prominent filled.
+    return hasCancel
+      ? { container: styles.secondaryBtn, text: styles.secondaryText }
+      : { container: styles.primaryBtn, text: styles.primaryText };
+  };
+
   return (
     <Modal
       visible={visible}
@@ -47,8 +71,7 @@ export default function AppDialogHost() {
 
           <View style={[styles.buttonRow, stackVertical && styles.buttonStack]}>
             {buttons.map((btn, idx) => {
-              const isDestructive = btn.style === 'destructive';
-              const isCancel = btn.style === 'cancel';
+              const visual = buttonVisual(btn);
               return (
                 <Pressable
                   key={`${btn.text}-${idx}`}
@@ -56,25 +79,11 @@ export default function AppDialogHost() {
                   style={({ pressed }) => [
                     styles.button,
                     stackVertical ? styles.buttonStacked : styles.buttonRowItem,
-                    isDestructive
-                      ? styles.destructiveBtn
-                      : isCancel
-                        ? styles.cancelBtn
-                        : styles.defaultBtn,
+                    visual.container,
                     pressed && { opacity: 0.85 },
                   ]}
                 >
-                  <Text
-                    style={
-                      isDestructive
-                        ? styles.destructiveText
-                        : isCancel
-                          ? styles.cancelText
-                          : styles.defaultText
-                    }
-                  >
-                    {btn.text}
-                  </Text>
+                  <Text style={visual.text}>{btn.text}</Text>
                 </Pressable>
               );
             })}
@@ -140,25 +149,25 @@ const styles = StyleSheet.create({
   },
   buttonRowItem: { flex: 1 },
   buttonStacked: { width: '100%' },
-  // Default button — primary brand green
-  defaultBtn: { backgroundColor: colors.primary },
-  defaultText: {
+  // Filled brand-green — prominent slot. Matches ConfirmDialog.cancelBtn.
+  primaryBtn: { backgroundColor: colors.primary },
+  primaryText: {
     fontFamily: fonts.semiBold,
     fontSize: 14,
     color: '#fff',
   },
-  // Cancel — outlined / subdued
-  cancelBtn: {
+  // Outlined — secondary slot. Matches ConfirmDialog.confirmBtnSecondary.
+  secondaryBtn: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
   },
-  cancelText: {
+  secondaryText: {
     fontFamily: fonts.semiBold,
     fontSize: 14,
     color: colors.textPrimary,
   },
-  // Destructive — danger red
+  // Filled danger red — destructive slot. Matches ConfirmDialog.destructiveBtn.
   destructiveBtn: { backgroundColor: colors.danger },
   destructiveText: {
     fontFamily: fonts.semiBold,
