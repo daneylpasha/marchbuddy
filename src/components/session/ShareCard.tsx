@@ -74,7 +74,7 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
 
   return (
     <View ref={ref} collapsable={false} style={styles.card}>
-      {/* Brand header — large logo, no wordmark */}
+      {/* Brand header — centered logo with date stacked below */}
       <View style={styles.cardHeader}>
         <Image source={BRAND_LOGO} style={styles.brandLogo} resizeMode="contain" />
         <Text style={styles.cardDate}>{formatDate(session.completedAt)}</Text>
@@ -170,11 +170,6 @@ const ShareCard = React.forwardRef<View, Props>(({ session, prs = [] }, ref) => 
         </View>
       </View>
 
-      {/* Watermark — logo only (no text), bottom-right, stays visible after
-          Instagram / WhatsApp story crops. */}
-      <View style={styles.watermark}>
-        <Image source={BRAND_LOGO} style={styles.watermarkLogo} resizeMode="contain" />
-      </View>
     </View>
   );
 });
@@ -193,12 +188,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(6,138,21,0.35)',
   },
   cardHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 18,
     paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 8,
+    gap: 4,
   },
   brandLogo: {
     width: 56,
@@ -212,7 +207,7 @@ const styles = StyleSheet.create({
   },
   prBadge: {
     position: 'absolute',
-    top: 76,
+    top: 100,
     left: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,15 +331,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#fff',
     letterSpacing: 0.6,
-  },
-  watermark: {
-    position: 'absolute',
-    bottom: 8,
-    right: 12,
-    opacity: 0.55,
-  },
-  watermarkLogo: {
-    width: 24,
-    height: 24,
   },
 });

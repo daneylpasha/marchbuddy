@@ -14,7 +14,7 @@ import {
 } from '../../utils/distanceUtils';
 import { colors, fonts, spacing } from '../../theme';
 import type { ProgressStackParamList } from '../../navigation/ProgressNavigator';
-import type { CompletedSession, SessionRecord } from '../../types/session';
+import type { CompletedSession, SessionRecord, SessionSegment } from '../../types/session';
 
 type Props = NativeStackScreenProps<ProgressStackParamList, 'PastSessionDetail'>;
 
@@ -53,11 +53,19 @@ function feedbackLabel(rating: string | null): string | null {
 }
 
 // ShareCard was designed against CompletedSession, which carries a few fields
-// past SessionRecord drops (planVariant, pace, segments…). Re-share from
-// history is purely visual, so we synthesize sensible defaults rather than
-// changing ShareCard's contract.
+// past SessionRecord drops (planVariant, pace, full segment objects…). Re-share
+// from history is purely visual: ShareCard only reads plannedSegments.length,
+// so we rebuild an array of the right size from the stored count without
+// fabricating segment payloads. Steps and segment counts now flow through
+// SessionRecord — legacy rows (and server-pulled history) lack them and fall
+// back to 0, which ShareCard renders as "row hidden" or "0 / X".
 function recordToShareSession(record: SessionRecord): CompletedSession {
   const completedAtIso = `${record.date}T12:00:00.000Z`;
+  const segmentCount = record.plannedSegmentsCount ?? 0;
+  const plannedSegments = Array.from(
+    { length: segmentCount },
+    () => ({}) as SessionSegment,
+  );
   return {
     id: record.id,
     orderId: record.id,
@@ -66,11 +74,11 @@ function recordToShareSession(record: SessionRecord): CompletedSession {
     planVariant: 'recommended',
     planTitle: record.planTitle,
     plannedDurationMinutes: record.durationMinutes,
-    plannedSegments: [],
+    plannedSegments,
     actualDurationMinutes: record.durationMinutes,
     actualDistanceKm: record.distanceKm,
-    actualSteps: 0,
-    completedSegments: 0,
+    actualSteps: record.actualSteps ?? 0,
+    completedSegments: record.completedSegments ?? 0,
     endedEarly: record.endedEarly,
     // Pace = minutes/km. Derive only when we have a real distance.
     pacePerKm:

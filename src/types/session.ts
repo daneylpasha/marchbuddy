@@ -150,6 +150,12 @@ export interface SessionRecord {
   // to keep AsyncStorage payload bounded.
   route?: GeoPoint[];
   environment?: 'indoor' | 'outdoor';
+  // Captured at session completion so the share card can re-show the full
+  // picture (steps + segments) when sharing from history. Optional because
+  // server-pulled history and legacy local rows predate these fields.
+  actualSteps?: number;
+  completedSegments?: number;
+  plannedSegmentsCount?: number;
 }
 
 // ============================================

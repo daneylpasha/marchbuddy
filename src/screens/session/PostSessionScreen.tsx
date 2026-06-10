@@ -153,6 +153,9 @@ export default function PostSessionScreen({ navigation, route }: Props) {
       endedEarly: session.endedEarly,
       route: storedRoute,
       environment: session.environment,
+      actualSteps: session.actualSteps,
+      completedSegments: session.completedSegments,
+      plannedSegmentsCount: session.plannedSegments?.length ?? 0,
     });
 
     // Update challenge progress for outdoor sessions (fire-and-forget)
