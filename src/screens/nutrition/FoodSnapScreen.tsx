@@ -37,11 +37,7 @@ export default function FoodSnapScreen({ navigation }: Props) {
   // Show capture screen with camera/gallery choice on mount (no auto-open)
 
   const openPicker = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      navigation.goBack();
-      return;
-    }
+    // Android Photo Picker / iOS PHPicker — no media library permission needed
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.7,
