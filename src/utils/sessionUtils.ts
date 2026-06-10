@@ -118,3 +118,28 @@ export const daysSince = (dateString: string | null): number | null => {
   const diffTime = today.getTime() - lastDate.getTime();
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 };
+
+// Rough calorie estimate for a completed session. Without user weight or
+// HR we can't be accurate, but a MET-based heuristic assuming a ~70kg user
+// gives a useful order-of-magnitude for the share card. A treadmill-reported
+// value (when the user entered one in PostSessionScreen) always wins.
+export function estimateSessionCalories(s: {
+  treadmillStats: { calories?: number } | null;
+  actualDistanceKm: number;
+  actualDurationMinutes: number;
+  pacePerKm: number | null;
+}): number | null {
+  if (s.treadmillStats?.calories && s.treadmillStats.calories > 0) {
+    return s.treadmillStats.calories;
+  }
+  if (s.actualDistanceKm > 0) {
+    // ~70 kcal/km running (pace < 8 min/km), ~50 kcal/km walking
+    const isRunning = (s.pacePerKm ?? 99) < 8;
+    return Math.round(s.actualDistanceKm * (isRunning ? 70 : 50));
+  }
+  if (s.actualDurationMinutes > 0) {
+    // Duration-only fallback: assume moderate effort ~7 kcal/min
+    return Math.round(s.actualDurationMinutes * 7);
+  }
+  return null;
+}
