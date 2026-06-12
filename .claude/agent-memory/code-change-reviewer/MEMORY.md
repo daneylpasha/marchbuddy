@@ -1,0 +1,1 @@
+- [Auth flow hotspots](project_auth_hotspots.md) — authStore resolver/init invariants, refreshSession returns errors (never throws), console.error filter pattern
