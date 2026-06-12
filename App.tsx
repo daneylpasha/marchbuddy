@@ -67,12 +67,19 @@ const RC_DEV_NOISE = __DEV__
     ]
   : [];
 
+// Supabase auth-js logs this internally (GoTrueClient._recoverAndRefresh)
+// when the persisted session's refresh token was revoked server-side. It is
+// an expected lifecycle event, not a bug: the library removes the stale
+// session and authStore.initialize routes the user to a clean login screen.
+const SUPABASE_AUTH_NOISE = ['Invalid Refresh Token'];
+
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
   const first = args[0];
   const firstStr =
     typeof first === 'string' ? first : first instanceof Error ? first.message : '';
   if (POSTHOG_NOISE.some((needle) => firstStr.includes(needle))) return;
+  if (SUPABASE_AUTH_NOISE.some((needle) => firstStr.includes(needle))) return;
   if (RC_DEV_NOISE.some((needle) => firstStr.includes(needle))) return;
   // Also check across all args — RC sometimes splits message + payload
   if (__DEV__ && args.length > 1) {

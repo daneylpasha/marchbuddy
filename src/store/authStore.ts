@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import type { User } from '../types';
@@ -694,12 +695,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       data: { session },
     } = await supabase.auth.getSession();
     if (session) {
-      // Try to refresh token, but don't block on network failure
-      try {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        get().setSession(refreshed.session ?? session);
-      } catch {
-        // Offline or network error — use existing local session
+      // Try to refresh the token. refreshSession() reports failures via the
+      // returned `error`, not by throwing — the previous try/catch here never
+      // fired, so a revoked refresh token left the dead session in place and
+      // every subsequent API call failed with "Invalid Refresh Token".
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshed.session) {
+        get().setSession(refreshed.session);
+      } else if (refreshError && !isAuthRetryableFetchError(refreshError)) {
+        // Refresh token is invalid/revoked on the server (single-use token
+        // already consumed, sessions cleared in dashboard, reinstall with
+        // restored keychain, …). Clear the stale local session so the user
+        // gets a clean login screen instead of a broken signed-in state.
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {
+          /* storage cleanup is best-effort */
+        });
+        get().setSession(null);
+      } else {
+        // Offline or transient network error — keep the local session so the
+        // app still works offline; auto-refresh retries in the background.
         get().setSession(session);
       }
     } else {
